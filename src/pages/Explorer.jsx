@@ -1,0 +1,782 @@
+import { useEffect, useRef, useState } from 'react';
+import maplibregl from 'maplibre-gl';
+import Icon from '../components/Icon';
+import {
+  CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, TIMELINE, TL_CATS, PROJECT_LOC, structLngLat,
+} from '../data/explorerData';
+import { buildMainStyle, buildCompareStyle, addAssetLayers } from '../lib/mapStyles';
+import { add3DLayer } from '../lib/three3d';
+import {
+  thumbHtml, statusChipHtml, wireGallery, startTurntables, ensureThree, DL_SVG, CUBE_SVG,
+} from '../lib/popupHelpers';
+
+const PANEL_WIDTH = 372;
+const SHOW_LEGEND = true;
+
+const initialState = {
+  keyword: '',
+  activeCats: {},
+  selectedNodeId: null,
+  compareOpen: false,
+  compareA: 't1',
+  compareB: 't5',
+  swipeX: 50,
+  timelineOn: false,
+  status: 'all',
+  year: 'all',
+  project: '프로젝트 선택',
+  epsg: '좌표계 전체',
+  boundsFilter: false,
+  mapBounds: null,
+  hoveredId: null,
+  docHover: null,
+  activeId: null,
+  three3DActive: false,
+  three3DTitle: '',
+  basemap: 'light',
+  toast: null,
+};
+
+function computeFiltered(s) {
+  const kw = s.keyword.trim().toLowerCase();
+  const cats = Object.keys(s.activeCats).filter((k) => s.activeCats[k]);
+  let list = ITEMS.filter((i) => {
+    if (cats.length && !cats.includes(i.cat)) return false;
+    if (s.status !== 'all' && i.status !== s.status) return false;
+    if (s.year !== 'all' && !i.date.startsWith(s.year)) return false;
+    if (s.project !== '프로젝트 선택' && i.project !== s.project) return false;
+    if (s.epsg !== '좌표계 전체' && 'EPSG:' + i.epsg !== s.epsg) return false;
+    if (kw) {
+      const hay = (i.title + ' ' + i.site + ' ' + i.project + ' ' + i.desc).toLowerCase();
+      if (!hay.includes(kw)) return false;
+    }
+    return true;
+  });
+  if (s.boundsFilter && s.mapBounds) {
+    const b = s.mapBounds;
+    list = list.filter((i) => i.lat == null || (i.lng >= b.w && i.lng <= b.e && i.lat >= b.s && i.lat <= b.n));
+  }
+  return list;
+}
+
+function segStyle(active) {
+  const base = { flex: 1, height: 26, border: 'none', borderRadius: 5, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500, transition: 'all .15s' };
+  return active
+    ? { ...base, background: 'var(--ant-bg)', color: 'var(--ant-primary)', fontWeight: 600, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }
+    : { ...base, background: 'transparent', color: 'var(--ant-text-secondary)' };
+}
+
+function itemById(id) { return ITEMS.find((i) => i.id === id); }
+
+export default function Explorer() {
+  const [state, setState] = useState(initialState);
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
+  const patch = (p) => setState((s) => ({ ...s, ...(typeof p === 'function' ? p(s) : p) }));
+
+  const mapElRef = useRef(null);
+  const mapRef = useRef(null);
+  const hoverPopupRef = useRef(null);
+  const detailPopupRef = useRef(null);
+  const layersReadyRef = useRef(false);
+  const lastSigRef = useRef('');
+  const toastTimerRef = useRef(null);
+  const navTopRef = useRef(null);
+  const nav3DRef = useRef(null);
+  const tlPrevBaseRef = useRef(null);
+  const prev3DRef = useRef(null);
+  const cmpMapARef = useRef(null);
+  const cmpMapBRef = useRef(null);
+  const cmpLockRef = useRef(false);
+  const cmpSigRef = useRef(null);
+
+  const showToast = (msg) => {
+    patch({ toast: msg });
+    clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => patch({ toast: null }), 2600);
+  };
+
+  const setFS = (id, key, val) => {
+    if (!mapRef.current || !layersReadyRef.current) return;
+    try { mapRef.current.setFeatureState({ source: 'assets', id }, { [key]: val }); } catch { /* noop */ }
+  };
+
+  const pushMapData = (geo) => {
+    const src = mapRef.current && mapRef.current.getSource('assets');
+    if (!src) return;
+    src.setData({
+      type: 'FeatureCollection',
+      features: geo.map((i) => ({
+        type: 'Feature', id: i.id,
+        geometry: { type: 'Point', coordinates: [i.lng, i.lat] },
+        properties: { id: i.id, color: CAT_MAP[i.cat].color },
+      })),
+    });
+  };
+
+  const showHoverCard = (it) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const c = CAT_MAP[it.cat];
+    if (hoverPopupRef.current) hoverPopupRef.current.remove();
+    const html = `<div style="width:214px;font-family:var(--ant-font-sans);">
+      ${thumbHtml(it, CAT_MAP)}
+      <div style="padding:9px 11px 10px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
+          <span style="font-size:13px;font-weight:700;color:var(--ant-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.title}</span>
+          ${statusChipHtml(it.status)}
+        </div>
+        <div style="font-size:11px;color:var(--ant-text-secondary);">${it.site}</div>
+        <div style="font-size:11px;color:var(--ant-text-tertiary);margin-top:2px;">${it.date} · ${it.size}</div>
+      </div></div>`;
+    const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 16, maxWidth: '240px', anchor: 'bottom' })
+      .setLngLat([it.lng, it.lat]).setHTML(html).addTo(map);
+    hoverPopupRef.current = popup;
+    startTurntables(popup);
+  };
+
+  const hide3D = () => {
+    const map = mapRef.current;
+    if (map) {
+      if (map.getLayer('sams-3d')) map.removeLayer('sams-3d');
+      ['clusters', 'cluster-count', 'pt-halo', 'unclustered'].forEach((l) => {
+        try { map.setLayoutProperty(l, 'visibility', 'visible'); } catch { /* noop */ }
+      });
+      map.easeTo({ pitch: 0, bearing: 0, zoom: 16, duration: 900 });
+      if (prev3DRef.current) { setBasemap(prev3DRef.current.basemap); prev3DRef.current = null; }
+    }
+    patch({ three3DActive: false, three3DTitle: '' });
+  };
+
+  const render3DAt = async (lngLat, title, color, count, H) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const ok = await ensureThree();
+    if (!ok) { showToast('3D 엔진을 불러오지 못했습니다'); return; }
+    if (stateRef.current.basemap !== '3d') setBasemap('3d');
+    add3DLayer(maplibregl, map, color, lngLat, count, H);
+    map.flyTo({ center: lngLat, zoom: Math.max(map.getZoom(), 17.5), pitch: 60, duration: 900 });
+    patch({ three3DActive: true, three3DTitle: title });
+  };
+
+  const show3DOnMap = async (it) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const lngLat = it.lat != null ? [it.lng, it.lat] : it.projectLat != null ? [it.projectLng, it.projectLat] : null;
+    if (!lngLat) { showToast('위치 정보가 없어 지도에 3D를 표시할 수 없습니다'); return; }
+    if (detailPopupRef.current) { detailPopupRef.current.remove(); detailPopupRef.current = null; }
+    if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
+    await render3DAt(lngLat, it.title, CAT_MAP[it.cat].color, 4600, 10.4);
+  };
+
+  const openDetail = (it, anchoredToProject) => {
+    const map = mapRef.current;
+    if (!it || !map) return;
+    if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
+    if (detailPopupRef.current) detailPopupRef.current.remove();
+    if (stateRef.current.activeId) setFS(stateRef.current.activeId, 'active', false);
+    if (it.lat != null) setFS(it.id, 'active', true);
+    patch({ activeId: it.id });
+    const c = CAT_MAP[it.cat];
+    const lngLat = it.lat != null ? [it.lng, it.lat] : [it.projectLng, it.projectLat];
+    const meta = [];
+    meta.push(['위치', it.site]);
+    meta.push(['취득일', it.date]);
+    meta.push(['크기', it.size]);
+    if (it.epsg && it.epsg !== '—') meta.push(['좌표계', 'EPSG:' + it.epsg]);
+    if (it.extra) meta.push(['규모', it.extra]);
+    const metaRows = meta.map((m) => `<div style="display:flex;font-size:11.5px;line-height:1.7;"><span style="width:52px;color:var(--ant-text-tertiary);flex:none;">${m[0]}</span><span style="color:var(--ant-text);font-weight:500;">${m[1]}</span></div>`).join('');
+    const projNote = anchoredToProject ? `<div style="display:flex;gap:6px;align-items:flex-start;font-size:10.5px;color:var(--ant-warning);background:var(--ant-warning-bg);border:1px solid var(--ant-warning-border);border-radius:6px;padding:5px 8px;margin:0 0 8px;">이 문헌은 좌표가 없어 프로젝트 위치에 표시됩니다.</div>` : '';
+    const can3D = it.cat === 'pointcloud' || it.cat === 'model3d';
+    const btn3D = can3D ? `<button data-act="show3d" title="지도에서 3D 렌더링" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-primary);background:var(--ant-primary-bg);color:var(--ant-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;">${CUBE_SVG}</button>` : '';
+    const html = `<div style="width:236px;font-family:var(--ant-font-sans);">
+      ${thumbHtml(it, CAT_MAP, true)}
+      <div style="padding:10px 12px 12px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+          <span style="width:8px;height:8px;border-radius:50%;background:${c.color};"></span>
+          <span style="font-size:11px;color:var(--ant-text-secondary);font-weight:600;">${c.label}</span>
+          <span style="margin-left:auto;">${statusChipHtml(it.status)}</span>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:var(--ant-text);margin-bottom:7px;line-height:1.3;">${it.title}</div>
+        ${projNote}
+        <div style="margin-bottom:10px;">${metaRows}</div>
+        <div style="display:flex;gap:6px;">
+          ${btn3D}
+          <button data-act="download" title="다운로드" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-border);background:var(--ant-bg);color:var(--ant-text);cursor:pointer;display:flex;align-items:center;justify-content:center;">${DL_SVG}</button>
+          <button data-act="detail" style="flex:1;height:32px;border-radius:7px;border:none;background:var(--ant-primary);color:#fff;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;">자세히 보기 →</button>
+        </div>
+      </div></div>`;
+    const popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, offset: 16, maxWidth: '280px', anchor: 'bottom' })
+      .setLngLat(lngLat).setHTML(html).addTo(map);
+    detailPopupRef.current = popup;
+    const rootEl = popup.getElement();
+    const btnD = rootEl.querySelector('[data-act="detail"]');
+    const btnDl = rootEl.querySelector('[data-act="download"]');
+    if (btnD) btnD.addEventListener('click', () => showToast('Detail 화면으로 이동: ' + it.title));
+    if (btnDl) btnDl.addEventListener('click', () => showToast('다운로드 시작: ' + it.title + ' (' + it.size + ')'));
+    const btn3d = rootEl.querySelector('[data-act="show3d"]');
+    if (btn3d) btn3d.addEventListener('click', () => show3DOnMap(it));
+    popup.on('close', () => {
+      if (stateRef.current.activeId) setFS(stateRef.current.activeId, 'active', false);
+      patch({ activeId: null });
+    });
+    startTurntables(popup);
+    wireGallery(rootEl, it);
+  };
+
+  const onMarkerEnter = (id) => {
+    setFS(id, 'hover', true);
+    patch({ hoveredId: id });
+    const it = itemById(id);
+    if (it) showHoverCard(it);
+  };
+  const onMarkerLeave = () => {
+    if (stateRef.current.hoveredId) setFS(stateRef.current.hoveredId, 'hover', false);
+    patch({ hoveredId: null });
+    if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
+  };
+
+  const onItemEnter = (it, e) => {
+    setFS(it.id, 'hover', true);
+    const p = { hoveredId: it.id };
+    if (it.lat != null) { showHoverCard(it); p.docHover = null; }
+    else {
+      const r = e && e.currentTarget ? e.currentTarget.getBoundingClientRect() : null;
+      p.docHover = { id: it.id, top: r ? Math.max(64, Math.min(r.top, window.innerHeight - 190)) : 120 };
+    }
+    patch(p);
+  };
+  const onItemLeave = (it) => {
+    setFS(it.id, 'hover', false);
+    patch({ hoveredId: null, docHover: null });
+    if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
+  };
+  const onItemClick = (it) => {
+    const map = mapRef.current;
+    if (it.lat != null) {
+      map && map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17.2), duration: 650 });
+      openDetail(it);
+    } else if (it.projectLat != null) {
+      map && map.flyTo({ center: [it.projectLng, it.projectLat], zoom: Math.max(map.getZoom(), 16.4), duration: 650 });
+      openDetail(it, true);
+    } else {
+      showToast('위치 정보 없음 — Detail 화면으로 이동합니다');
+    }
+  };
+
+  function updateMapControls(v) {
+    const map = mapRef.current;
+    if (!map || !nav3DRef.current) return;
+    const wants3D = v === '3d';
+    const has3D = map.hasControl(nav3DRef.current);
+    if (wants3D && !has3D) {
+      if (navTopRef.current && map.hasControl(navTopRef.current)) map.removeControl(navTopRef.current);
+      map.addControl(nav3DRef.current, 'bottom-right');
+    } else if (!wants3D && has3D) {
+      map.removeControl(nav3DRef.current);
+      if (navTopRef.current && !map.hasControl(navTopRef.current)) map.addControl(navTopRef.current, 'bottom-right');
+    }
+  }
+
+  function setBasemap(v) {
+    patch({ basemap: v });
+    const map = mapRef.current;
+    if (!map) return;
+    const imagery = v === 'satellite' || v === '3d';
+    map.setLayoutProperty('light-tiles', 'visibility', imagery ? 'none' : 'visible');
+    map.setLayoutProperty('sat-tiles', 'visibility', imagery ? 'visible' : 'none');
+    map.setLayoutProperty('satref-tiles', 'visibility', imagery ? 'visible' : 'none');
+    try {
+      if (v === '3d') {
+        map.setTerrain({ source: 'terrain', exaggeration: 1.15 });
+        if (map.getPitch() < 45) map.easeTo({ pitch: 55, duration: 800 });
+      } else if (!stateRef.current.three3DActive) {
+        map.setTerrain(null);
+        map.easeTo({ pitch: 0, bearing: 0, duration: 600 });
+      } else {
+        map.setTerrain(null);
+      }
+    } catch { /* noop */ }
+    updateMapControls(v);
+  }
+
+  const toggleCat = (k) => patch((s) => ({ activeCats: { ...s.activeCats, [k]: !s.activeCats[k] } }));
+  const resetFilters = () => patch({ keyword: '', activeCats: {}, status: 'all', year: 'all', project: '프로젝트 선택', epsg: '좌표계 전체', boundsFilter: false });
+
+  const onSelectNode = (nd) => {
+    patch({ selectedNodeId: nd.id });
+    const ll = structLngLat(nd.struct);
+    if (nd.pc) {
+      render3DAt(ll, nd.date + ' · ' + nd.label, nd.pc.color, Math.round(nd.pc.count * 1.1 + 2600), nd.pc.H * 7);
+    } else {
+      const map = mapRef.current;
+      if (map) map.flyTo({ center: ll, zoom: Math.max(map.getZoom(), 16.5), duration: 700 });
+      showToast(nd.date + ' · ' + nd.label);
+    }
+  };
+
+  const toggleTimeline = () => {
+    const on = !stateRef.current.timelineOn;
+    patch({ timelineOn: on });
+    if (on) { tlPrevBaseRef.current = stateRef.current.basemap; setBasemap('3d'); }
+    else {
+      if (tlPrevBaseRef.current) { setBasemap(tlPrevBaseRef.current); tlPrevBaseRef.current = null; }
+      const map = mapRef.current;
+      if (map && map.getLayer('sams-3d')) map.removeLayer('sams-3d');
+      patch({ selectedNodeId: null });
+    }
+  };
+
+  const toggleCompare = () => patch((s) => ({ compareOpen: !s.compareOpen }));
+
+  const beginSwipe = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const move = (ev) => {
+      const el = document.getElementById('cmp-swipe');
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const cx = ev.clientX != null ? ev.clientX : ev.touches && ev.touches[0] ? ev.touches[0].clientX : 0;
+      let pct = ((cx - r.left) / r.width) * 100;
+      pct = Math.max(4, Math.min(96, pct));
+      patch({ swipeX: pct });
+    };
+    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  const onProjectChange = (e) => {
+    const v = e.target.value;
+    const p = { project: v };
+    if (v === '프로젝트 선택' && stateRef.current.timelineOn) {
+      p.timelineOn = false;
+      p.compareOpen = false;
+      if (tlPrevBaseRef.current) { setBasemap(tlPrevBaseRef.current); tlPrevBaseRef.current = null; }
+      const map = mapRef.current;
+      if (map && map.getLayer('sams-3d')) map.removeLayer('sams-3d');
+    }
+    patch(p);
+  };
+
+  // ── Map lifecycle ──────────────────────────────────────────────
+  useEffect(() => {
+    const el = mapElRef.current;
+    if (!el) return;
+    const map = new maplibregl.Map({
+      container: el,
+      center: [PROJECT_LOC.lng, PROJECT_LOC.lat],
+      zoom: 14.6,
+      maxZoom: 20,
+      attributionControl: { compact: true },
+      style: buildMainStyle(),
+    });
+    mapRef.current = map;
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+    navTopRef.current = map._controls[map._controls.length - 1];
+    nav3DRef.current = new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true });
+
+    map.on('load', () => {
+      addAssetLayers(map);
+      layersReadyRef.current = true;
+      const geo = computeFiltered(stateRef.current).filter((i) => i.lat != null);
+      lastSigRef.current = geo.map((i) => i.id).join(',');
+      pushMapData(geo);
+    });
+
+    map.on('mouseenter', 'unclustered', (e) => { map.getCanvas().style.cursor = 'pointer'; onMarkerEnter(e.features[0].id); });
+    map.on('mouseleave', 'unclustered', () => { map.getCanvas().style.cursor = ''; onMarkerLeave(); });
+    map.on('click', 'unclustered', (e) => { openDetail(itemById(e.features[0].id)); });
+    map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
+    map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = ''; });
+    map.on('click', 'clusters', (e) => {
+      const f = e.features[0];
+      map.getSource('assets').getClusterExpansionZoom(f.properties.cluster_id).then((z) => {
+        map.easeTo({ center: f.geometry.coordinates, zoom: z + 0.4, duration: 500 });
+      });
+    });
+    map.on('moveend', () => {
+      const b = map.getBounds();
+      patch({ mapBounds: { w: b.getWest(), s: b.getSouth(), e: b.getEast(), n: b.getNorth() } });
+    });
+
+    let ro;
+    if (window.ResizeObserver) { ro = new ResizeObserver(() => map.resize()); ro.observe(el); }
+
+    return () => {
+      if (ro) ro.disconnect();
+      map.remove();
+      mapRef.current = null;
+      layersReadyRef.current = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Push filtered geo data to the map whenever the filter-affecting state changes.
+  useEffect(() => {
+    if (!layersReadyRef.current) return;
+    const geo = computeFiltered(state).filter((i) => i.lat != null);
+    const sig = geo.map((i) => i.id).join(',');
+    if (sig !== lastSigRef.current) { lastSigRef.current = sig; pushMapData(geo); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.keyword, state.activeCats, state.status, state.year, state.project, state.epsg, state.boundsFilter, state.mapBounds]);
+
+  // ── Compare mode maps ──────────────────────────────────────────
+  function cmpNode(id) { return TIMELINE.find((n) => n.id === id && n.pc) || TIMELINE.find((n) => n.pc); }
+
+  function makeCmpMap(id, node, center) {
+    const el = document.getElementById(id);
+    if (!el || !node) return null;
+    const ll = structLngLat(node.struct);
+    const map = new maplibregl.Map({ container: el, style: buildCompareStyle(), center: center || ll, zoom: 18, pitch: 60, bearing: -22, maxPitch: 75, attributionControl: { compact: true } });
+    map.on('load', () => {
+      try { map.setTerrain({ source: 'terrain', exaggeration: 1.15 }); } catch { /* noop */ }
+      add3DLayer(maplibregl, map, node.pc.color, ll, Math.round(node.pc.count * 1.1 + 2600), node.pc.H * 7);
+    });
+    return map;
+  }
+
+  function syncMaps(a, b) {
+    const link = (src, dst) => src.on('move', () => {
+      if (cmpLockRef.current) return;
+      cmpLockRef.current = true;
+      dst.jumpTo({ center: src.getCenter(), zoom: src.getZoom(), pitch: src.getPitch(), bearing: src.getBearing() });
+      cmpLockRef.current = false;
+    });
+    link(a, b); link(b, a);
+  }
+
+  function destroyCompareMaps() {
+    [cmpMapARef.current, cmpMapBRef.current].forEach((m) => { if (m) { try { m.remove(); } catch { /* noop */ } } });
+    cmpMapARef.current = null; cmpMapBRef.current = null;
+  }
+
+  async function initCompareMaps() {
+    if (!document.getElementById('cmp-map-a')) return;
+    const ok = await ensureThree();
+    if (!ok) { showToast('3D 엔진을 불러오지 못했습니다'); return; }
+    const nodeA = cmpNode(stateRef.current.compareA);
+    const centerA = structLngLat(nodeA.struct);
+    cmpMapARef.current = makeCmpMap('cmp-map-a', nodeA, centerA);
+    cmpMapBRef.current = makeCmpMap('cmp-map-b', cmpNode(stateRef.current.compareB), centerA);
+    if (cmpMapARef.current && cmpMapBRef.current) syncMaps(cmpMapARef.current, cmpMapBRef.current);
+  }
+
+  useEffect(() => {
+    if (state.compareOpen) {
+      const csig = state.compareA + '|' + state.compareB;
+      if (csig !== cmpSigRef.current) {
+        cmpSigRef.current = csig;
+        destroyCompareMaps();
+        requestAnimationFrame(() => initCompareMaps());
+      }
+    } else if (cmpSigRef.current != null) {
+      cmpSigRef.current = null;
+      destroyCompareMaps();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.compareOpen, state.compareA, state.compareB]);
+
+  useEffect(() => () => { clearTimeout(toastTimerRef.current); destroyCompareMaps(); }, []);
+
+  // ── Derived render data ────────────────────────────────────────
+  const s = state;
+  const filtered = computeFiltered(s);
+  const activeCatKeys = Object.keys(s.activeCats).filter((k) => s.activeCats[k]);
+  const hasFilters = !!(s.keyword || activeCatKeys.length || s.status !== 'all' || s.year !== 'all' || s.project !== '프로젝트 선택' || s.epsg !== '좌표계 전체' || s.boundsFilter);
+
+  let boundsNotice = '';
+  if (s.boundsFilter) {
+    const outCount = ITEMS.filter((i) => i.lat != null).length - filtered.filter((i) => i.lat != null).length;
+    boundsNotice = '현재 지도 범위에 맞춰 필터링 중' + (outCount > 0 ? ' · 범위 밖 ' + outCount + '건 숨김' : '');
+  }
+
+  const timelineVisible = s.timelineOn && !s.three3DActive && !s.compareOpen && s.project !== '프로젝트 선택';
+  const timelineProject = s.project !== '프로젝트 선택' ? s.project : '전체 데이터';
+
+  const cmpNodeA = cmpNode(s.compareA) || TIMELINE.filter((n) => n.pc)[0];
+  const cmpNodeB = cmpNode(s.compareB) || TIMELINE.filter((n) => n.pc).slice(-1)[0];
+  const cmpNodesAll = TIMELINE.filter((n) => n.pc);
+  const aPts = parseFloat(cmpNodeA.pc.pts);
+  const bPts = parseFloat(cmpNodeB.pc.pts);
+  const aDens = parseFloat(cmpNodeA.pc.density);
+  const bDens = parseFloat(cmpNodeB.pc.density);
+  const mm = (d) => { const p = d.split('.').map(Number); return p[0] * 12 + p[1]; };
+
+  let docHoverItem = null;
+  if (s.docHover) docHoverItem = itemById(s.docHover.id);
+
+  return (
+    <div className="ant-app" style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--ant-bg-layout)', color: 'var(--ant-text)', overflow: 'hidden' }}>
+      {/* Header */}
+      <header style={{ height: 56, flex: 'none', display: 'flex', alignItems: 'center', gap: 28, padding: '0 20px', background: 'var(--ant-bg)', borderBottom: '1px solid var(--ant-border-secondary)', zIndex: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 'none' }}>
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg, var(--ant-primary), #4096ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+            <Icon name="IconGlobalOutlined" size={18} style={{ color: '#fff' }} />
+          </div>
+          <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.2 }}>SAMS</span>
+        </div>
+        <nav style={{ display: 'flex', alignItems: 'center', gap: 4, height: '100%', flex: 'none' }}>
+          <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 14, fontWeight: 600, color: 'var(--ant-primary)', boxShadow: 'inset 0 -2px 0 var(--ant-primary)' }}>Explorer</div>
+          <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 14, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>Project</div>
+          <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 14, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>Upload</div>
+        </nav>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 260 }}>
+            <span style={{ position: 'absolute', left: 11, color: 'var(--ant-text-tertiary)', display: 'flex', pointerEvents: 'none' }}><Icon name="IconSearchOutlined" size={15} /></span>
+            <input
+              value={s.keyword}
+              onChange={(e) => patch({ keyword: e.target.value })}
+              placeholder="데이터 검색 · 사이트 · 제목 · 설명"
+              style={{ width: '100%', height: 34, border: '1px solid var(--ant-border)', borderRadius: 'var(--ant-radius)', padding: '0 30px 0 32px', fontSize: 13, fontFamily: 'inherit', color: 'var(--ant-text)', outline: 'none', background: 'var(--ant-bg)' }}
+            />
+            {!!s.keyword && (
+              <span onClick={() => patch({ keyword: '' })} style={{ position: 'absolute', right: 9, color: 'var(--ant-text-tertiary)', display: 'flex', cursor: 'pointer' }}>
+                <Icon name="IconCloseCircleOutlined" size={14} />
+              </span>
+            )}
+          </div>
+          <span style={{ color: 'var(--ant-text-tertiary)', display: 'flex' }}><Icon name="IconCloudServerOutlined" size={18} /></span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#722ed1', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600 }}>홍</div>
+            <span style={{ fontSize: 13, color: 'var(--ant-text-secondary)', whiteSpace: 'nowrap' }}>홍길동</span>
+          </div>
+        </div>
+      </header>
+
+      <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        {/* Left panel */}
+        <aside style={{ width: PANEL_WIDTH, flex: 'none', background: 'var(--ant-bg)', borderRight: '1px solid var(--ant-border-secondary)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: 'var(--ant-fill-quaternary)' }}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', marginBottom: 4, fontWeight: 600 }}>상태</div>
+                <div style={{ display: 'flex', background: 'var(--ant-bg)', border: '1px solid var(--ant-border-secondary)', borderRadius: 7, padding: 2 }}>
+                  {[['all', '전체'], ['published', 'Pub'], ['draft', 'Draft']].map(([k, label]) => (
+                    <button key={k} onClick={() => patch({ status: k })} style={segStyle(s.status === k)}>{label}</button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', marginBottom: 4, fontWeight: 600 }}>기간</div>
+                <div style={{ display: 'flex', background: 'var(--ant-bg)', border: '1px solid var(--ant-border-secondary)', borderRadius: 7, padding: 2 }}>
+                  {[['all', '전체'], ['2024', '2024'], ['2023', '2023'], ['2022', '2022']].map(([k, label]) => (
+                    <button key={k} onClick={() => patch({ year: k })} style={segStyle(s.year === k)}>{label}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ position: 'relative', marginTop: 12 }}>
+              <select value={s.project} onChange={onProjectChange} style={{ width: '100%', height: 34, border: '1px solid var(--ant-border)', borderRadius: 'var(--ant-radius)', padding: '0 32px 0 11px', fontSize: 13, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'var(--ant-bg)', appearance: 'none', cursor: 'pointer', outline: 'none' }}>
+                {PROJECTS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <span style={{ position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--ant-text-tertiary)', display: 'flex' }}><Icon name="IconDownOutlined" size={11} /></span>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
+              {CATS.map((c) => {
+                const on = !!s.activeCats[c.key];
+                return (
+                  <button key={c.key} onClick={() => toggleCat(c.key)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 9px', borderRadius: 20, fontSize: 11.5, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500, border: `1px solid ${on ? c.color : 'var(--ant-border)'}`, background: on ? c.color + '14' : 'var(--ant-bg)', color: on ? c.color : 'var(--ant-text-secondary)' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flex: 'none' }} />{c.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ padding: '9px 16px', borderBottom: '1px solid var(--ant-border-secondary)', display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>결과 {filtered.length}건</span>
+            {hasFilters && <button onClick={resetFilters} style={{ fontSize: 11, color: 'var(--ant-primary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>필터 초기화</button>}
+            {s.project !== '프로젝트 선택' && (
+              <button onClick={toggleTimeline} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, height: 28, padding: '0 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${s.timelineOn ? 'var(--ant-primary)' : 'var(--ant-border)'}`, background: s.timelineOn ? 'var(--ant-primary)' : 'var(--ant-bg)', color: s.timelineOn ? '#fff' : 'var(--ant-text-secondary)' }}>
+                <Icon name="IconCalendarOutlined" size={14} />타임라인
+              </button>
+            )}
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px 16px' }}>
+            {!!boundsNotice && <div style={{ fontSize: 11, color: 'var(--ant-warning)', background: 'var(--ant-warning-bg)', border: '1px solid var(--ant-warning-border)', borderRadius: 6, padding: '6px 9px', margin: '4px 4px 8px' }}>{boundsNotice}</div>}
+            {filtered.map((it) => {
+              const c = CAT_MAP[it.cat];
+              const isActive = s.activeId === it.id;
+              const isHover = s.hoveredId === it.id;
+              let rowBg = 'transparent', rowBorder = '1px solid transparent';
+              if (isActive) { rowBg = 'var(--ant-primary-bg)'; rowBorder = '1px solid var(--ant-primary-border)'; }
+              else if (isHover) { rowBg = 'var(--ant-fill-quaternary)'; rowBorder = '1px solid var(--ant-border-secondary)'; }
+              const noGeo = it.lat == null;
+              return (
+                <div key={it.id} onMouseEnter={(e) => onItemEnter(it, e)} onMouseLeave={() => onItemLeave(it)} onClick={() => onItemClick(it)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 9, cursor: 'pointer', background: rowBg, border: rowBorder, marginBottom: 2 }}>
+                  <div style={{ width: 34, height: 34, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c.color, boxShadow: `0 1px 3px ${c.color}55` }}>
+                    <Icon name={c.icon} size={17} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
+                      <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 600, padding: '0 6px', borderRadius: 20, lineHeight: '16px', color: it.status === 'published' ? 'var(--ant-success)' : 'var(--ant-warning)', background: it.status === 'published' ? 'var(--ant-success-bg)' : 'var(--ant-warning-bg)', border: `1px solid ${it.status === 'published' ? 'var(--ant-success-border)' : 'var(--ant-warning-border)'}` }}>
+                        {it.status === 'published' ? 'Pub' : 'Draft'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 11.5, color: 'var(--ant-text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {it.date} · {it.size}{it.extra ? ` · ${it.extra}` : ''}
+                    </div>
+                  </div>
+                  <span style={{ flex: 'none', display: 'flex', alignItems: 'center', color: noGeo ? 'var(--ant-text-quaternary)' : c.color + '88' }}>
+                    <Icon name={noGeo ? 'IconFileSearchOutlined' : 'IconEnvironmentOutlined'} size={13} />
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </aside>
+
+        {/* Map area */}
+        <div style={{ flex: 1, position: 'relative', minWidth: 0, background: '#eaeef2' }}>
+          <div ref={mapElRef} id="sams-map" style={{ position: 'absolute', inset: 0 }} />
+
+          <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 4, display: 'flex', background: 'var(--ant-bg)', borderRadius: 9, padding: 3, boxShadow: '0 2px 10px rgba(0,0,0,0.14)', border: '1px solid var(--ant-border-secondary)' }}>
+            {[['light', '일반지도', 'IconEnvironmentOutlined'], ['satellite', '위성', 'IconGlobalOutlined'], ['3d', '3D', 'IconBoxPlotOutlined']].map(([key, label, icon]) => {
+              const on = s.basemap === key;
+              return (
+                <button key={key} onClick={() => setBasemap(key)} style={{ display: 'flex', alignItems: 'center', gap: 5, height: 28, padding: '0 12px', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', background: on ? 'var(--ant-primary)' : 'transparent', color: on ? '#fff' : 'var(--ant-text-secondary)' }}>
+                  <Icon name={icon} size={14} />{label}
+                </button>
+              );
+            })}
+          </div>
+
+          <button onClick={() => patch({ boundsFilter: !s.boundsFilter })} style={{ position: 'absolute', top: 12, left: 12, zIndex: 4, display: 'flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 9, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.14)', border: `1px solid ${s.boundsFilter ? 'var(--ant-primary)' : 'var(--ant-border-secondary)'}`, background: s.boundsFilter ? 'var(--ant-primary)' : 'var(--ant-bg)', color: s.boundsFilter ? '#fff' : 'var(--ant-text-secondary)' }}>
+            <Icon name="IconBorderOuterOutlined" size={14} />이 지역으로 검색
+          </button>
+
+          {timelineVisible && (
+            <div style={{ position: 'absolute', top: 56, left: 12, right: 52, zIndex: 9, background: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(8px)', border: '1px solid var(--ant-border-secondary)', borderRadius: 12, boxShadow: '0 4px 18px rgba(0,0,0,0.12)', padding: '10px 18px 14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                <span style={{ display: 'flex', color: 'var(--ant-primary)' }}><Icon name="IconCalendarOutlined" size={16} /></span>
+                <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>{timelineProject}</span>
+                <span style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', whiteSpace: 'nowrap' }}>시계열 · 노드 클릭 시 지도에 실측 3D 표시</span>
+                <button onClick={toggleCompare} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, height: 28, padding: '0 13px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                  <span style={{ display: 'flex', color: 'var(--ant-primary)' }}><Icon name="IconSwapRightOutlined" size={14} /></span>시점 비교
+                </button>
+              </div>
+              <div style={{ position: 'relative', height: 62, margin: '0 44px' }}>
+                <div style={{ position: 'absolute', top: '50%', left: -8, right: -8, height: 2, background: 'var(--ant-border)', transform: 'translateY(-50%)' }} />
+                {TIMELINE.map((n, i) => {
+                  const leftPct = TIMELINE.length > 1 ? (i / (TIMELINE.length - 1)) * 100 : 50;
+                  const above = i % 2 === 0;
+                  const c = TL_CATS[n.cat].color;
+                  const active = s.selectedNodeId === n.id;
+                  const bg = n.cat === 'event' && !active ? 'var(--ant-bg)' : c;
+                  const size = active ? 15 : 12;
+                  return (
+                    <div key={n.id} style={{ position: 'absolute', left: `${leftPct}%`, top: 0, height: '100%' }}>
+                      <div style={{ position: 'absolute', left: 0, [above ? 'bottom' : 'top']: 'calc(50% + 13px)', transform: 'translateX(-50%)', width: 112, textAlign: 'center', pointerEvents: 'none' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: active ? c : 'var(--ant-text)' }}>{n.date}</div>
+                        <div style={{ fontSize: 10.5, color: 'var(--ant-text-tertiary)', lineHeight: 1.25, marginTop: 1 }}>{n.label}</div>
+                      </div>
+                      <button onClick={() => onSelectNode(n)} style={{ position: 'absolute', top: '50%', left: 0, transform: 'translate(-50%,-50%)', width: size, height: size, borderRadius: '50%', border: '2px solid #fff', cursor: 'pointer', padding: 0, background: bg, boxShadow: `0 1px 4px rgba(0,0,0,0.28)${active ? ',0 0 0 4px ' + c + '33' : ''}` }} />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {s.three3DActive && (
+            <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 6, display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(15,20,28,0.82)', backdropFilter: 'blur(6px)', color: '#fff', padding: '7px 8px 7px 14px', borderRadius: 10, boxShadow: '0 6px 22px rgba(0,0,0,0.35)' }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#4096ff', boxShadow: '0 0 8px #4096ff' }} />
+              <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>지도 위 3D 렌더링 · {s.three3DTitle}</span>
+              <button onClick={() => showToast('정밀 포인트클라우드 뷰어(Potree)를 새 창에서 엽니다')} style={{ height: 26, padding: '0 11px', border: '1px solid rgba(255,255,255,0.28)', borderRadius: 7, background: 'transparent', color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>정밀 뷰어 열기</button>
+              <button onClick={hide3D} style={{ height: 26, padding: '0 11px', border: 'none', borderRadius: 7, background: 'rgba(255,255,255,0.16)', color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>평면으로</button>
+            </div>
+          )}
+
+          {s.compareOpen && (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 6, background: '#0b0f16' }}>
+              <div id="cmp-swipe" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+                <div id="cmp-map-a" style={{ position: 'absolute', inset: 0 }} />
+                <div style={{ position: 'absolute', inset: 0, clipPath: `inset(0 0 0 ${s.swipeX}%)` }}>
+                  <div id="cmp-map-b" style={{ position: 'absolute', inset: 0 }} />
+                </div>
+                <div onPointerDown={beginSwipe} style={{ position: 'absolute', top: 0, bottom: 0, left: `${s.swipeX}%`, width: 0, zIndex: 4, cursor: 'ew-resize', touchAction: 'none' }}>
+                  <div style={{ position: 'absolute', top: 0, bottom: 0, left: -1.5, width: 3, background: 'rgba(255,255,255,0.92)', boxShadow: '0 0 8px rgba(0,0,0,0.45)' }} />
+                  <div style={{ position: 'absolute', top: '50%', left: -19, width: 38, height: 38, transform: 'translateY(-50%)', borderRadius: '50%', background: '#fff', boxShadow: '0 2px 12px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ant-primary)' }}>
+                    <Icon name="IconSwapRightOutlined" size={19} />
+                  </div>
+                </div>
+                <button onClick={() => patch({ compareOpen: false })} style={{ position: 'absolute', top: 14, right: 14, zIndex: 5, display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 13px', border: 'none', borderRadius: 8, background: 'rgba(15,20,28,0.85)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
+                  <Icon name="IconCloseOutlined" size={13} />비교 닫기
+                </button>
+                <div style={{ position: 'absolute', bottom: 16, left: 16, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: 'var(--ant-primary)', width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>A</span>
+                  <select value={cmpNodeA.id} onChange={(e) => patch({ compareA: e.target.value })} style={{ height: 32, maxWidth: 210, border: 'none', borderRadius: 8, padding: '0 10px', fontSize: 12, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'rgba(255,255,255,0.96)', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
+                    {cmpNodesAll.map((n) => <option key={n.id} value={n.id}>{n.date} · {n.label}</option>)}
+                  </select>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#fff', background: 'rgba(0,0,0,0.6)', padding: '6px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>{cmpNodeA.pc.pts} pts</span>
+                </div>
+                <div style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#fff', background: 'rgba(0,0,0,0.6)', padding: '6px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>{cmpNodeB.pc.pts} pts</span>
+                  <select value={cmpNodeB.id} onChange={(e) => patch({ compareB: e.target.value })} style={{ height: 32, maxWidth: 210, border: 'none', borderRadius: 8, padding: '0 10px', fontSize: 12, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'rgba(255,255,255,0.96)', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
+                    {cmpNodesAll.map((n) => <option key={n.id} value={n.id}>{n.date} · {n.label}</option>)}
+                  </select>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: '#722ed1', width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>B</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {SHOW_LEGEND && (
+            <div style={{ position: 'absolute', bottom: 22, left: 12, zIndex: 4, background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(4px)', borderRadius: 10, padding: '10px 12px', boxShadow: '0 2px 10px rgba(0,0,0,0.14)', border: '1px solid var(--ant-border-secondary)' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', marginBottom: 7, textTransform: 'uppercase', letterSpacing: 0.4 }}>데이터 유형</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 16px' }}>
+                {CATS.map((c) => (
+                  <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5, color: 'var(--ant-text-secondary)' }}>
+                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: c.color, flex: 'none', boxShadow: `0 0 0 2px ${c.color}22` }} />{c.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div style={{ position: 'absolute', bottom: 22, right: 12, zIndex: 4, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 11, padding: '5px 10px', borderRadius: 7, display: 'flex', alignItems: 'center', gap: 6, pointerEvents: 'none' }}>
+            <span style={{ display: 'flex', opacity: 0.85 }}><Icon name="IconAimOutlined" size={12} /></span>
+            마커에 올려 미리보기 · 클릭해 상세
+          </div>
+        </div>
+      </div>
+
+      {docHoverItem && (() => {
+        const c = CAT_MAP[docHoverItem.cat];
+        const left = PANEL_WIDTH + 8;
+        return (
+          <div style={{ position: 'fixed', left, top: s.docHover.top, width: 252, zIndex: 40, background: 'var(--ant-bg-elevated)', border: '1px solid var(--ant-border-secondary)', borderRadius: 12, boxShadow: 'var(--ant-shadow)', padding: '12px 13px', pointerEvents: 'none' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9 }}>
+              <div style={{ width: 36, height: 36, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c.color, boxShadow: `0 1px 3px ${c.color}55` }}>
+                <Icon name={c.icon} size={18} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{docHoverItem.title}</span>
+                  <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 600, padding: '0 7px', borderRadius: 20, lineHeight: '16px', color: docHoverItem.status === 'published' ? 'var(--ant-success)' : 'var(--ant-warning)', background: docHoverItem.status === 'published' ? 'var(--ant-success-bg)' : 'var(--ant-warning-bg)', border: `1px solid ${docHoverItem.status === 'published' ? 'var(--ant-success-border)' : 'var(--ant-warning-border)'}` }}>
+                    {docHoverItem.status === 'published' ? 'Published' : 'Draft'}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', marginTop: 2 }}>{docHoverItem.date} · {docHoverItem.size}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--ant-text-secondary)', lineHeight: 1.55, borderTop: '1px solid var(--ant-border-secondary)', paddingTop: 9 }}>{docHoverItem.desc}</div>
+            <div style={{ fontSize: 10.5, color: 'var(--ant-text-tertiary)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ display: 'flex' }}><Icon name="IconFileSearchOutlined" size={11} /></span>위치 정보 없음 · 클릭 시 상세로 이동
+            </div>
+          </div>
+        );
+      })()}
+
+      <div style={{ position: 'fixed', left: '50%', bottom: 28, transform: 'translateX(-50%)', zIndex: 50, display: s.toast ? 'flex' : 'none', alignItems: 'center', gap: 8, background: 'var(--ant-bg-elevated)', color: 'var(--ant-text)', border: '1px solid var(--ant-border-secondary)', boxShadow: 'var(--ant-shadow)', padding: '10px 16px', borderRadius: 10, fontSize: 13, fontWeight: 500, animation: 'sams-toast-in .25s ease' }}>
+        <span style={{ display: 'flex', color: 'var(--ant-primary)' }}><Icon name="IconRightCircleOutlined" size={15} /></span>{s.toast || ''}
+      </div>
+    </div>
+  );
+}
