@@ -24,6 +24,7 @@
   --ant-link-active: #0958d9;
 
   --ant-text: rgba(0, 0, 0, 0.88);
+  --ant-text-heading: rgba(0, 0, 0, 0.88);
   --ant-text-secondary: rgba(0, 0, 0, 0.65);
   --ant-text-tertiary: rgba(0, 0, 0, 0.45);
   --ant-text-quaternary: rgba(0, 0, 0, 0.25);
