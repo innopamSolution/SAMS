@@ -344,6 +344,9 @@ export default function Explorer() {
     map.setLayoutProperty('light-tiles', 'visibility', imagery ? 'none' : 'visible');
     map.setLayoutProperty('sat-tiles', 'visibility', imagery ? 'visible' : 'none');
     map.setLayoutProperty('satref-tiles', 'visibility', imagery ? 'visible' : 'none');
+    if (map.getLayer('sams-3d')) {
+      map.setLayoutProperty('sams-3d', 'visibility', v === 'light' ? 'none' : 'visible');
+    }
     try {
       if (v === '3d') {
         map.setTerrain({ source: 'terrain', exaggeration: 1.15 });
