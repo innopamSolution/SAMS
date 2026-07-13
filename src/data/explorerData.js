@@ -32,6 +32,7 @@ export const ITEMS = [
   { id: 'd2', title: '현장 조사 일지', cat: 'document', date: '2024-04-08', size: 'PDF · 24쪽', extra: '', status: 'published', epsg: '—', site: '경주 불국사', project: PROJECT_LOC.project, lng: null, lat: null, projectLng: PROJECT_LOC.lng, projectLat: PROJECT_LOC.lat, desc: '일자별 취득 기록' },
   { id: 'd3', title: '문화재청 허가서', cat: 'document', date: '2024-04-12', size: 'PDF · 3쪽', extra: '', status: 'draft', epsg: '—', site: '—', project: '(미지정)', lng: null, lat: null, projectLng: null, projectLat: null, desc: '문서 제목 미입력 · 위치 미지정' },
   { id: 'e1', title: 'HQ(이마트)', cat: 'pointcloud', date: '2023-09-08', size: '496MB', extra: '20.0M pts', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.0537, lat: 37.54028, desc: 'RealityCapture · LAS 1.2 · Point Format 2(RGB)', pointCloudUrl: '/data/emart-pointcloud.bin' },
+  { id: 'e2', title: 'HQ(이마트) 3D 모델', cat: 'model3d', date: '2023-09-08', size: '65.1MB', extra: '390.7K vertex', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.0537, lat: 37.54028, desc: 'RealityCapture · OBJ 메시 · 정점 컬러(텍스처 없음)', meshUrl: '/data/hq-mesh.bin' },
 ];
 
 export const PROJECTS = ['프로젝트 선택', '2024 경주 불국사 정밀실측', 'K-Seongsu Project'];
