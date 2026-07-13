@@ -535,40 +535,57 @@ export default function Explorer() {
   if (s.docHover) docHoverItem = itemById(s.docHover.id);
 
   return (
-    <div className="ant-app" style={{ height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--ant-bg-layout)', color: 'var(--ant-text)', overflow: 'hidden' }}>
+    <div
+      className="ant-app"
+      style={{
+        height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--ant-bg-layout)', color: 'var(--ant-text)', overflow: 'hidden',
+        '--ant-primary': '#0958d9', '--ant-primary-hover': '#1677ff', '--ant-primary-active': '#003eb3',
+      }}
+    >
       {/* Header */}
-      <header style={{ height: 56, flex: 'none', display: 'flex', alignItems: 'center', gap: 28, padding: '0 20px', background: 'var(--ant-bg)', borderBottom: '1px solid var(--ant-border-secondary)', zIndex: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 'none' }}>
-          <div style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg, var(--ant-primary), #4096ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-            <Icon name="IconGlobalOutlined" size={18} style={{ color: '#fff' }} />
-          </div>
-          <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: -0.2 }}>SAMS</span>
+      <header style={{ height: 56, flex: 'none', display: 'flex', alignItems: 'center', gap: 44, padding: '0 20px', background: 'var(--ant-bg)', borderBottom: '1px solid var(--ant-border-secondary)', zIndex: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 'none' }}>
+          <svg width="32" height="32" viewBox="0 0 64 64" fill="none" aria-label="SAMS">
+            <circle cx="46" cy="16" r="3" fill="#4096ff" /><circle cx="38" cy="13" r="2.3" fill="#0958d9" /><circle cx="30" cy="13" r="2.3" fill="#0958d9" /><circle cx="22" cy="15" r="3" fill="#0958d9" /><circle cx="18" cy="21" r="2.3" fill="#4096ff" /><circle cx="20" cy="27" r="2.3" fill="#0958d9" /><circle cx="27" cy="30" r="3" fill="#0958d9" /><circle cx="35" cy="32" r="2.3" fill="#0958d9" /><circle cx="42" cy="35" r="2.3" fill="#4096ff" /><circle cx="45" cy="41" r="3" fill="#0958d9" /><circle cx="42" cy="47" r="2.3" fill="#0958d9" /><circle cx="34" cy="50" r="2.3" fill="#0958d9" /><circle cx="26" cy="50" r="3" fill="#4096ff" /><circle cx="18" cy="48" r="2.3" fill="#0958d9" /><circle cx="30" cy="20" r="2.3" fill="#0958d9" /><circle cx="24" cy="21" r="3" fill="#0958d9" /><circle cx="38" cy="19" r="2.3" fill="#4096ff" /><circle cx="24" cy="44" r="2.3" fill="#0958d9" /><circle cx="38" cy="43" r="3" fill="#0958d9" /><circle cx="31" cy="42" r="2.3" fill="#0958d9" /><circle cx="31" cy="26" r="2.3" fill="#4096ff" /><circle cx="31" cy="37" r="3" fill="#0958d9" />
+          </svg>
+          <span style={{ fontFamily: "'Archivo', sans-serif", fontSize: 20, fontWeight: 800, letterSpacing: -0.5, color: 'var(--ant-text-heading)' }}>SAMS</span>
         </div>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 4, height: '100%', flex: 'none' }}>
-          <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 14, fontWeight: 600, color: 'var(--ant-primary)', boxShadow: 'inset 0 -2px 0 var(--ant-primary)' }}>Explorer</div>
-          <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 14, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>Project</div>
-          <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 14, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>Upload</div>
+          <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 15, fontWeight: 700, color: 'var(--ant-primary)' }}>Explorer</div>
+          <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 15, fontWeight: 600, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>Project</div>
+          <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 15, fontWeight: 600, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>Upload</div>
         </nav>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: 260 }}>
-            <span style={{ position: 'absolute', left: 11, color: 'var(--ant-text-tertiary)', display: 'flex', pointerEvents: 'none' }}><Icon name="IconSearchOutlined" size={15} /></span>
-            <input
-              value={s.keyword}
-              onChange={(e) => patch({ keyword: e.target.value })}
-              placeholder="데이터 검색 · 사이트 · 제목 · 설명"
-              style={{ width: '100%', height: 34, border: '1px solid var(--ant-border)', borderRadius: 'var(--ant-radius)', padding: '0 30px 0 32px', fontSize: 13, fontFamily: 'inherit', color: 'var(--ant-text)', outline: 'none', background: 'var(--ant-bg)' }}
-            />
-            {!!s.keyword && (
-              <span onClick={() => patch({ keyword: '' })} style={{ position: 'absolute', right: 9, color: 'var(--ant-text-tertiary)', display: 'flex', cursor: 'pointer' }}>
-                <Icon name="IconCloseCircleOutlined" size={14} />
-              </span>
-            )}
+          <div className={`hsearch${s.keyword ? ' open' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <div className="hsearch-field">
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  className="hsearch-input"
+                  value={s.keyword}
+                  onChange={(e) => patch({ keyword: e.target.value })}
+                  placeholder="이름 · 제목 · 키워드 검색"
+                />
+                {!!s.keyword && (
+                  <span onClick={() => patch({ keyword: '' })} style={{ position: 'absolute', right: 2, color: 'var(--ant-text-tertiary)', display: 'flex', cursor: 'pointer' }}>
+                    <Icon name="IconCloseCircleOutlined" size={14} />
+                  </span>
+                )}
+              </div>
+            </div>
+            <button
+              className="hsearch-btn"
+              onClick={() => document.querySelector('.hsearch-input')?.focus()}
+              title="검색"
+            >
+              <Icon name="IconSearchOutlined" size={20} />
+            </button>
           </div>
-          <span style={{ color: 'var(--ant-text-tertiary)', display: 'flex' }}><Icon name="IconCloudServerOutlined" size={18} /></span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#722ed1', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 600 }}>홍</div>
-            <span style={{ fontSize: 13, color: 'var(--ant-text-secondary)', whiteSpace: 'nowrap' }}>홍길동</span>
-          </div>
+          <button
+            title="로그아웃"
+            style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', border: 'none', background: 'transparent', color: 'var(--ant-text-secondary)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', letterSpacing: 0.3, cursor: 'pointer', borderRadius: 8 }}
+          >
+            <Icon name="IconLogoutOutlined" size={16} />LOGOUT
+          </button>
         </div>
       </header>
 
