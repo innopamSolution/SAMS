@@ -83,4 +83,8 @@ export const ICONS = {
     viewBox: '0 0 24 24',
     body: '<path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M12 1.5C6.201 1.5 1.5 6.201 1.5 12S6.201 22.5 12 22.5 22.5 17.799 22.5 12 17.799 1.5 12 1.5Zm0 19.406A8.906 8.906 0 1 1 12 2.594a8.906 8.906 0 0 1 0 17.812Z"/><path fill="currentColor" d="M9.75 7.875v8.25a.375.375 0 0 0 .58.314l6.25-4.125a.375.375 0 0 0 0-.628l-6.25-4.125a.375.375 0 0 0-.58.314Z"/>',
   },
+  IconLogoutOutlined: {
+    viewBox: '0 0 24 24',
+    body: '<path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M6.75 3a.75.75 0 0 0-.75.75v16.5c0 .414.336.75.75.75h6a.75.75 0 0 0 0-1.5H7.5V4.5h5.25a.75.75 0 0 0 0-1.5h-6Zm9.97 4.72a.75.75 0 1 0-1.06 1.06L18.19 11.25H10.5a.75.75 0 0 0 0 1.5h7.69l-2.53 2.47a.75.75 0 1 0 1.06 1.08l3.97-3.88a.75.75 0 0 0 0-1.08l-3.97-3.87Z"/>',
+  },
 };
