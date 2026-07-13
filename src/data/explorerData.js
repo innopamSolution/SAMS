@@ -34,7 +34,7 @@ export const ITEMS = [
   { id: 'e1', title: 'HQ(이마트)', cat: 'pointcloud', date: '2023-09-08', size: '496MB', extra: '20.0M pts', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.0537, lat: 37.54028, desc: 'RealityCapture · LAS 1.2 · Point Format 2(RGB)', pointCloudUrl: '/data/emart-pointcloud.bin' },
 ];
 
-export const PROJECTS = ['프로젝트 선택', '2024 경주 불국사 정밀실측', '2023 이마트 매장 포인트클라우드'];
+export const PROJECTS = ['프로젝트 선택', '2024 경주 불국사 정밀실측', 'K-Seongsu Project'];
 export const EPSGS = ['좌표계 전체', 'EPSG:5186', 'EPSG:5187'];
 
 export const TIMELINE = [
