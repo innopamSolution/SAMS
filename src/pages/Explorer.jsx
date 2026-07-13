@@ -446,7 +446,7 @@ export default function Explorer() {
     const sig = geo.map((i) => i.id).join(',');
     if (sig !== lastSigRef.current) { lastSigRef.current = sig; pushMapData(geo); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.keyword, state.activeCats, state.status, state.year, state.project, state.epsg, state.boundsFilter, state.mapBounds]);
+  }, [state.keyword, state.activeCats, state.statusSel, state.yearSel, state.project, state.epsg, state.boundsFilter, state.mapBounds]);
 
   // ── Compare mode maps ──────────────────────────────────────────
   function cmpNode(id) { return TIMELINE.find((n) => n.id === id && n.pc) || TIMELINE.find((n) => n.pc); }
