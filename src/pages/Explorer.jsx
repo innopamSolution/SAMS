@@ -5,8 +5,9 @@ import {
   CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, TIMELINE, TL_CATS, PROJECT_LOC, structLngLat,
 } from '../data/explorerData';
 import { buildMainStyle, buildCompareStyle, addAssetLayers } from '../lib/mapStyles';
-import { add3DLayer, addRealPointCloudLayer } from '../lib/three3d';
+import { add3DLayer, addRealPointCloudLayer, addRealMeshLayer } from '../lib/three3d';
 import { loadPointCloud } from '../lib/pointCloudAsset';
+import { loadMeshAsset } from '../lib/meshAsset';
 import {
   thumbHtml, statusChipHtml, wireGallery, startTurntables, ensureThree, DL_SVG, CUBE_SVG,
 } from '../lib/popupHelpers';
