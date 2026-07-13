@@ -592,21 +592,25 @@ export default function Explorer() {
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         {/* Left panel */}
         <aside style={{ width: PANEL_WIDTH, flex: 'none', background: 'var(--ant-bg)', borderRight: '1px solid var(--ant-border-secondary)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: 'var(--ant-fill-quaternary)' }}>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', marginBottom: 4, fontWeight: 600 }}>상태</div>
-                <div style={{ display: 'flex', background: 'var(--ant-bg)', border: '1px solid var(--ant-border-secondary)', borderRadius: 7, padding: 2 }}>
-                  {[['all', '전체'], ['published', 'Pub'], ['draft', 'Draft']].map(([k, label]) => (
-                    <button key={k} onClick={() => patch({ status: k })} style={segStyle(s.status === k)}>{label}</button>
+          <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', backgroundColor: '#EBECEF' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--ant-text-secondary)', marginBottom: 5, fontWeight: 700 }}>상태</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  <button onClick={() => patch({ statusSel: {} })} style={mchip(!Object.values(s.statusSel).some(Boolean))}>전체</button>
+                  {[['published', 'Published'], ['draft', 'Draft']].map(([k, label]) => (
+                    <button key={k} onClick={() => toggleStatusSel(k)} style={mchip(!!s.statusSel[k])}>{label}</button>
                   ))}
                 </div>
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', marginBottom: 4, fontWeight: 600 }}>기간</div>
-                <div style={{ display: 'flex', background: 'var(--ant-bg)', border: '1px solid var(--ant-border-secondary)', borderRadius: 7, padding: 2 }}>
-                  {[['all', '전체'], ['2024', '2024'], ['2023', '2023'], ['2022', '2022']].map(([k, label]) => (
-                    <button key={k} onClick={() => patch({ year: k })} style={segStyle(s.year === k)}>{label}</button>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--ant-text-secondary)', marginBottom: 5, fontWeight: 700 }}>
+                  기간 <span style={{ color: 'var(--ant-text-quaternary)', fontWeight: 500 }}>· 복수 선택</span>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  <button onClick={() => patch({ yearSel: {} })} style={mchip(!Object.values(s.yearSel).some(Boolean))}>전체</button>
+                  {YEARS.map((y) => (
+                    <button key={y} onClick={() => toggleYearSel(y)} style={mchip(!!s.yearSel[y])}>{y}</button>
                   ))}
                 </div>
               </div>
@@ -622,9 +626,12 @@ export default function Explorer() {
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
               {CATS.map((c) => {
                 const on = !!s.activeCats[c.key];
+                const count = catCounts[c.key];
                 return (
-                  <button key={c.key} onClick={() => toggleCat(c.key)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 9px', borderRadius: 20, fontSize: 11.5, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500, border: `1px solid ${on ? c.color : 'var(--ant-border)'}`, background: on ? c.color + '14' : 'var(--ant-bg)', color: on ? c.color : 'var(--ant-text-secondary)' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flex: 'none' }} />{c.label}
+                  <button key={c.key} onClick={() => toggleCat(c.key)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 9px', borderRadius: 20, fontSize: 11.5, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500, border: `1px solid ${on ? c.color : 'transparent'}`, background: on ? c.color + '14' : 'var(--ant-bg)', color: on ? c.color : 'var(--ant-text-secondary)' }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flex: 'none' }} />
+                    {c.label}
+                    <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 1, color: on ? c.color : 'var(--ant-text-tertiary)', opacity: count === 0 ? 0.45 : 1 }}>{count}</span>
                   </button>
                 );
               })}
