@@ -116,10 +116,81 @@ export function runTurntable(canvas, color) {
   runTurntableEl(canvas, { color, count: 560, H: 1.55 });
 }
 
+// Same rotating-preview rendering as runTurntableEl, but driven by real
+// scanned points (local meter offsets + real RGB) instead of a procedural
+// shape. Subsamples further for a canvas this small — sorting a few
+// thousand points every animation frame is plenty dense and stays smooth.
+export function runTurntableReal(canvas, positions, colors, bounds) {
+  const ctx = canvas.getContext('2d');
+  const cw = canvas.width;
+  const ch = canvas.height;
+  const count = positions.length / 3;
+  const hExtent = Math.max(Math.abs(bounds.minX), Math.abs(bounds.maxX), Math.abs(bounds.minZ), Math.abs(bounds.maxZ)) || 1;
+  const targetR = 0.62;
+  const scale = targetR / hExtent;
+  const heightMid = ((bounds.maxY - bounds.minY) / 2) * scale;
+
+  const MAX_PREVIEW_POINTS = 2600;
+  const step = Math.max(1, Math.floor(count / MAX_PREVIEW_POINTS));
+  const pts = [];
+  for (let i = 0; i < count; i += step) {
+    pts.push([
+      positions[i * 3] * scale,
+      positions[i * 3 + 1] * scale - heightMid,
+      positions[i * 3 + 2] * scale,
+      colors[i * 3], colors[i * 3 + 1], colors[i * 3 + 2],
+    ]);
+  }
+
+  const gen = (canvas._gen || 0) + 1;
+  canvas._gen = gen;
+  canvas._stop = false;
+  let ang = 0.4;
+  const frame = () => {
+    if (canvas._stop || canvas._gen !== gen) return;
+    ang += 0.011;
+    ctx.clearRect(0, 0, cw, ch);
+    const cx = cw / 2;
+    const cy = ch / 2 + 6;
+    const scaleCv = ch * 0.44;
+    const ca = Math.cos(ang);
+    const sa = Math.sin(ang);
+    const proj = pts.map((p) => {
+      const x = p[0] * ca - p[2] * sa;
+      const z = p[0] * sa + p[2] * ca;
+      const persp = 1 / (1.85 - z * 0.34);
+      return [x, p[1], z, persp, p[3], p[4], p[5]];
+    });
+    proj.sort((a, b) => a[2] - b[2]);
+    for (const q of proj) {
+      const px = cx + q[0] * scaleCv * q[3];
+      const py = cy - q[1] * scaleCv * q[3];
+      const depth = (q[2] + 0.75) / 1.5;
+      ctx.globalAlpha = Math.max(0.25, Math.min(1, 0.35 + 0.65 * depth));
+      ctx.fillStyle = `rgb(${q[4]},${q[5]},${q[6]})`;
+      ctx.beginPath();
+      ctx.arc(px, py, 1.0 + 1.3 * q[3], 0, 6.283);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    requestAnimationFrame(frame);
+  };
+  frame();
+}
+
 export function startTurntables(popup) {
   const root = popup.getElement();
   if (!root) return;
-  root.querySelectorAll('canvas.sams-tt').forEach((cv) => runTurntable(cv, cv.dataset.color));
+  root.querySelectorAll('canvas.sams-tt').forEach((cv) => {
+    if (cv.classList.contains('sams-tt-real')) {
+      loadPointCloud(cv.dataset.url).then(({ positions, colors, bounds }) => {
+        if (cv._stop) return;
+        runTurntableReal(cv, positions, colors, bounds);
+      });
+    } else {
+      runTurntable(cv, cv.dataset.color);
+    }
+  });
   popup.on('close', () => root.querySelectorAll('canvas.sams-tt').forEach((cv) => { cv._stop = true; }));
 }
 
