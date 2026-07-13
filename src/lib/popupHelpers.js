@@ -1,6 +1,7 @@
 // Vanilla DOM/canvas helpers for MapLibre popup content — these render into
 // popup HTML strings and wire up interactive bits (gallery arrows, point
 // cloud turntable canvases) after the popup is attached to the map.
+import { loadPointCloud } from './pointCloudAsset';
 
 export function shade(hex, amt) {
   const n = parseInt(hex.slice(1), 16);
