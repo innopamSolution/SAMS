@@ -510,7 +510,8 @@ export default function Explorer() {
   const s = state;
   const filtered = computeFiltered(s);
   const activeCatKeys = Object.keys(s.activeCats).filter((k) => s.activeCats[k]);
-  const hasFilters = !!(s.keyword || activeCatKeys.length || s.status !== 'all' || s.year !== 'all' || s.project !== '프로젝트 선택' || s.epsg !== '좌표계 전체' || s.boundsFilter);
+  const hasFilters = !!(s.keyword || activeCatKeys.length || Object.values(s.statusSel).some(Boolean) || Object.values(s.yearSel).some(Boolean) || s.project !== '프로젝트 선택' || s.epsg !== '좌표계 전체' || s.boundsFilter);
+  const catCounts = computeCatCounts(s);
 
   let boundsNotice = '';
   if (s.boundsFilter) {
