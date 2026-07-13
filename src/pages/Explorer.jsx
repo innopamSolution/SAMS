@@ -201,6 +201,20 @@ export default function Explorer() {
     patch({ three3DActive: true, three3DTitle: it.title + ' · 실측 데이터' });
   };
 
+  const renderRealMeshAt = async (it) => {
+    const map = mapRef.current;
+    if (!map) return;
+    const lngLat = [it.lng, it.lat];
+    const ok = await ensureThree();
+    if (!ok) { showToast('3D 엔진을 불러오지 못했습니다'); return; }
+    showToast('실측 3D 메시 데이터를 불러오는 중…');
+    const { positions, colors, indices } = await loadMeshAsset(it.meshUrl);
+    if (stateRef.current.basemap !== '3d') setBasemap('3d');
+    addRealMeshLayer(maplibregl, map, lngLat, positions, colors, indices);
+    map.flyTo({ center: lngLat, zoom: Math.max(map.getZoom(), 16.8), pitch: 55, duration: 900 });
+    patch({ three3DActive: true, three3DTitle: it.title + ' · 실측 메시' });
+  };
+
   const show3DOnMap = async (it) => {
     const map = mapRef.current;
     if (!map) return;
@@ -208,6 +222,7 @@ export default function Explorer() {
     if (!lngLat) { showToast('위치 정보가 없어 지도에 3D를 표시할 수 없습니다'); return; }
     if (detailPopupRef.current) { detailPopupRef.current.remove(); detailPopupRef.current = null; }
     if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
+    if (it.meshUrl && it.lat != null) { await renderRealMeshAt(it); return; }
     if (it.pointCloudUrl && it.lat != null) { await renderRealPointCloudAt(it); return; }
     await render3DAt(lngLat, it.title, CAT_MAP[it.cat].color, 4600, 10.4);
   };
