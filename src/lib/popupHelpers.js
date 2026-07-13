@@ -167,7 +167,7 @@ export function runTurntableReal(canvas, positions, colors, bounds) {
     ctx.clearRect(0, 0, cw, ch);
     const cx = cw / 2;
     const cy = ch / 2 + 6;
-    const scaleCv = ch * 0.44;
+    const scaleCv = ch * PERF;
     const ca = Math.cos(ang);
     const sa = Math.sin(ang);
     const proj = pts.map((p) => {
