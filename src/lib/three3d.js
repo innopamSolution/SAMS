@@ -1,28 +1,16 @@
 import { buildTowerPositions } from './popupHelpers';
 
-// Adds (or replaces) a custom Three.js point-cloud layer on the given
-// MapLibre map, anchored at lngLat, rendered directly into the map's WebGL
-// context via maplibregl's custom-layer API.
-export function add3DLayer(maplibregl, targetMap, color, lngLat, count, H) {
-  const THREE = window.THREE;
-  if (!THREE) return;
-  if (targetMap.getLayer('sams-3d')) targetMap.removeLayer('sams-3d');
+function makeCustomLayer(THREE, targetMap, lngLat, maplibregl, buildScene) {
   const merc = maplibregl.MercatorCoordinate.fromLngLat(lngLat, 0);
   const transform = { x: merc.x, y: merc.y, z: merc.z, scale: merc.meterInMercatorCoordinateUnits() };
-  const positions = buildTowerPositions(H, H * 0.4, count);
-
-  const layer = {
+  return {
     id: 'sams-3d',
     type: 'custom',
     renderingMode: '3d',
     onAdd(map, gl) {
       this.camera = new THREE.Camera();
       this.scene = new THREE.Scene();
-      const geo = new THREE.BufferGeometry();
-      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-      const mat = new THREE.PointsMaterial({ color: new THREE.Color(color), size: 2.4, sizeAttenuation: false });
-      this.points = new THREE.Points(geo, mat);
-      this.scene.add(this.points);
+      this.points = buildScene(THREE, this.scene);
       this.renderer = new THREE.WebGLRenderer({ canvas: map.getCanvas(), context: gl, antialias: true });
       this.renderer.autoClear = false;
     },
@@ -41,5 +29,44 @@ export function add3DLayer(maplibregl, targetMap, color, lngLat, count, H) {
       targetMap.triggerRepaint();
     },
   };
+}
+
+// Adds (or replaces) a custom Three.js point-cloud layer on the given
+// MapLibre map, anchored at lngLat, rendered directly into the map's WebGL
+// context via maplibregl's custom-layer API. Procedurally generated —
+// used for items that have no real scan data backing them.
+export function add3DLayer(maplibregl, targetMap, color, lngLat, count, H) {
+  const THREE = window.THREE;
+  if (!THREE) return;
+  if (targetMap.getLayer('sams-3d')) targetMap.removeLayer('sams-3d');
+  const positions = buildTowerPositions(H, H * 0.4, count);
+  const layer = makeCustomLayer(THREE, targetMap, lngLat, maplibregl, (T, scene) => {
+    const geo = new T.BufferGeometry();
+    geo.setAttribute('position', new T.Float32BufferAttribute(positions, 3));
+    const mat = new T.PointsMaterial({ color: new T.Color(color), size: 2.4, sizeAttenuation: false });
+    const points = new T.Points(geo, mat);
+    scene.add(points);
+    return points;
+  });
+  targetMap.addLayer(layer);
+}
+
+// Same custom-layer mechanics as add3DLayer, but rendered from real scan
+// data: `positions` are local meter offsets already centered on `lngLat`
+// (so real-world scale comes for free via the Mercator transform), and
+// `colors` are the point cloud's actual sampled RGB bytes.
+export function addRealPointCloudLayer(maplibregl, targetMap, lngLat, positions, colors) {
+  const THREE = window.THREE;
+  if (!THREE) return;
+  if (targetMap.getLayer('sams-3d')) targetMap.removeLayer('sams-3d');
+  const layer = makeCustomLayer(THREE, targetMap, lngLat, maplibregl, (T, scene) => {
+    const geo = new T.BufferGeometry();
+    geo.setAttribute('position', new T.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('color', new T.Float32BufferAttribute(Float32Array.from(colors, (v) => v / 255), 3));
+    const mat = new T.PointsMaterial({ size: 2.2, sizeAttenuation: false, vertexColors: true });
+    const points = new T.Points(geo, mat);
+    scene.add(points);
+    return points;
+  });
   targetMap.addLayer(layer);
 }
