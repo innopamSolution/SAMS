@@ -201,7 +201,8 @@ export function startTurntables(popup) {
   if (!root) return;
   root.querySelectorAll('canvas.sams-tt').forEach((cv) => {
     if (cv.classList.contains('sams-tt-real')) {
-      loadPointCloud(cv.dataset.url).then(({ positions, colors, bounds }) => {
+      const loader = cv.dataset.kind === 'mesh' ? loadMeshAsset : loadPointCloud;
+      loader(cv.dataset.url).then(({ positions, colors, bounds }) => {
         if (cv._stop) return;
         runTurntableReal(cv, positions, colors, bounds);
       });
