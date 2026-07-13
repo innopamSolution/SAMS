@@ -128,12 +128,24 @@ export function runTurntableReal(canvas, positions, colors, bounds) {
   const cw = canvas.width;
   const ch = canvas.height;
   const count = positions.length / 3;
-  const hExtent = Math.max(Math.abs(bounds.minX), Math.abs(bounds.maxX), Math.abs(bounds.minZ), Math.abs(bounds.maxZ)) || 1;
-  const targetR = 0.62;
-  const scale = targetR / hExtent;
-  const heightMid = ((bounds.maxY - bounds.minY) / 2) * scale;
+  const hExtentM = Math.max(Math.abs(bounds.minX), Math.abs(bounds.maxX), Math.abs(bounds.minZ), Math.abs(bounds.maxZ)) || 1;
+  const vExtentM = (bounds.maxY - bounds.minY) / 2 || 0.001;
 
-  const MAX_PREVIEW_POINTS = 2600;
+  // Real scans are often much wider than they are tall (a whole site, not a
+  // single object), so — unlike the fixed-shape procedural preview — fit the
+  // actual aspect ratio to the canvas ("object-fit: contain") rather than
+  // assuming a fixed normalized radius. PERF must match the per-frame pixel
+  // scale below (scaleCv = ch * PERF) for these numbers to line up.
+  const PERF = 0.44;
+  const AVG_PERSP = 1.15;
+  const FILL_W = 0.85;
+  const FILL_H = 0.7;
+  const rHMax = (FILL_W * cw) / (2 * ch * PERF * AVG_PERSP);
+  const rVMax = FILL_H / (2 * PERF * AVG_PERSP);
+  const scale = Math.min(rHMax / hExtentM, rVMax / vExtentM);
+  const heightMid = vExtentM * scale;
+
+  const MAX_PREVIEW_POINTS = 3200;
   const step = Math.max(1, Math.floor(count / MAX_PREVIEW_POINTS));
   const pts = [];
   for (let i = 0; i < count; i += step) {
