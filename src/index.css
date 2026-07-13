@@ -90,3 +90,53 @@ body {
     box-shadow: 0 0 0 10px rgba(22, 119, 255, 0);
   }
 }
+
+.hsearch-field {
+  width: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+}
+.hsearch:hover .hsearch-field,
+.hsearch:focus-within .hsearch-field,
+.hsearch.open .hsearch-field {
+  width: 232px;
+  opacity: 1;
+}
+.hsearch-input {
+  width: 232px;
+  height: 32px;
+  border: none;
+  border-bottom: 1px solid var(--ant-border);
+  background: transparent;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--ant-text);
+  outline: none;
+  padding: 0 24px 0 2px;
+  transition: border-color 0.2s;
+}
+.hsearch-input::placeholder {
+  color: var(--ant-text-tertiary);
+}
+.hsearch-input:focus {
+  border-bottom-color: var(--ant-primary);
+}
+.hsearch-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  background: transparent;
+  color: var(--ant-text);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: color 0.15s;
+  flex: none;
+}
+.hsearch:hover .hsearch-btn,
+.hsearch.open .hsearch-btn {
+  color: var(--ant-primary);
+}
