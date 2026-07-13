@@ -148,7 +148,7 @@ export function runTurntableReal(canvas, positions, colors, bounds) {
   const scale = Math.min(rHMax / hExtentM, rVMax / vExtentM);
   const heightMid = vExtentM * scale;
 
-  const MAX_PREVIEW_POINTS = 3200;
+  const MAX_PREVIEW_POINTS = 3800;
   const step = Math.max(1, Math.floor(count / MAX_PREVIEW_POINTS));
   const pts = [];
   for (let i = 0; i < count; i += step) {
