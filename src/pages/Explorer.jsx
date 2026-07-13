@@ -327,7 +327,9 @@ export default function Explorer() {
   }
 
   const toggleCat = (k) => patch((s) => ({ activeCats: { ...s.activeCats, [k]: !s.activeCats[k] } }));
-  const resetFilters = () => patch({ keyword: '', activeCats: {}, status: 'all', year: 'all', project: '프로젝트 선택', epsg: '좌표계 전체', boundsFilter: false });
+  const toggleStatusSel = (k) => patch((s) => ({ statusSel: { ...s.statusSel, [k]: !s.statusSel[k] } }));
+  const toggleYearSel = (k) => patch((s) => ({ yearSel: { ...s.yearSel, [k]: !s.yearSel[k] } }));
+  const resetFilters = () => patch({ keyword: '', activeCats: {}, statusSel: {}, yearSel: {}, project: '프로젝트 선택', epsg: '좌표계 전체', boundsFilter: false });
 
   const onSelectNode = (nd) => {
     patch({ selectedNodeId: nd.id });
