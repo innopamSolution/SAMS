@@ -70,3 +70,24 @@ export function addRealPointCloudLayer(maplibregl, targetMap, lngLat, positions,
   });
   targetMap.addLayer(layer);
 }
+
+// Real, vertex-colored triangle mesh (e.g. a photogrammetry model exported
+// from an OBJ) — same anchoring as addRealPointCloudLayer, but rendered as
+// a solid surface instead of points.
+export function addRealMeshLayer(maplibregl, targetMap, lngLat, positions, colors, indices) {
+  const THREE = window.THREE;
+  if (!THREE) return;
+  if (targetMap.getLayer('sams-3d')) targetMap.removeLayer('sams-3d');
+  const layer = makeCustomLayer(THREE, targetMap, lngLat, maplibregl, (T, scene) => {
+    const geo = new T.BufferGeometry();
+    geo.setAttribute('position', new T.Float32BufferAttribute(positions, 3));
+    geo.setAttribute('color', new T.Float32BufferAttribute(Float32Array.from(colors, (v) => v / 255), 3));
+    geo.setIndex(new T.BufferAttribute(indices, 1));
+    geo.computeVertexNormals();
+    const mat = new T.MeshBasicMaterial({ vertexColors: true, side: T.DoubleSide });
+    const mesh = new T.Mesh(geo, mat);
+    scene.add(mesh);
+    return mesh;
+  });
+  targetMap.addLayer(layer);
+}
