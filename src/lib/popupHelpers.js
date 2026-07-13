@@ -141,8 +141,8 @@ export function runTurntableReal(canvas, positions, colors, bounds) {
   // scale below (scaleCv = ch * PERF) for these numbers to line up.
   const PERF = 0.44;
   const AVG_PERSP = 1.15;
-  const FILL_W = 0.85;
-  const FILL_H = 0.7;
+  const FILL_W = 0.92;
+  const FILL_H = 0.82;
   const rHMax = (FILL_W * cw) / (2 * ch * PERF * AVG_PERSP);
   const rVMax = FILL_H / (2 * PERF * AVG_PERSP);
   const scale = Math.min(rHMax / hExtentM, rVMax / vExtentM);
