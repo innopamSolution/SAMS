@@ -187,7 +187,7 @@ export function runTurntableReal(canvas, positions, colors, bounds) {
       ctx.globalAlpha = Math.max(0.25, Math.min(1, 0.35 + 0.65 * depth));
       ctx.fillStyle = `rgb(${q[4]},${q[5]},${q[6]})`;
       ctx.beginPath();
-      ctx.arc(px, py, 1.0 + 1.3 * q[3], 0, 6.283);
+      ctx.arc(px, py, 1.15 + 1.3 * q[3], 0, 6.283);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
