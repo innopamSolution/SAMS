@@ -31,9 +31,10 @@ export const ITEMS = [
   { id: 'd1', title: '정밀실측 보고서', cat: 'document', date: '2024-04-15', size: 'PDF · 156쪽', extra: '', status: 'published', epsg: '—', site: '경주 불국사', project: PROJECT_LOC.project, lng: null, lat: null, projectLng: PROJECT_LOC.lng, projectLat: PROJECT_LOC.lat, desc: '측량 성과 종합 보고서' },
   { id: 'd2', title: '현장 조사 일지', cat: 'document', date: '2024-04-08', size: 'PDF · 24쪽', extra: '', status: 'published', epsg: '—', site: '경주 불국사', project: PROJECT_LOC.project, lng: null, lat: null, projectLng: PROJECT_LOC.lng, projectLat: PROJECT_LOC.lat, desc: '일자별 취득 기록' },
   { id: 'd3', title: '문화재청 허가서', cat: 'document', date: '2024-04-12', size: 'PDF · 3쪽', extra: '', status: 'draft', epsg: '—', site: '—', project: '(미지정)', lng: null, lat: null, projectLng: null, projectLat: null, desc: '문서 제목 미입력 · 위치 미지정' },
+  { id: 'e1', title: 'E-mart 매장 포인트클라우드 스캔', cat: 'pointcloud', date: '2023-09-08', size: '496MB', extra: '20.0M pts', status: 'published', epsg: '5186', site: '이마트 매장 (서울)', project: '2023 이마트 매장 포인트클라우드', lng: 127.0537, lat: 37.54028, desc: 'RealityCapture · LAS 1.2 · Point Format 2(RGB)' },
 ];
 
-export const PROJECTS = ['프로젝트 선택', '2024 경주 불국사 정밀실측'];
+export const PROJECTS = ['프로젝트 선택', '2024 경주 불국사 정밀실측', '2023 이마트 매장 포인트클라우드'];
 export const EPSGS = ['좌표계 전체', 'EPSG:5186', 'EPSG:5187'];
 
 export const TIMELINE = [
