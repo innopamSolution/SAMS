@@ -13,6 +13,8 @@ import {
 const PANEL_WIDTH = 372;
 const SHOW_LEGEND = true;
 
+const YEARS = ['2024', '2023', '2022', '2021'];
+
 const initialState = {
   keyword: '',
   activeCats: {},
@@ -22,8 +24,8 @@ const initialState = {
   compareB: 't5',
   swipeX: 50,
   timelineOn: false,
-  status: 'all',
-  year: 'all',
+  statusSel: {},
+  yearSel: {},
   project: '프로젝트 선택',
   epsg: '좌표계 전체',
   boundsFilter: false,
@@ -40,10 +42,12 @@ const initialState = {
 function computeFiltered(s) {
   const kw = s.keyword.trim().toLowerCase();
   const cats = Object.keys(s.activeCats).filter((k) => s.activeCats[k]);
+  const ss = Object.keys(s.statusSel).filter((k) => s.statusSel[k]);
+  const ys = Object.keys(s.yearSel).filter((k) => s.yearSel[k]);
   let list = ITEMS.filter((i) => {
     if (cats.length && !cats.includes(i.cat)) return false;
-    if (s.status !== 'all' && i.status !== s.status) return false;
-    if (s.year !== 'all' && !i.date.startsWith(s.year)) return false;
+    if (ss.length && !ss.includes(i.status)) return false;
+    if (ys.length && !ys.some((y) => i.date.startsWith(y))) return false;
     if (s.project !== '프로젝트 선택' && i.project !== s.project) return false;
     if (s.epsg !== '좌표계 전체' && 'EPSG:' + i.epsg !== s.epsg) return false;
     if (kw) {
@@ -59,11 +63,32 @@ function computeFiltered(s) {
   return list;
 }
 
-function segStyle(active) {
-  const base = { flex: 1, height: 26, border: 'none', borderRadius: 5, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500, transition: 'all .15s' };
-  return active
-    ? { ...base, background: 'var(--ant-bg)', color: 'var(--ant-primary)', fontWeight: 600, boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }
-    : { ...base, background: 'transparent', color: 'var(--ant-text-secondary)' };
+// Category counts respect status/year/project/keyword filters, but not the
+// category selection itself — so a chip shows how many items it would add.
+function computeCatCounts(s) {
+  const ss = Object.keys(s.statusSel).filter((k) => s.statusSel[k]);
+  const ys = Object.keys(s.yearSel).filter((k) => s.yearSel[k]);
+  const kw = s.keyword.trim().toLowerCase();
+  const counts = {};
+  CATS.forEach((c) => { counts[c.key] = 0; });
+  ITEMS.forEach((i) => {
+    if (ss.length && !ss.includes(i.status)) return;
+    if (ys.length && !ys.some((y) => i.date.startsWith(y))) return;
+    if (s.project !== '프로젝트 선택' && i.project !== s.project) return;
+    if (kw && !(i.title + ' ' + i.site + ' ' + i.project + ' ' + i.desc).toLowerCase().includes(kw)) return;
+    if (counts[i.cat] != null) counts[i.cat]++;
+  });
+  return counts;
+}
+
+function mchip(active) {
+  return {
+    display: 'inline-flex', alignItems: 'center', height: 27, padding: '0 12px', borderRadius: 20,
+    fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500, transition: 'all .15s',
+    border: active ? '1px solid var(--ant-primary)' : '1px solid transparent',
+    background: active ? 'var(--ant-primary-bg)' : 'var(--ant-bg)',
+    color: active ? 'var(--ant-primary)' : 'var(--ant-text-secondary)',
+  };
 }
 
 function itemById(id) { return ITEMS.find((i) => i.id === id); }
