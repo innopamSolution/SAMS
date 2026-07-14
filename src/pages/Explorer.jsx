@@ -348,6 +348,14 @@ export default function Explorer() {
     if (btnDl) btnDl.addEventListener('click', () => showToast('다운로드 시작: ' + it.title + ' (' + it.size + ')'));
     const btn3d = rootEl.querySelector('[data-act="show3d"]');
     if (btn3d) btn3d.addEventListener('click', () => show3DOnMap(it));
+    const btnPanoLarge = rootEl.querySelector('[data-act="pano-large"]');
+    if (btnPanoLarge) {
+      btnPanoLarge.addEventListener('click', () => {
+        const frame = rootEl.querySelector('.sams-gframe-real');
+        const idx = frame ? parseInt(frame.dataset.idx, 10) || 0 : 0;
+        openPanoViewer(it.panoImages, idx);
+      });
+    }
     popup.on('close', () => {
       if (stateRef.current.activeId) setFS(stateRef.current.activeId, 'active', false);
       patch({ activeId: null });
