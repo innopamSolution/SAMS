@@ -434,6 +434,14 @@ export default function Explorer() {
       style: buildMainStyle(),
     });
     mapRef.current = map;
+    // Without a listener, MapLibre's default behavior is to console.error the
+    // raw error object for any unhandled tile/glyph/source failure (e.g. a
+    // transient aborted tile fetch, or a missing font weight on the demo
+    // glyph server) — expected, non-fatal noise for a tile-based map. Log it
+    // quietly instead so real problems are still visible without alarming spam.
+    map.on('error', (e) => {
+      console.warn('[maplibre]', e?.error?.message || e?.error || e);
+    });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
     navTopRef.current = map._controls[map._controls.length - 1];
     nav3DRef.current = new maplibregl.NavigationControl({ showCompass: true, visualizePitch: true });
