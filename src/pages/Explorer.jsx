@@ -474,26 +474,36 @@ export default function Explorer() {
   const resetFilters = () => patch({ keyword: '', activeCats: {}, statusSel: {}, yearSel: {}, project: '프로젝트 선택', epsg: '좌표계 전체', boundsFilter: false });
 
   const onSelectNode = (nd) => {
-    patch({ selectedNodeId: nd.id });
     if (nd.item) {
       // Timeline nodes are a faster path than the list/marker entry points:
-      // point cloud & mesh items render straight into 3D, panorama items jump
-      // straight to the large viewer — no popup detour in between.
+      // point cloud & mesh items render straight into 3D (re-clicking the
+      // same node toggles it off), panorama items jump straight to the large
+      // viewer — no popup detour in between. The timeline panel itself stays
+      // put through all of this (its visibility no longer depends on 3D state).
       const it = nd.item;
       const map = mapRef.current;
       if (it.cat === 'pano' && it.panoImages && it.panoImages.length) {
+        patch({ selectedNodeId: nd.id });
         if (map && it.lat != null) map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 700 });
         openPanoViewer(it.panoImages, 0);
         return;
       }
       if ((it.meshUrl || it.pointCloudUrl) && it.lat != null) {
+        if (state.three3DActive && state.selectedNodeId === nd.id) {
+          hide3D();
+          patch({ selectedNodeId: null });
+          return;
+        }
+        patch({ selectedNodeId: nd.id });
         show3DOnMap(it);
         return;
       }
+      patch({ selectedNodeId: nd.id });
       if (map) map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 700 });
       openDetail(it);
       return;
     }
+    patch({ selectedNodeId: nd.id });
     const ll = structLngLat(nd.struct);
     if (nd.pc) {
       render3DAt(ll, nd.date + ' · ' + nd.label, nd.pc.color, Math.round(nd.pc.count * 1.1 + 2600), nd.pc.H * 7);
