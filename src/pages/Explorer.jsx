@@ -454,9 +454,11 @@ export default function Explorer() {
   const onSelectNode = (nd) => {
     patch({ selectedNodeId: nd.id });
     if (nd.item) {
+      // Match how every other entry point (list row, marker click) handles an
+      // item: fly to it and open its preview popup. 3D rendering stays an
+      // explicit, opt-in action from the popup's "3D 보기" button — auto-firing
+      // it here duplicated the 3D layer alongside the popup.
       const it = nd.item;
-      if (it.meshUrl) { renderRealMeshAt(it); return; }
-      if (it.pointCloudUrl) { renderRealPointCloudAt(it); return; }
       const map = mapRef.current;
       if (map) map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 700 });
       openDetail(it);
