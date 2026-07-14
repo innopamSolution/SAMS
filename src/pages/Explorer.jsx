@@ -113,6 +113,19 @@ function projectTimeline(project) {
   return project === PROJECT_LOC.project ? TIMELINE : [];
 }
 
+// Same shape as projectTimeline, but built only from items that survive the
+// active list filters — so the timeline reflects what's actually visible in
+// the results list rather than every geo-tagged item in the project.
+function filteredProjectTimeline(filteredItems, project) {
+  const itemNodes = filteredItems
+    .filter((i) => i.project === project && i.lat != null)
+    .slice()
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+    .map(itemToTimelineNode);
+  if (itemNodes.length) return itemNodes;
+  return project === PROJECT_LOC.project ? TIMELINE : [];
+}
+
 // A node is "comparable" (can be rendered as a 3D side in 시점 비교) if it
 // either carries the legacy procedural pc stats, or points at real scan
 // data (point cloud / mesh) via its backing item.
