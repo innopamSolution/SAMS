@@ -765,8 +765,7 @@ export default function Explorer() {
         </div>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 4, height: '100%', flex: 'none' }}>
           <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 15, fontWeight: 700, color: 'var(--ant-primary)' }}>Explorer</div>
-          <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 15, fontWeight: 600, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>Project</div>
-          <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 15, fontWeight: 600, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>Upload</div>
+          <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 15, fontWeight: 600, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>Manage</div>
         </nav>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14 }}>
           <div className={`hsearch${s.keyword ? ' open' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
