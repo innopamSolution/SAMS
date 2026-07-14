@@ -137,6 +137,45 @@ export default function Explorer() {
 
   const patch = (p) => setState((s) => ({ ...s, ...(typeof p === 'function' ? p(s) : p) }));
 
+  // Full-screen panorama lightbox — independent of the main state object
+  // since drag-to-pan interaction doesn't need to flow through it.
+  const [panoViewer, setPanoViewer] = useState(null);
+  const panoScrollRef = useRef(null);
+  const openPanoViewer = (images, index) => setPanoViewer({ images, index });
+  const closePanoViewer = () => setPanoViewer(null);
+  const panoViewerStep = (delta) => setPanoViewer((v) => (v ? { ...v, index: (v.index + delta + v.images.length) % v.images.length } : v));
+  const beginPanoDrag = (e) => {
+    const el = panoScrollRef.current;
+    if (!el) return;
+    const startX = e.clientX;
+    const startScroll = el.scrollLeft;
+    el.style.cursor = 'grabbing';
+    const move = (ev) => { el.scrollLeft = startScroll - (ev.clientX - startX); };
+    const up = () => {
+      el.style.cursor = 'grab';
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  useEffect(() => {
+    if (panoScrollRef.current) panoScrollRef.current.scrollLeft = 0;
+  }, [panoViewer?.index]);
+
+  useEffect(() => {
+    if (!panoViewer) return;
+    const onKey = (e) => {
+      if (e.key === 'Escape') closePanoViewer();
+      else if (e.key === 'ArrowRight') panoViewerStep(1);
+      else if (e.key === 'ArrowLeft') panoViewerStep(-1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panoViewer]);
+
   const mapElRef = useRef(null);
   const mapRef = useRef(null);
   const hoverPopupRef = useRef(null);
