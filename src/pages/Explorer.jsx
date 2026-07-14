@@ -499,6 +499,9 @@ export default function Explorer() {
     if (!el || !node) return null;
     const ll = structLngLat(node.struct);
     const map = new maplibregl.Map({ container: el, style: buildCompareStyle(), center: center || ll, zoom: 18, pitch: 60, bearing: -22, maxPitch: 75, attributionControl: { compact: true } });
+    map.on('error', (e) => {
+      console.warn('[maplibre:compare]', e?.error?.message || e?.error || e);
+    });
     map.on('load', () => {
       try { map.setTerrain({ source: 'terrain', exaggeration: 1.15 }); } catch { /* noop */ }
       add3DLayer(maplibregl, map, node.pc.color, ll, Math.round(node.pc.count * 1.1 + 2600), node.pc.H * 7);
