@@ -252,17 +252,27 @@ export default function Explorer() {
     startTurntables(popup);
   };
 
+  // In timeline mode the node dots on the panel are the only way to pick a
+  // point in time, so the map's own clusters/markers are just visual noise —
+  // hide them for as long as the timeline stays on.
+  const updateClusterVisibility = () => {
+    const map = mapRef.current;
+    if (!map || !layersReadyRef.current) return;
+    const hide = stateRef.current.timelineOn && stateRef.current.project !== '프로젝트 선택';
+    ['clusters', 'cluster-count', 'pt-halo', 'unclustered'].forEach((l) => {
+      try { map.setLayoutProperty(l, 'visibility', hide ? 'none' : 'visible'); } catch { /* noop */ }
+    });
+  };
+
   const hide3D = () => {
     const map = mapRef.current;
     if (map) {
       if (map.getLayer('sams-3d')) map.removeLayer('sams-3d');
-      ['clusters', 'cluster-count', 'pt-halo', 'unclustered'].forEach((l) => {
-        try { map.setLayoutProperty(l, 'visibility', 'visible'); } catch { /* noop */ }
-      });
       map.easeTo({ pitch: 0, bearing: 0, zoom: 16, duration: 900 });
     }
     patch({ three3DActive: false, three3DTitle: '' });
     setBasemap('light');
+    updateClusterVisibility();
   };
 
   const render3DAt = async (lngLat, title, color, count, H) => {
