@@ -9,7 +9,7 @@ import { add3DLayer, addRealPointCloudLayer, addRealMeshLayer } from '../lib/thr
 import { loadPointCloud } from '../lib/pointCloudAsset';
 import { loadMeshAsset } from '../lib/meshAsset';
 import {
-  thumbHtml, statusChipHtml, wireGallery, startTurntables, ensureThree, DL_SVG, CUBE_SVG,
+  thumbHtml, statusChipHtml, wireGallery, startTurntables, ensureThree, DL_SVG, CUBE_SVG, EXPAND_SVG,
 } from '../lib/popupHelpers';
 
 const PANEL_WIDTH = 372;
