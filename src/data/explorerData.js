@@ -1,11 +1,11 @@
 export const CATS = [
-  { key: 'pointcloud', label: '포인트클라우드', color: '#e5484d', icon: 'IconDotChartOutlined' },
-  { key: 'model3d', label: '3D 모델', color: '#8a5cd6', icon: 'IconBuildOutlined' },
-  { key: 'ortho', label: '정사영상', color: '#3cbcbc', icon: 'IconBorderOuterOutlined' },
-  { key: 'image', label: '이미지', color: '#4a90e2', icon: 'IconPictureOutlined' },
-  { key: 'pano', label: '파노라마', color: '#f2a244', icon: 'IconGlobalOutlined' },
-  { key: 'video', label: '영상', color: '#e662a6', icon: 'IconVideoCameraOutlined' },
-  { key: 'document', label: '문서', color: '#a0a0a0', icon: 'IconFileTextOutlined' },
+  { key: 'pointcloud', label: '포인트클라우드', color: '#e5484d', icon: 'IconCatPointCloud' },
+  { key: 'model3d', label: '3D 모델', color: '#8a5cd6', icon: 'IconCatModel3D' },
+  { key: 'ortho', label: '정사영상', color: '#3cbcbc', icon: 'IconCatOrtho' },
+  { key: 'image', label: '이미지', color: '#4a90e2', icon: 'IconCatImage' },
+  { key: 'pano', label: '파노라마', color: '#f2a244', icon: 'IconCatPano' },
+  { key: 'video', label: '영상', color: '#e662a6', icon: 'IconCatVideo' },
+  { key: 'document', label: '문서', color: '#a0a0a0', icon: 'IconCatDocument' },
 ];
 
 export const CAT_MAP = Object.fromEntries(CATS.map((c) => [c.key, c]));
