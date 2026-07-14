@@ -111,6 +111,25 @@ function projectTimeline(project) {
     .map(itemToTimelineNode);
 }
 
+// A node is "comparable" (can be rendered as a 3D side in 시점 비교) if it
+// either carries the legacy procedural pc stats, or points at real scan
+// data (point cloud / mesh) via its backing item.
+function isComparableNode(n) {
+  return !!(n.pc || (n.item && (n.item.pointCloudUrl || n.item.meshUrl)));
+}
+
+function comparableNodesFor(project) {
+  return projectTimeline(project).filter(isComparableNode);
+}
+
+function cmpNodeLngLat(node) {
+  return node.item ? [node.item.lng, node.item.lat] : structLngLat(node.struct);
+}
+
+function cmpPtsLabel(node) {
+  return node.pc ? node.pc.pts : node.item.extra;
+}
+
 export default function Explorer() {
   const [state, setState] = useState(initialState);
   const stateRef = useRef(state);
