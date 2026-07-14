@@ -875,10 +875,10 @@ export default function Explorer() {
                   <select value={cmpNodeA.id} onChange={(e) => patch({ compareA: e.target.value })} style={{ height: 32, maxWidth: 210, border: 'none', borderRadius: 8, padding: '0 10px', fontSize: 12, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'rgba(255,255,255,0.96)', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
                     {cmpNodesAll.map((n) => <option key={n.id} value={n.id}>{n.date} · {n.label}</option>)}
                   </select>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#fff', background: 'rgba(0,0,0,0.6)', padding: '6px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>{cmpNodeA.pc.pts} pts</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#fff', background: 'rgba(0,0,0,0.6)', padding: '6px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>{cmpPtsLabel(cmpNodeA)}</span>
                 </div>
                 <div style={{ position: 'absolute', bottom: 16, right: 16, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#fff', background: 'rgba(0,0,0,0.6)', padding: '6px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>{cmpNodeB.pc.pts} pts</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#fff', background: 'rgba(0,0,0,0.6)', padding: '6px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>{cmpPtsLabel(cmpNodeB)}</span>
                   <select value={cmpNodeB.id} onChange={(e) => patch({ compareB: e.target.value })} style={{ height: 32, maxWidth: 210, border: 'none', borderRadius: 8, padding: '0 10px', fontSize: 12, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'rgba(255,255,255,0.96)', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
                     {cmpNodesAll.map((n) => <option key={n.id} value={n.id}>{n.date} · {n.label}</option>)}
                   </select>
