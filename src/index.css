@@ -56,6 +56,9 @@ body {
 .maplibregl-popup-close-button:hover {
   background: rgba(0, 0, 0, 0.55);
 }
+.maplibregl-popup-content button {
+  outline: none;
+}
 .maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
   border-top-color: #fff;
 }
