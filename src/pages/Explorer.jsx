@@ -789,14 +789,16 @@ export default function Explorer() {
                 <span style={{ display: 'flex', color: 'var(--ant-primary)' }}><Icon name="IconCalendarOutlined" size={16} /></span>
                 <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>{timelineProject}</span>
                 <span style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', whiteSpace: 'nowrap' }}>시계열 · 노드 클릭 시 지도에 실측 3D 표시</span>
-                <button onClick={toggleCompare} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, height: 28, padding: '0 13px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
-                  <span style={{ display: 'flex', color: 'var(--ant-primary)' }}><Icon name="IconSwapRightOutlined" size={14} /></span>시점 비교
-                </button>
+                {timelineHasCompare && (
+                  <button onClick={toggleCompare} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, height: 28, padding: '0 13px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                    <span style={{ display: 'flex', color: 'var(--ant-primary)' }}><Icon name="IconSwapRightOutlined" size={14} /></span>시점 비교
+                  </button>
+                )}
               </div>
               <div style={{ position: 'relative', height: 62, margin: '0 44px' }}>
                 <div style={{ position: 'absolute', top: '50%', left: -8, right: -8, height: 2, background: 'var(--ant-border)', transform: 'translateY(-50%)' }} />
-                {TIMELINE.map((n, i) => {
-                  const leftPct = TIMELINE.length > 1 ? (i / (TIMELINE.length - 1)) * 100 : 50;
+                {activeTimeline.map((n, i) => {
+                  const leftPct = activeTimeline.length > 1 ? (i / (activeTimeline.length - 1)) * 100 : 50;
                   const above = i % 2 === 0;
                   const c = TL_CATS[n.cat].color;
                   const active = s.selectedNodeId === n.id;
