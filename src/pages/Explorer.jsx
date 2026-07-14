@@ -476,12 +476,20 @@ export default function Explorer() {
   const onSelectNode = (nd) => {
     patch({ selectedNodeId: nd.id });
     if (nd.item) {
-      // Match how every other entry point (list row, marker click) handles an
-      // item: fly to it and open its preview popup. 3D rendering stays an
-      // explicit, opt-in action from the popup's "3D 보기" button — auto-firing
-      // it here duplicated the 3D layer alongside the popup.
+      // Timeline nodes are a faster path than the list/marker entry points:
+      // point cloud & mesh items render straight into 3D, panorama items jump
+      // straight to the large viewer — no popup detour in between.
       const it = nd.item;
       const map = mapRef.current;
+      if (it.cat === 'pano' && it.panoImages && it.panoImages.length) {
+        if (map && it.lat != null) map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 700 });
+        openPanoViewer(it.panoImages, 0);
+        return;
+      }
+      if ((it.meshUrl || it.pointCloudUrl) && it.lat != null) {
+        show3DOnMap(it);
+        return;
+      }
       if (map) map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 700 });
       openDetail(it);
       return;
