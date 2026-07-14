@@ -33,6 +33,7 @@ export const ITEMS = [
   { id: 'd3', title: '문화재청 허가서', cat: 'document', date: '2024-04-12', size: 'PDF · 3쪽', extra: '', status: 'draft', epsg: '—', site: '—', project: '(미지정)', lng: null, lat: null, projectLng: null, projectLat: null, desc: '문서 제목 미입력 · 위치 미지정' },
   { id: 'e1', title: 'HQ(이마트)', cat: 'pointcloud', date: '2023-09-08', size: '496MB', extra: '20.0M pts', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.0537, lat: 37.54028, desc: 'RealityCapture · LAS 1.2 · Point Format 2(RGB)', pointCloudUrl: '/data/emart-pointcloud.bin' },
   { id: 'e2', title: 'HQ(이마트) 3D 모델', cat: 'model3d', date: '2023-09-08', size: '65.1MB', extra: '390.7K vertex', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.0537, lat: 37.54028, desc: 'RealityCapture · OBJ 메시 · 정점 컬러(텍스처 없음)', meshUrl: '/data/hq-mesh.bin' },
+  { id: 'e3', title: 'HQ 옥상 전경 파노라마', cat: 'pano', date: '2025-01-15', size: '4.1MB', extra: '16장', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.0537, lat: 37.54028, desc: '옥상 현장 촬영 · 16컷 그룹', panoImages: Array.from({ length: 16 }, (_, i) => `/uploads/pano/pano-${String(i + 1).padStart(2, '0')}.jpg`) },
 ];
 
 export const PROJECTS = ['프로젝트 선택', '2024 경주 불국사 정밀실측', 'K-Seongsu Project'];
