@@ -98,7 +98,7 @@ export const ICONS = {
   IconCatModel3D: {
     viewBox: '0 0 24 24',
     stroke: true,
-    body: '<path d="M12 4 L20 18 L4 18 Z"/><path d="M12 4 L12 18 M7 13 L17 13"/>',
+    body: '<path d="M12 3 L20 7.5 V16.5 L12 21 L4 16.5 V7.5 Z"/><path d="M12 3 V12 M12 12 L20 7.5 M12 12 L4 7.5 M12 12 V21"/>',
   },
   IconCatOrtho: {
     viewBox: '0 0 24 24',
