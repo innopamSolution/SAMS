@@ -48,13 +48,19 @@ export function wireGallery(root, it) {
   const frame = root.querySelector('.sams-gframe');
   if (!frame) return;
   const badge = root.querySelector('.sams-gbadge');
-  const total = parseInt(it.extra, 10) || 24;
-  const N = Math.min(total, 6);
+  const isReal = frame.classList.contains('sams-gframe-real');
+  const images = isReal ? (it.panoImages || []) : null;
+  const total = isReal ? images.length : (parseInt(it.extra, 10) || 24);
+  const N = isReal ? images.length : Math.min(total, 6);
   let idx = 0;
   const render = () => {
-    const h1 = (205 + idx * 40) % 360;
-    const h2 = (h1 + 26) % 360;
-    frame.style.backgroundImage = `linear-gradient(135deg, hsl(${h1} 42% 44%), hsl(${h2} 40% 26%)), repeating-linear-gradient(90deg,rgba(255,255,255,0.06) 0 1px,transparent 1px 24px)`;
+    if (isReal) {
+      frame.style.backgroundImage = `url('${images[idx]}')`;
+    } else {
+      const h1 = (205 + idx * 40) % 360;
+      const h2 = (h1 + 26) % 360;
+      frame.style.backgroundImage = `linear-gradient(135deg, hsl(${h1} 42% 44%), hsl(${h2} 40% 26%)), repeating-linear-gradient(90deg,rgba(255,255,255,0.06) 0 1px,transparent 1px 24px)`;
+    }
     if (badge) badge.textContent = idx + 1 + ' / ' + total;
   };
   const prev = root.querySelector('[data-act="img-prev"]');
