@@ -1021,9 +1021,12 @@ export default function Explorer() {
               style={{ height: '86vh', width: 'auto', maxWidth: 'none', userSelect: 'none', pointerEvents: 'none', margin: '0 auto', display: 'block' }}
             />
           </div>
-          <button onClick={() => panoViewerStep(-1)} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 22, cursor: 'pointer' }}>‹</button>
-          <button onClick={() => panoViewerStep(1)} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 22, cursor: 'pointer' }}>›</button>
-          <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.55)', fontSize: 11, padding: '10px 0 14px', flex: 'none' }}>드래그해서 좌우로 이동 · ← → 키로 다음 사진</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, padding: '12px 0 6px', flex: 'none' }}>
+            <button onClick={() => panoViewerStep(-1)} title="이전 사진" style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+            <span style={{ color: '#fff', fontSize: 12, fontWeight: 600, minWidth: 56, textAlign: 'center' }}>{panoViewer.index + 1} / {panoViewer.images.length}</span>
+            <button onClick={() => panoViewerStep(1)} title="다음 사진" style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+          </div>
+          <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.55)', fontSize: 11, padding: '0 0 14px', flex: 'none' }}>드래그해서 좌우로 이동 · ← → 키로 다음 사진</div>
         </div>
       )}
     </div>
