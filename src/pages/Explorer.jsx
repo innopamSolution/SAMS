@@ -532,7 +532,7 @@ export default function Explorer() {
       if (tlPrevBaseRef.current) { setBasemap(tlPrevBaseRef.current); tlPrevBaseRef.current = null; }
       const map = mapRef.current;
       if (map && map.getLayer('sams-3d')) map.removeLayer('sams-3d');
-      patch({ selectedNodeId: null });
+      patch({ selectedNodeId: null, three3DActive: false, three3DTitle: '' });
     }
   };
 
