@@ -919,7 +919,7 @@ export default function Explorer() {
           )}
 
           {timelineVisible && (
-            <div style={{ position: 'absolute', top: 56, left: 12, right: 12, zIndex: 9, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(8px)', border: '1px solid var(--ant-border-secondary)', borderRadius: 12, boxShadow: '0 4px 18px rgba(0,0,0,0.12)', padding: '10px 18px 22px' }}>
+            <div style={{ position: 'absolute', top: 56, left: 12, right: 12, zIndex: 9, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(8px)', border: '1px solid var(--ant-border-secondary)', borderRadius: 12, boxShadow: '0 4px 18px rgba(0,0,0,0.12)', padding: '10px 18px 38px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 26 }}>
                 <span style={{ display: 'flex', color: 'var(--ant-primary)' }}><Icon name="IconCalendarOutlined" size={16} /></span>
                 <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>{timelineProject}</span>
