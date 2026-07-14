@@ -543,19 +543,31 @@ export default function Explorer() {
   }, [state.keyword, state.activeCats, state.statusSel, state.yearSel, state.project, state.epsg, state.boundsFilter, state.mapBounds]);
 
   // ── Compare mode maps ──────────────────────────────────────────
-  function cmpNode(id) { return TIMELINE.find((n) => n.id === id && n.pc) || TIMELINE.find((n) => n.pc); }
+  function cmpNode(id, project, fallback) {
+    const nodes = comparableNodesFor(project);
+    if (!nodes.length) return null;
+    return nodes.find((n) => n.id === id) || (fallback === 'last' ? nodes[nodes.length - 1] : nodes[0]);
+  }
 
   function makeCmpMap(id, node, center) {
     const el = document.getElementById(id);
     if (!el || !node) return null;
-    const ll = structLngLat(node.struct);
+    const ll = cmpNodeLngLat(node);
     const map = new maplibregl.Map({ container: el, style: buildCompareStyle(), center: center || ll, zoom: 18, pitch: 60, bearing: -22, maxPitch: 75, attributionControl: { compact: true } });
     map.on('error', (e) => {
       console.warn('[maplibre:compare]', e?.error?.message || e?.error || e);
     });
-    map.on('load', () => {
+    map.on('load', async () => {
       try { map.setTerrain({ source: 'terrain', exaggeration: 1.15 }); } catch { /* noop */ }
-      add3DLayer(maplibregl, map, node.pc.color, ll, Math.round(node.pc.count * 1.1 + 2600), node.pc.H * 7);
+      if (node.item && node.item.meshUrl) {
+        const { positions, colors, indices } = await loadMeshAsset(node.item.meshUrl);
+        addRealMeshLayer(maplibregl, map, ll, positions, colors, indices);
+      } else if (node.item && node.item.pointCloudUrl) {
+        const { positions, colors } = await loadPointCloud(node.item.pointCloudUrl);
+        addRealPointCloudLayer(maplibregl, map, ll, positions, colors);
+      } else {
+        add3DLayer(maplibregl, map, node.pc.color, ll, Math.round(node.pc.count * 1.1 + 2600), node.pc.H * 7);
+      }
     });
     return map;
   }
