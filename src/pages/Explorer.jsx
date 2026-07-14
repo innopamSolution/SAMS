@@ -21,6 +21,7 @@ const initialState = {
   keyword: '',
   activeCats: {},
   selectedNodeId: null,
+  hoveredNodeId: null,
   compareOpen: false,
   compareA: 't1',
   compareB: 't5',
