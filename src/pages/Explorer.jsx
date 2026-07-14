@@ -321,6 +321,8 @@ export default function Explorer() {
     const projNote = anchoredToProject ? `<div style="display:flex;gap:6px;align-items:flex-start;font-size:10.5px;color:var(--ant-warning);background:var(--ant-warning-bg);border:1px solid var(--ant-warning-border);border-radius:6px;padding:5px 8px;margin:0 0 8px;">이 문헌은 좌표가 없어 프로젝트 위치에 표시됩니다.</div>` : '';
     const can3D = it.cat === 'pointcloud' || it.cat === 'model3d';
     const btn3D = can3D ? `<button data-act="show3d" title="지도에서 3D 렌더링" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-primary);background:var(--ant-primary-bg);color:var(--ant-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;">${CUBE_SVG}</button>` : '';
+    const canPanoLarge = it.cat === 'pano' && it.panoImages && it.panoImages.length > 0;
+    const btnPanoLargeHtml = canPanoLarge ? `<button data-act="pano-large" title="크게 보기" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-primary);background:var(--ant-primary-bg);color:var(--ant-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;">${EXPAND_SVG}</button>` : '';
     const html = `<div style="width:236px;font-family:var(--ant-font-sans);">
       ${thumbHtml(it, CAT_MAP, true)}
       <div style="padding:10px 12px 12px;">
@@ -334,6 +336,7 @@ export default function Explorer() {
         <div style="margin-bottom:10px;">${metaRows}</div>
         <div style="display:flex;gap:6px;">
           ${btn3D}
+          ${btnPanoLargeHtml}
           <button data-act="download" title="다운로드" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-border);background:var(--ant-bg);color:var(--ant-text);cursor:pointer;display:flex;align-items:center;justify-content:center;">${DL_SVG}</button>
           <button data-act="detail" style="flex:1;height:32px;border-radius:7px;border:none;background:var(--ant-primary);color:#fff;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;">자세히 보기 →</button>
         </div>
