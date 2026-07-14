@@ -605,6 +605,7 @@ export default function Explorer() {
       const geo = computeFiltered(stateRef.current).filter((i) => i.lat != null);
       lastSigRef.current = geo.map((i) => i.id).join(',');
       pushMapData(geo);
+      updateClusterVisibility();
     });
 
     map.on('mouseenter', 'unclustered', (e) => { map.getCanvas().style.cursor = 'pointer'; onMarkerEnter(e.features[0].id); });
