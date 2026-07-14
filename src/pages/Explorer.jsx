@@ -634,16 +634,10 @@ export default function Explorer() {
   const activeTimeline = projectTimeline(s.project);
   const timelineVisible = s.timelineOn && !s.three3DActive && !s.compareOpen && s.project !== '프로젝트 선택' && activeTimeline.length > 0;
   const timelineProject = s.project !== '프로젝트 선택' ? s.project : '전체 데이터';
-  const timelineHasCompare = s.project === PROJECT_LOC.project;
-
-  const cmpNodeA = cmpNode(s.compareA) || TIMELINE.filter((n) => n.pc)[0];
-  const cmpNodeB = cmpNode(s.compareB) || TIMELINE.filter((n) => n.pc).slice(-1)[0];
-  const cmpNodesAll = TIMELINE.filter((n) => n.pc);
-  const aPts = parseFloat(cmpNodeA.pc.pts);
-  const bPts = parseFloat(cmpNodeB.pc.pts);
-  const aDens = parseFloat(cmpNodeA.pc.density);
-  const bDens = parseFloat(cmpNodeB.pc.density);
-  const mm = (d) => { const p = d.split('.').map(Number); return p[0] * 12 + p[1]; };
+  const cmpNodesAll = comparableNodesFor(s.project);
+  const timelineHasCompare = cmpNodesAll.length >= 2;
+  const cmpNodeA = cmpNode(s.compareA, s.project, 'first');
+  const cmpNodeB = cmpNode(s.compareB, s.project, 'last');
 
   let docHoverItem = null;
   if (s.docHover) docHoverItem = itemById(s.docHover.id);
