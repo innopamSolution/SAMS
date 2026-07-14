@@ -875,8 +875,8 @@ export default function Explorer() {
           )}
 
           {timelineVisible && (
-            <div style={{ position: 'absolute', top: 56, left: 12, right: 52, zIndex: 9, background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)', border: '1px solid var(--ant-border-secondary)', borderRadius: 12, boxShadow: '0 4px 18px rgba(0,0,0,0.12)', padding: '10px 18px 14px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+            <div style={{ position: 'absolute', top: 56, left: 12, right: 12, zIndex: 9, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(8px)', border: '1px solid var(--ant-border-secondary)', borderRadius: 12, boxShadow: '0 4px 18px rgba(0,0,0,0.12)', padding: '10px 18px 22px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <span style={{ display: 'flex', color: 'var(--ant-primary)' }}><Icon name="IconCalendarOutlined" size={16} /></span>
                 <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>{timelineProject}</span>
                 <span style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', whiteSpace: 'nowrap' }}>시계열 · 노드 클릭 시 지도에 실측 3D 표시</span>
@@ -886,22 +886,30 @@ export default function Explorer() {
                   </button>
                 )}
               </div>
-              <div style={{ position: 'relative', height: 62, margin: '0 44px' }}>
-                <div style={{ position: 'absolute', top: '50%', left: -8, right: -8, height: 2, background: 'var(--ant-border)', transform: 'translateY(-50%)' }} />
+              <div style={{ position: 'relative', height: 84, margin: '0 52px' }}>
+                <div style={{ position: 'absolute', top: '50%', left: -10, right: -10, height: 2, borderRadius: 3, background: 'var(--ant-border)', transform: 'translateY(-50%)' }} />
                 {activeTimeline.map((n, i) => {
                   const leftPct = activeTimeline.length > 1 ? (i / (activeTimeline.length - 1)) * 100 : 50;
                   const above = i % 2 === 0;
                   const c = TL_CATS[n.cat].color;
                   const active = s.selectedNodeId === n.id;
-                  const bg = n.cat === 'event' && !active ? 'var(--ant-bg)' : c;
-                  const size = active ? 15 : 12;
+                  const hovered = s.hoveredNodeId === n.id;
+                  const emph = active || hovered;
                   return (
-                    <div key={n.id} style={{ position: 'absolute', left: `${leftPct}%`, top: 0, height: '100%' }}>
-                      <div style={{ position: 'absolute', left: 0, [above ? 'bottom' : 'top']: 'calc(50% + 13px)', transform: 'translateX(-50%)', width: 112, textAlign: 'center', pointerEvents: 'none' }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: active ? c : 'var(--ant-text)' }}>{n.date}</div>
-                        <div style={{ fontSize: 10.5, color: 'var(--ant-text-tertiary)', lineHeight: 1.25, marginTop: 1 }}>{n.label}</div>
+                    <div key={n.id} style={{ position: 'absolute', left: `${leftPct}%`, top: 0, height: '100%', zIndex: active ? 3 : emph ? 2 : 1 }}>
+                      <div style={{ position: 'absolute', left: 0, [above ? 'bottom' : 'top']: 'calc(50% + 18px)', transform: 'translateX(-50%)', minWidth: 76, maxWidth: 120, textAlign: 'center', pointerEvents: 'none', padding: active ? '4px 9px' : '2px 4px', borderRadius: 8, background: active ? '#fff' : 'transparent', boxShadow: active ? '0 2px 10px rgba(0,0,0,0.14)' : 'none', transition: 'all .2s' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.2, color: active ? c : emph ? 'var(--ant-text)' : 'var(--ant-text-secondary)', transition: 'color .2s' }}>{n.date}</div>
+                        <div style={{ fontSize: 10.5, lineHeight: 1.25, marginTop: 1, color: active ? 'var(--ant-text-secondary)' : 'var(--ant-text-tertiary)', fontWeight: active ? 600 : 500, transition: 'color .2s' }}>{n.label}</div>
                       </div>
-                      <button onClick={() => onSelectNode(n)} style={{ position: 'absolute', top: '50%', left: 0, transform: 'translate(-50%,-50%)', width: size, height: size, borderRadius: '50%', border: '2px solid #fff', cursor: 'pointer', padding: 0, background: bg, boxShadow: `0 1px 4px rgba(0,0,0,0.28)${active ? ',0 0 0 4px ' + c + '33' : ''}` }} />
+                      <div style={{ position: 'absolute', left: 0, transform: 'translateX(-50%)', width: 2, [above ? 'bottom' : 'top']: '50%', height: 14, background: active ? c : 'transparent', transition: 'background .2s' }} />
+                      <button
+                        onClick={() => onSelectNode(n)}
+                        onMouseEnter={() => patch({ hoveredNodeId: n.id })}
+                        onMouseLeave={() => patch({ hoveredNodeId: null })}
+                        style={{ position: 'absolute', top: '50%', left: 0, transform: `translate(-50%,-50%) scale(${active ? 1 : emph ? 0.92 : 0.8})`, width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0, background: active ? c + '22' : 'transparent', boxShadow: active ? `0 0 0 2px ${c},0 2px 10px ${c}55` : 'none', transition: 'all .2s cubic-bezier(.4,0,.2,1)' }}
+                      >
+                        <span style={{ width: active ? 11 : 9, height: active ? 11 : 9, borderRadius: '50%', background: active || emph ? c : 'var(--ant-bg)', border: `2px solid ${active ? '#fff' : c}`, boxShadow: active ? 'none' : '0 1px 3px rgba(0,0,0,0.18)', transition: 'all .2s' }} />
+                      </button>
                     </div>
                   );
                 })}
