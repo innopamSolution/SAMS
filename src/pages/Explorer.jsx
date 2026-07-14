@@ -719,6 +719,8 @@ export default function Explorer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.compareOpen, state.compareA, state.compareB]);
 
+  useEffect(() => { updateClusterVisibility(); }, [state.timelineOn, state.project]);
+
   useEffect(() => () => { clearTimeout(toastTimerRef.current); destroyCompareMaps(); }, []);
 
   // ── Derived render data ────────────────────────────────────────
