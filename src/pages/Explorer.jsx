@@ -368,6 +368,15 @@ export default function Explorer() {
 
   const onSelectNode = (nd) => {
     patch({ selectedNodeId: nd.id });
+    if (nd.item) {
+      const it = nd.item;
+      if (it.meshUrl) { renderRealMeshAt(it); return; }
+      if (it.pointCloudUrl) { renderRealPointCloudAt(it); return; }
+      const map = mapRef.current;
+      if (map) map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 700 });
+      openDetail(it);
+      return;
+    }
     const ll = structLngLat(nd.struct);
     if (nd.pc) {
       render3DAt(ll, nd.date + ' · ' + nd.label, nd.pc.color, Math.round(nd.pc.count * 1.1 + 2600), nd.pc.H * 7);
