@@ -87,4 +87,42 @@ export const ICONS = {
     viewBox: '0 0 24 24',
     body: '<path fill-rule="evenodd" clip-rule="evenodd" fill="currentColor" d="M6.75 3a.75.75 0 0 0-.75.75v16.5c0 .414.336.75.75.75h6a.75.75 0 0 0 0-1.5H7.5V4.5h5.25a.75.75 0 0 0 0-1.5h-6Zm9.97 4.72a.75.75 0 1 0-1.06 1.06L18.19 11.25H10.5a.75.75 0 0 0 0 1.5h7.69l-2.53 2.47a.75.75 0 1 0 1.06 1.08l3.97-3.88a.75.75 0 0 0 0-1.08l-3.97-3.87Z"/>',
   },
+
+  // ── Category badge icons, sourced verbatim (matching stroke line-icon style)
+  // from the reference SAMS app at https://sam.innopam.kr/ ──
+  IconCatPointCloud: {
+    viewBox: '0 0 24 24',
+    stroke: true,
+    body: '<circle cx="7" cy="7" r="1.05" fill="currentColor" stroke="none"/><circle cx="12" cy="6" r="1.05" fill="currentColor" stroke="none"/><circle cx="17" cy="8" r="1.05" fill="currentColor" stroke="none"/><circle cx="6" cy="13" r="1.05" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.05" fill="currentColor" stroke="none"/><circle cx="18" cy="14" r="1.05" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.05" fill="currentColor" stroke="none"/><circle cx="15" cy="17" r="1.05" fill="currentColor" stroke="none"/>',
+  },
+  IconCatModel3D: {
+    viewBox: '0 0 24 24',
+    stroke: true,
+    body: '<path d="M12 4 L20 18 L4 18 Z"/><path d="M12 4 L12 18 M7 13 L17 13"/>',
+  },
+  IconCatOrtho: {
+    viewBox: '0 0 24 24',
+    stroke: true,
+    body: '<rect x="4" y="4" width="16" height="16" rx="1.5"/><path d="M4 14 L10 9 L14 13 L20 8"/><path d="M4 18 L9 15 L13 18"/>',
+  },
+  IconCatImage: {
+    viewBox: '0 0 24 24',
+    stroke: true,
+    body: '<rect x="4" y="6" width="16" height="12" rx="1.5"/><circle cx="9" cy="11" r="1.6"/><path d="M5 17 L11 12 L15 15 L19 11"/>',
+  },
+  IconCatPano: {
+    viewBox: '0 0 24 24',
+    stroke: true,
+    body: '<ellipse cx="12" cy="12" rx="9" ry="6"/><path d="M12 6 C8 9 8 15 12 18 M12 6 C16 9 16 15 12 18 M3.4 12 H20.6"/>',
+  },
+  IconCatVideo: {
+    viewBox: '0 0 24 24',
+    stroke: true,
+    body: '<rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="M10 9.5 L14.5 12 L10 14.5 Z" fill="currentColor" stroke="none"/>',
+  },
+  IconCatDocument: {
+    viewBox: '0 0 24 24',
+    stroke: true,
+    body: '<path d="M7 3 H14 L18 7 V21 H7 Z"/><path d="M14 3 V7 H18 M9.5 12 H15.5 M9.5 15 H15.5 M9.5 18 H13"/>',
+  },
 };
