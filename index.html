@@ -7,6 +7,14 @@
     <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
   </head>
   <body>
+    <script>
+      window.__errLog = [];
+      const __origErr = console.error.bind(console);
+      console.error = (...args) => {
+        window.__errLog.push({ args: args.map(String), stack: new Error('trace').stack });
+        __origErr(...args);
+      };
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
