@@ -597,9 +597,9 @@ export default function Explorer() {
     boundsNotice = '현재 지도 범위에 맞춰 필터링 중' + (outCount > 0 ? ' · 범위 밖 ' + outCount + '건 숨김' : '');
   }
 
-  const timelineVisible = s.timelineOn && !s.three3DActive && !s.compareOpen && s.project !== '프로젝트 선택';
-  const timelineProject = s.project !== '프로젝트 선택' ? s.project : '전체 데이터';
   const activeTimeline = projectTimeline(s.project);
+  const timelineVisible = s.timelineOn && !s.three3DActive && !s.compareOpen && s.project !== '프로젝트 선택' && activeTimeline.length > 0;
+  const timelineProject = s.project !== '프로젝트 선택' ? s.project : '전체 데이터';
   const timelineHasCompare = s.project === PROJECT_LOC.project;
 
   const cmpNodeA = cmpNode(s.compareA) || TIMELINE.filter((n) => n.pc)[0];
