@@ -95,20 +95,21 @@ function mchip(active) {
 
 function itemById(id) { return ITEMS.find((i) => i.id === id); }
 
-// TIMELINE is a hand-authored dataset for the original Bulguksa project only
-// (rich pc/compare data). Other projects have no such dataset, so their
-// timeline is derived from their own geo-tagged ITEMS, sorted by date.
+// Every project's timeline is derived from its own geo-tagged ITEMS, sorted
+// by date. TIMELINE is kept as a legacy hook for a hand-authored pc/compare
+// dataset (currently empty) — real projects don't need it.
 function itemToTimelineNode(it) {
   return { id: it.id, date: it.date.replace(/-/g, '.'), label: it.title, cat: 'actual', struct: null, item: it };
 }
 
 function projectTimeline(project) {
-  if (project === PROJECT_LOC.project) return TIMELINE;
-  return ITEMS
+  const itemNodes = ITEMS
     .filter((i) => i.project === project && i.lat != null)
     .slice()
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
     .map(itemToTimelineNode);
+  if (itemNodes.length) return itemNodes;
+  return project === PROJECT_LOC.project ? TIMELINE : [];
 }
 
 // A node is "comparable" (can be rendered as a 3D side in 시점 비교) if it
