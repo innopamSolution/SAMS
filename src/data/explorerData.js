@@ -22,6 +22,7 @@ export const ITEMS = [
   { id: 'e2', title: 'HQ(이마트) 3D 모델', cat: 'model3d', date: '2023-09-08', size: '65.1MB', extra: '390.7K vertex', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.0537, lat: 37.54028, desc: 'RealityCapture · OBJ 메시 · 정점 컬러(텍스처 없음)', meshUrl: '/data/hq-mesh.bin' },
   { id: 'e3', title: 'HQ 옥상 전경 파노라마', cat: 'pano', date: '2025-01-15', size: '4.1MB', extra: '16장', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.0537, lat: 37.54028, desc: '옥상 현장 촬영 · 16컷 그룹', panoImages: Array.from({ length: 16 }, (_, i) => `/uploads/pano/pano-${String(i + 1).padStart(2, '0')}.jpg`) },
   { id: 'e4', title: '현장 실측 보고서', cat: 'document', date: '2025-01-20', size: 'PDF · 42쪽', extra: '', status: 'published', epsg: '—', site: '성수동, 서울', project: 'K-Seongsu Project', lng: null, lat: null, projectLng: PROJECT_LOC.lng, projectLat: PROJECT_LOC.lat, desc: '스캔 · 모델링 결과 종합 정리' },
+  { id: 'e5', title: 'K HQ 매뉴얼 모델', cat: 'model3d', date: '2024-09-06', size: '18.5MB', extra: '734.9K vertex', status: 'published', epsg: '—', site: '자양동, 서울', project: 'K-Seongsu Project', lng: 127.083, lat: 37.5155, desc: 'Rhinoceros 8 · COLLADA 설계 모델 · 정점 컬러(텍스처 없음)', meshUrl: '/data/k-hq-model.bin' },
 ];
 
 export const PROJECTS = ['프로젝트 선택', 'K-Seongsu Project'];
