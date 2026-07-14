@@ -724,7 +724,7 @@ export default function Explorer() {
   }
 
   const activeTimeline = filteredProjectTimeline(filtered, s.project);
-  const timelineVisible = s.timelineOn && !s.three3DActive && !s.compareOpen && s.project !== '프로젝트 선택' && activeTimeline.length > 0;
+  const timelineVisible = s.timelineOn && !s.compareOpen && s.project !== '프로젝트 선택' && activeTimeline.length > 0;
   const timelineProject = s.project !== '프로젝트 선택' ? s.project : '전체 데이터';
   const cmpNodesAll = comparableNodesFor(s.project);
   const timelineHasCompare = cmpNodesAll.length >= 2;
