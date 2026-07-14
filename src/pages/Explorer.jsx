@@ -274,6 +274,13 @@ export default function Explorer() {
     patch({ three3DActive: false, three3DTitle: '' });
     setBasemap('light');
     updateClusterVisibility();
+    // If this 3D render was opened from a detail popup's "3D 보기" button,
+    // bring that same popup back up in the state it was left in.
+    if (popupReopenRef.current) {
+      const it = popupReopenRef.current;
+      popupReopenRef.current = null;
+      openDetail(it);
+    }
   };
 
   const render3DAt = async (lngLat, title, color, count, H) => {
