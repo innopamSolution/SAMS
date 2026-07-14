@@ -985,6 +985,32 @@ export default function Explorer() {
       <div style={{ position: 'fixed', left: '50%', bottom: 28, transform: 'translateX(-50%)', zIndex: 50, display: s.toast ? 'flex' : 'none', alignItems: 'center', gap: 8, background: 'var(--ant-bg-elevated)', color: 'var(--ant-text)', border: '1px solid var(--ant-border-secondary)', boxShadow: 'var(--ant-shadow)', padding: '10px 16px', borderRadius: 10, fontSize: 13, fontWeight: 500, animation: 'sams-toast-in .25s ease' }}>
         <span style={{ display: 'flex', color: 'var(--ant-primary)' }}><Icon name="IconRightCircleOutlined" size={15} /></span>{s.toast || ''}
       </div>
+
+      {panoViewer && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(6,10,16,0.94)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', flex: 'none' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>파노라마 {panoViewer.index + 1} / {panoViewer.images.length}</span>
+            <button onClick={closePanoViewer} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 13px', border: 'none', borderRadius: 8, background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+              <Icon name="IconCloseOutlined" size={13} />닫기
+            </button>
+          </div>
+          <div
+            ref={panoScrollRef}
+            onPointerDown={beginPanoDrag}
+            style={{ flex: 1, minHeight: 0, overflowX: 'auto', overflowY: 'hidden', display: 'flex', alignItems: 'center', cursor: 'grab', touchAction: 'pan-x' }}
+          >
+            <img
+              src={panoViewer.images[panoViewer.index]}
+              draggable={false}
+              alt=""
+              style={{ height: '86vh', width: 'auto', maxWidth: 'none', userSelect: 'none', pointerEvents: 'none', margin: '0 auto', display: 'block' }}
+            />
+          </div>
+          <button onClick={() => panoViewerStep(-1)} style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 22, cursor: 'pointer' }}>‹</button>
+          <button onClick={() => panoViewerStep(1)} style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', width: 44, height: 44, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 22, cursor: 'pointer' }}>›</button>
+          <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.55)', fontSize: 11, padding: '10px 0 14px', flex: 'none' }}>드래그해서 좌우로 이동 · ← → 키로 다음 사진</div>
+        </div>
+      )}
     </div>
   );
 }
