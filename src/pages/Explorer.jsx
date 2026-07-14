@@ -370,6 +370,9 @@ export default function Explorer() {
   const onMarkerEnter = (id) => {
     setFS(id, 'hover', true);
     patch({ hoveredId: id });
+    // The active item already has its detail popup open — showing the hover
+    // preview on top of it just duplicates the same card.
+    if (id === stateRef.current.activeId) return;
     const it = itemById(id);
     if (it) showHoverCard(it);
   };
