@@ -207,6 +207,33 @@ export function runTurntableReal(canvas, positions, colors, bounds) {
   frame();
 }
 
+// Native `title` tooltips get clipped by the popup's `overflow:hidden`
+// rounded-corner container, so they never actually appear. This wires up a
+// fixed-position substitute (appended to <body>, unaffected by any
+// ancestor's overflow) for any element carrying a `data-tip` attribute.
+export function wireTooltips(root) {
+  root.querySelectorAll('[data-tip]').forEach((el) => {
+    let tipEl = null;
+    el.addEventListener('mouseenter', () => {
+      const text = el.getAttribute('data-tip');
+      if (!text) return;
+      tipEl = document.createElement('div');
+      tipEl.textContent = text;
+      tipEl.style.cssText = 'position:fixed;z-index:10000;background:rgba(0,0,0,0.85);color:#fff;font-size:11px;font-weight:500;padding:4px 8px;border-radius:6px;white-space:nowrap;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.25);';
+      document.body.appendChild(tipEl);
+      const r = el.getBoundingClientRect();
+      const tr = tipEl.getBoundingClientRect();
+      let left = r.left + r.width / 2 - tr.width / 2;
+      left = Math.max(4, Math.min(left, window.innerWidth - tr.width - 4));
+      tipEl.style.left = left + 'px';
+      tipEl.style.top = Math.max(4, r.top - tr.height - 8) + 'px';
+    });
+    const remove = () => { if (tipEl) { tipEl.remove(); tipEl = null; } };
+    el.addEventListener('mouseleave', remove);
+    el.addEventListener('mousedown', remove);
+  });
+}
+
 export function startTurntables(popup) {
   const root = popup.getElement();
   if (!root) return;
