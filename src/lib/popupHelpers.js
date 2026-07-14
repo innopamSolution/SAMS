@@ -57,6 +57,7 @@ export function wireGallery(root, it) {
   const render = () => {
     if (isReal) {
       frame.style.backgroundImage = `url('${images[idx]}')`;
+      frame.dataset.idx = String(idx);
     } else {
       const h1 = (205 + idx * 40) % 360;
       const h2 = (h1 + 26) % 360;
