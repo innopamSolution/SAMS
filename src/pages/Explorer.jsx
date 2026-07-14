@@ -385,7 +385,7 @@ export default function Explorer() {
     if (btnD) btnD.addEventListener('click', () => showToast('Detail 화면으로 이동: ' + it.title));
     if (btnDl) btnDl.addEventListener('click', () => showToast('다운로드 시작: ' + it.title + ' (' + it.size + ')'));
     const btn3d = rootEl.querySelector('[data-act="show3d"]');
-    if (btn3d) btn3d.addEventListener('click', () => show3DOnMap(it));
+    if (btn3d) btn3d.addEventListener('click', () => show3DOnMap(it, { reopenPopup: true }));
     const btnPanoLarge = rootEl.querySelector('[data-act="pano-large"]');
     if (btnPanoLarge) {
       btnPanoLarge.addEventListener('click', () => {
