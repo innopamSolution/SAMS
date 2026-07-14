@@ -1,10 +1,10 @@
 export const CATS = [
-  { key: 'pointcloud', label: '포인트클라우드', color: '#e5484d', icon: 'IconCatPointCloud' },
-  { key: 'model3d', label: '3D 모델', color: '#8a5cd6', icon: 'IconCatModel3D' },
-  { key: 'ortho', label: '정사영상', color: '#3cbcbc', icon: 'IconCatOrtho' },
-  { key: 'image', label: '이미지', color: '#4a90e2', icon: 'IconCatImage' },
-  { key: 'pano', label: '파노라마', color: '#f2a244', icon: 'IconCatPano' },
-  { key: 'video', label: '영상', color: '#e662a6', icon: 'IconCatVideo' },
+  { key: 'pointcloud', label: '포인트클라우드', color: '#ed4046', icon: 'IconCatPointCloud' },
+  { key: 'model3d', label: '3D 모델', color: '#8856dc', icon: 'IconCatModel3D' },
+  { key: 'ortho', label: '정사영상', color: '#36c2c2', icon: 'IconCatOrtho' },
+  { key: 'image', label: '이미지', color: '#428fea', icon: 'IconCatImage' },
+  { key: 'pano', label: '파노라마', color: '#fba33b', icon: 'IconCatPano' },
+  { key: 'video', label: '영상', color: '#ed5ba6', icon: 'IconCatVideo' },
   { key: 'document', label: '문서', color: '#a0a0a0', icon: 'IconCatDocument' },
 ];
 
