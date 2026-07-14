@@ -322,11 +322,12 @@ export default function Explorer() {
     patch({ three3DActive: true, three3DTitle: it.title + ' · 실측 메시' });
   };
 
-  const show3DOnMap = async (it) => {
+  const show3DOnMap = async (it, { reopenPopup } = {}) => {
     const map = mapRef.current;
     if (!map) return;
     const lngLat = it.lat != null ? [it.lng, it.lat] : it.projectLat != null ? [it.projectLng, it.projectLat] : null;
     if (!lngLat) { showToast('위치 정보가 없어 지도에 3D를 표시할 수 없습니다'); return; }
+    popupReopenRef.current = reopenPopup ? it : null;
     if (detailPopupRef.current) { detailPopupRef.current.remove(); detailPopupRef.current = null; }
     if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
     if (it.meshUrl && it.lat != null) { await renderRealMeshAt(it); return; }
