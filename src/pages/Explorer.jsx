@@ -366,6 +366,7 @@ export default function Explorer() {
     });
     startTurntables(popup);
     wireGallery(rootEl, it);
+    wireTooltips(rootEl);
   };
 
   const onMarkerEnter = (id) => {
