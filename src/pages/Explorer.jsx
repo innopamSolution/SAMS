@@ -385,6 +385,9 @@ export default function Explorer() {
   const onItemEnter = (it, e) => {
     setFS(it.id, 'hover', true);
     const p = { hoveredId: it.id };
+    // Skip the hover preview for the item whose detail popup is already open
+    // — otherwise both cards show at once.
+    if (it.id === stateRef.current.activeId) { patch(p); return; }
     if (it.lat != null) { showHoverCard(it); p.docHover = null; }
     else {
       const r = e && e.currentTarget ? e.currentTarget.getBoundingClientRect() : null;
