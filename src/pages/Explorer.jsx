@@ -338,7 +338,7 @@ export default function Explorer() {
         <div style="display:flex;gap:6px;">
           ${btn3D}
           ${btnPanoLargeHtml}
-          <button data-act="download" title="다운로드" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-border);background:var(--ant-bg);color:var(--ant-text);cursor:pointer;display:flex;align-items:center;justify-content:center;">${DL_SVG}</button>
+          <button data-act="download" data-tip="다운로드" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-border);background:var(--ant-bg);color:var(--ant-text);cursor:pointer;display:flex;align-items:center;justify-content:center;">${DL_SVG}</button>
           <button data-act="detail" style="flex:1;height:32px;border-radius:7px;border:none;background:var(--ant-primary);color:#fff;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;">자세히 보기 →</button>
         </div>
       </div></div>`;
