@@ -419,13 +419,20 @@ export default function Explorer() {
 
   const onProjectChange = (e) => {
     const v = e.target.value;
+    const prevProject = stateRef.current.project;
     const p = { project: v };
-    if (v === '프로젝트 선택' && stateRef.current.timelineOn) {
-      p.timelineOn = false;
+    if (v !== prevProject) {
+      // Switching projects invalidates any timeline node/compare selection
+      // and 3D render tied to the previous project's own timeline dataset.
       p.compareOpen = false;
-      if (tlPrevBaseRef.current) { setBasemap(tlPrevBaseRef.current); tlPrevBaseRef.current = null; }
+      p.selectedNodeId = null;
+      if (stateRef.current.three3DActive) p.three3DActive = false;
       const map = mapRef.current;
       if (map && map.getLayer('sams-3d')) map.removeLayer('sams-3d');
+      if (v === '프로젝트 선택' && stateRef.current.timelineOn) {
+        p.timelineOn = false;
+        if (tlPrevBaseRef.current) { setBasemap(tlPrevBaseRef.current); tlPrevBaseRef.current = null; }
+      }
     }
     patch(p);
   };
