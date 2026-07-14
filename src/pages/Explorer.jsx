@@ -854,7 +854,7 @@ export default function Explorer() {
             </div>
           )}
 
-          {s.compareOpen && (
+          {s.compareOpen && cmpNodeA && cmpNodeB && (
             <div style={{ position: 'absolute', inset: 0, zIndex: 6, background: '#0b0f16' }}>
               <div id="cmp-swipe" style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
                 <div id="cmp-map-a" style={{ position: 'absolute', inset: 0 }} />
