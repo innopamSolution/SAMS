@@ -95,6 +95,22 @@ function mchip(active) {
 
 function itemById(id) { return ITEMS.find((i) => i.id === id); }
 
+// TIMELINE is a hand-authored dataset for the original Bulguksa project only
+// (rich pc/compare data). Other projects have no such dataset, so their
+// timeline is derived from their own geo-tagged ITEMS, sorted by date.
+function itemToTimelineNode(it) {
+  return { id: it.id, date: it.date.replace(/-/g, '.'), label: it.title, cat: 'actual', struct: null, item: it };
+}
+
+function projectTimeline(project) {
+  if (project === PROJECT_LOC.project) return TIMELINE;
+  return ITEMS
+    .filter((i) => i.project === project && i.lat != null)
+    .slice()
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+    .map(itemToTimelineNode);
+}
+
 export default function Explorer() {
   const [state, setState] = useState(initialState);
   const stateRef = useRef(state);
