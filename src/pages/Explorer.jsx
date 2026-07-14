@@ -338,6 +338,7 @@ export default function Explorer() {
   const openDetail = (it, anchoredToProject) => {
     const map = mapRef.current;
     if (!it || !map) return;
+    popupReopenRef.current = null;
     if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
     if (detailPopupRef.current) detailPopupRef.current.remove();
     if (stateRef.current.activeId) setFS(stateRef.current.activeId, 'active', false);
