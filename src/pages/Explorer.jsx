@@ -219,17 +219,42 @@ export default function Explorer() {
     try { mapRef.current.setFeatureState({ source: 'assets', id }, { [key]: val }); } catch { /* noop */ }
   };
 
+  // Multiple items can legitimately share the exact same coordinates (e.g.
+  // several scans of the same building). Left as-is, MapLibre draws them as
+  // one indistinguishable dot even at max zoom — spread exact duplicates a
+  // few meters apart in a small circle so each data-type color stays visible
+  // once zoomed in, without touching the item's real lng/lat used elsewhere
+  // (popups, flyTo, 3D anchoring all still use the true coordinates).
   const pushMapData = (geo) => {
     const src = mapRef.current && mapRef.current.getSource('assets');
     if (!src) return;
-    src.setData({
-      type: 'FeatureCollection',
-      features: geo.map((i) => ({
-        type: 'Feature', id: i.id,
-        geometry: { type: 'Point', coordinates: [i.lng, i.lat] },
-        properties: { id: i.id, color: CAT_MAP[i.cat].color },
-      })),
+    const groups = new Map();
+    geo.forEach((i) => {
+      const key = i.lng + ',' + i.lat;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(i);
     });
+    const SPREAD_M = 6;
+    const features = [];
+    groups.forEach((items) => {
+      const n = items.length;
+      const mPerDegLat = 111320;
+      const mPerDegLng = 111320 * Math.cos((items[0].lat * Math.PI) / 180);
+      items.forEach((i, idx) => {
+        let [lng, lat] = [i.lng, i.lat];
+        if (n > 1) {
+          const angle = (2 * Math.PI * idx) / n;
+          lng += (SPREAD_M * Math.cos(angle)) / mPerDegLng;
+          lat += (SPREAD_M * Math.sin(angle)) / mPerDegLat;
+        }
+        features.push({
+          type: 'Feature', id: i.id,
+          geometry: { type: 'Point', coordinates: [lng, lat] },
+          properties: { id: i.id, color: CAT_MAP[i.cat].color },
+        });
+      });
+    });
+    src.setData({ type: 'FeatureCollection', features });
   };
 
   const showHoverCard = (it) => {
