@@ -873,7 +873,7 @@ export default function Explorer() {
               const noGeo = it.lat == null;
               return (
                 <div key={it.id} onMouseEnter={(e) => onItemEnter(it, e)} onMouseLeave={() => onItemLeave(it)} onClick={() => onItemClick(it)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 9, cursor: 'pointer', background: rowBg, border: rowBorder, marginBottom: 2 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 9, cursor: 'pointer', background: rowBg, border: rowBorder, marginBottom: 8 }}>
                   <div style={{ width: 29, height: 29, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c.color, boxShadow: `0 1px 3px ${c.color}55` }}>
                     <Icon name={c.icon} size={15} />
                   </div>
