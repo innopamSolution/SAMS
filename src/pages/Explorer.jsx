@@ -591,10 +591,13 @@ export default function Explorer() {
     if (!document.getElementById('cmp-map-a')) return;
     const ok = await ensureThree();
     if (!ok) { showToast('3D 엔진을 불러오지 못했습니다'); return; }
-    const nodeA = cmpNode(stateRef.current.compareA);
-    const centerA = structLngLat(nodeA.struct);
+    const project = stateRef.current.project;
+    const nodeA = cmpNode(stateRef.current.compareA, project, 'first');
+    const nodeB = cmpNode(stateRef.current.compareB, project, 'last');
+    if (!nodeA || !nodeB) return;
+    const centerA = cmpNodeLngLat(nodeA);
     cmpMapARef.current = makeCmpMap('cmp-map-a', nodeA, centerA);
-    cmpMapBRef.current = makeCmpMap('cmp-map-b', cmpNode(stateRef.current.compareB), centerA);
+    cmpMapBRef.current = makeCmpMap('cmp-map-b', nodeB, centerA);
     if (cmpMapARef.current && cmpMapBRef.current) syncMaps(cmpMapARef.current, cmpMapBRef.current);
   }
 
