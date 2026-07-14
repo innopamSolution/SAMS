@@ -245,9 +245,9 @@ export default function Explorer() {
         try { map.setLayoutProperty(l, 'visibility', 'visible'); } catch { /* noop */ }
       });
       map.easeTo({ pitch: 0, bearing: 0, zoom: 16, duration: 900 });
-      if (prev3DRef.current) { setBasemap(prev3DRef.current.basemap); prev3DRef.current = null; }
     }
     patch({ three3DActive: false, three3DTitle: '' });
+    setBasemap('light');
   };
 
   const render3DAt = async (lngLat, title, color, count, H) => {
