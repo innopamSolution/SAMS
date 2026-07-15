@@ -449,7 +449,14 @@ export default function Explorer() {
     // Skip the hover preview for the item whose detail popup is already open
     // — otherwise both cards show at once.
     if (it.id === stateRef.current.activeId) { patch(p); return; }
-    if (it.lat != null) { showHoverCard(it); p.docHover = null; }
+    if (it.lat != null) {
+      const map = mapRef.current;
+      if (map && !map.getBounds().contains([it.lng, it.lat])) {
+        map.flyTo({ center: [it.lng, it.lat], duration: 600 });
+      }
+      showHoverCard(it);
+      p.docHover = null;
+    }
     else {
       const r = e && e.currentTarget ? e.currentTarget.getBoundingClientRect() : null;
       p.docHover = { id: it.id, top: r ? Math.max(64, Math.min(r.top, window.innerHeight - 190)) : 120 };
