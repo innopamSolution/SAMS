@@ -808,7 +808,7 @@ export default function Explorer() {
     >
       {/* Header */}
       <header style={{ height: 56, flex: 'none', display: 'flex', alignItems: 'center', gap: 44, padding: '0 20px', background: 'var(--ant-bg)', borderBottom: '1px solid var(--ant-border-secondary)', zIndex: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, flex: 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 'none' }}>
           <svg width="32" height="32" viewBox="0 0 64 64" fill="none" aria-label="SAMS">
             <circle cx="46" cy="16" r="3" fill="#4096ff" /><circle cx="38" cy="13" r="2.3" fill="#0958d9" /><circle cx="30" cy="13" r="2.3" fill="#0958d9" /><circle cx="22" cy="15" r="3" fill="#0958d9" /><circle cx="18" cy="21" r="2.3" fill="#4096ff" /><circle cx="20" cy="27" r="2.3" fill="#0958d9" /><circle cx="27" cy="30" r="3" fill="#0958d9" /><circle cx="35" cy="32" r="2.3" fill="#0958d9" /><circle cx="42" cy="35" r="2.3" fill="#4096ff" /><circle cx="45" cy="41" r="3" fill="#0958d9" /><circle cx="42" cy="47" r="2.3" fill="#0958d9" /><circle cx="34" cy="50" r="2.3" fill="#0958d9" /><circle cx="26" cy="50" r="3" fill="#4096ff" /><circle cx="18" cy="48" r="2.3" fill="#0958d9" /><circle cx="30" cy="20" r="2.3" fill="#0958d9" /><circle cx="24" cy="21" r="3" fill="#0958d9" /><circle cx="38" cy="19" r="2.3" fill="#4096ff" /><circle cx="24" cy="44" r="2.3" fill="#0958d9" /><circle cx="38" cy="43" r="3" fill="#0958d9" /><circle cx="31" cy="42" r="2.3" fill="#0958d9" /><circle cx="31" cy="26" r="2.3" fill="#4096ff" /><circle cx="31" cy="37" r="3" fill="#0958d9" />
           </svg>
