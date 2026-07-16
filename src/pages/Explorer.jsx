@@ -922,7 +922,7 @@ export default function Explorer() {
               const isActive = s.activeId === it.id;
               const isHover = s.hoveredId === it.id;
               let rowBg = 'transparent';
-              if (isActive) { rowBg = 'var(--ant-primary-bg)'; }
+              if (isActive) { rowBg = '#ECEEFC'; }
               else if (isHover) { rowBg = 'var(--ant-fill-quaternary)'; }
               const noGeo = it.lat == null;
               return (
