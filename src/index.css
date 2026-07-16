@@ -38,7 +38,6 @@ body {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--ant-border-secondary);
   font-family: var(--ant-font-sans);
 }
 .maplibregl-popup-close-button {
