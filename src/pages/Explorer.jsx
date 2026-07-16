@@ -378,7 +378,7 @@ export default function Explorer() {
     if (it.lat != null) setFS(it.id, 'active', true);
     patch({ activeId: it.id });
     const c = CAT_MAP[it.cat];
-    const lngLat = it.lat != null ? [it.lng, it.lat] : [it.projectLng, it.projectLat];
+    const lngLat = it.lat != null ? markerLngLat(it) : [it.projectLng, it.projectLat];
     const meta = [];
     meta.push(['위치', it.site]);
     meta.push(['취득일', it.date]);
