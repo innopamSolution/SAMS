@@ -196,6 +196,7 @@ export default function Explorer() {
   const hoverPopupRef = useRef(null);
   const detailPopupRef = useRef(null);
   const popupReopenRef = useRef(null);
+  const markerPosRef = useRef({});
   const layersReadyRef = useRef(false);
   const lastSigRef = useRef('');
   const toastTimerRef = useRef(null);
