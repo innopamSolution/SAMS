@@ -480,7 +480,7 @@ export default function Explorer() {
   const onItemClick = (it) => {
     const map = mapRef.current;
     if (it.lat != null) {
-      map && map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17.2), duration: 650 });
+      map && map.flyTo({ center: markerLngLat(it), zoom: Math.max(map.getZoom(), 17.2), duration: 650 });
       openDetail(it);
     } else if (it.projectLat != null) {
       map && map.flyTo({ center: [it.projectLng, it.projectLat], zoom: Math.max(map.getZoom(), 16.4), duration: 650 });
