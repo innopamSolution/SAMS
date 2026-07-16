@@ -28,7 +28,8 @@ export function thumbHtml(it, catMap, gallery, compactH) {
   if (realUrl) {
     const kind = it.meshUrl ? 'mesh' : 'points';
     const H = compactH || 160;
-    return `<div style="position:relative;height:${H}px;background:radial-gradient(circle at 50% 40%, #14202e, #060a10);"><canvas class="sams-tt sams-tt-real" data-url="${realUrl}" data-kind="${kind}" width="320" height="${H}" style="width:100%;height:${H}px;display:block;"></canvas><div style="position:absolute;left:9px;bottom:8px;display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,0.8);background:rgba(0,0,0,0.35);padding:3px 7px;border-radius:20px;"><span style="width:5px;height:5px;border-radius:50%;background:${c.color};box-shadow:0 0 6px ${c.color};"></span>실측 데이터 미리보기 · ${it.extra}</div></div>`;
+    const label = compactH ? '' : `<div style="position:absolute;left:9px;bottom:8px;display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,0.8);background:rgba(0,0,0,0.35);padding:3px 7px;border-radius:20px;"><span style="width:5px;height:5px;border-radius:50%;background:${c.color};box-shadow:0 0 6px ${c.color};"></span>실측 데이터 미리보기 · ${it.extra}</div>`;
+    return `<div style="position:relative;height:${H}px;background:radial-gradient(circle at 50% 40%, #14202e, #060a10);"><canvas class="sams-tt sams-tt-real" data-url="${realUrl}" data-kind="${kind}" width="320" height="${H}" style="width:100%;height:${H}px;display:block;"></canvas>${label}</div>`;
   }
   const H = compactH || 138;
   if (it.cat === 'pointcloud') {
