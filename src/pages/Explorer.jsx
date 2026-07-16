@@ -264,7 +264,7 @@ export default function Explorer() {
     // Deliberately minimal — thumbnail + title only — so hover previews read
     // as a quick glance, clearly smaller/lighter than the click-through detail popup.
     const html = `<div style="width:150px;font-family:var(--ant-font-sans);">
-      ${thumbHtml(it, CAT_MAP)}
+      ${thumbHtml(it, CAT_MAP, false, 95)}
       <div style="padding:6px 8px;">
         <div style="font-size:12px;font-weight:700;color:var(--ant-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.title}</div>
       </div></div>`;
