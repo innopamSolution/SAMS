@@ -260,19 +260,15 @@ export default function Explorer() {
   const showHoverCard = (it) => {
     const map = mapRef.current;
     if (!map) return;
-    const c = CAT_MAP[it.cat];
     if (hoverPopupRef.current) hoverPopupRef.current.remove();
-    const html = `<div style="width:214px;font-family:var(--ant-font-sans);">
+    // Deliberately minimal — thumbnail + title only — so hover previews read
+    // as a quick glance, clearly smaller/lighter than the click-through detail popup.
+    const html = `<div style="width:150px;font-family:var(--ant-font-sans);">
       ${thumbHtml(it, CAT_MAP)}
-      <div style="padding:9px 11px 10px;">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
-          <span style="font-size:13px;font-weight:700;color:var(--ant-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.title}</span>
-          ${statusChipHtml(it.status)}
-        </div>
-        <div style="font-size:11px;color:var(--ant-text-secondary);">${it.site}</div>
-        <div style="font-size:11px;color:var(--ant-text-tertiary);margin-top:2px;">${it.date} · ${it.size}</div>
+      <div style="padding:6px 8px;">
+        <div style="font-size:12px;font-weight:700;color:var(--ant-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.title}</div>
       </div></div>`;
-    const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 16, maxWidth: '240px', anchor: 'bottom' })
+    const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 16, maxWidth: '170px', anchor: 'bottom' })
       .setLngLat([it.lng, it.lat]).setHTML(html).addTo(map);
     hoverPopupRef.current = popup;
     startTurntables(popup);
