@@ -459,8 +459,9 @@ export default function Explorer() {
     if (it.id === stateRef.current.activeId) { patch(p); return; }
     if (it.lat != null) {
       const map = mapRef.current;
-      if (map && !map.getBounds().contains([it.lng, it.lat])) {
-        map.flyTo({ center: [it.lng, it.lat], duration: 600 });
+      const ll = markerLngLat(it);
+      if (map && !map.getBounds().contains(ll)) {
+        map.flyTo({ center: ll, duration: 600 });
       }
       showHoverCard(it);
       p.docHover = null;
