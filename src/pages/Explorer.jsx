@@ -386,7 +386,7 @@ export default function Explorer() {
     if (it.epsg && it.epsg !== '—') meta.push(['좌표계', 'EPSG:' + it.epsg]);
     if (it.extra) meta.push(['규모', it.extra]);
     const metaRows = meta.map((m) => `<div style="display:flex;font-size:11.5px;line-height:1.7;"><span style="width:52px;color:var(--ant-text-tertiary);flex:none;">${m[0]}</span><span style="color:var(--ant-text);font-weight:500;">${m[1]}</span></div>`).join('');
-    const projNote = anchoredToProject ? `<div style="display:flex;gap:6px;align-items:flex-start;font-size:10.5px;color:var(--ant-warning);background:var(--ant-warning-bg);border:1px solid var(--ant-warning-border);border-radius:6px;padding:5px 8px;margin:0 0 8px;">이 문헌은 좌표가 없어 프로젝트 위치에 표시됩니다.</div>` : '';
+    const projNote = anchoredToProject ? `<div style="display:flex;gap:8px;align-items:flex-start;font-size:10.5px;color:var(--ant-warning);background:var(--ant-warning-bg);border:1px solid var(--ant-warning-border);border-radius:6px;padding:5px 8px;margin:0 0 8px;">이 문헌은 좌표가 없어 프로젝트 위치에 표시됩니다.</div>` : '';
     const can3D = it.cat === 'pointcloud' || it.cat === 'model3d';
     const btn3D = can3D ? `<button data-act="show3d" data-tip="지도에서 3D 렌더링" aria-label="지도에서 3D 렌더링" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-primary);background:var(--ant-primary-bg);color:var(--ant-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;">${CUBE_SVG}</button>` : '';
     const canPanoLarge = it.cat === 'pano' && it.panoImages && it.panoImages.length > 0;
@@ -394,7 +394,7 @@ export default function Explorer() {
     const html = `<div style="width:236px;font-family:var(--ant-font-sans);">
       ${thumbHtml(it, CAT_MAP, true)}
       <div style="padding:10px 12px 12px;">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <span style="width:8px;height:8px;border-radius:50%;background:${c.color};"></span>
           <span style="font-size:11px;color:var(--ant-text-secondary);font-weight:600;">${c.label}</span>
           <span style="margin-left:auto;">${statusChipHtml(it.status)}</span>
@@ -402,7 +402,7 @@ export default function Explorer() {
         <div style="font-size:14px;font-weight:700;color:var(--ant-text);margin-bottom:7px;line-height:1.3;">${it.title}</div>
         ${projNote}
         <div style="margin-bottom:10px;">${metaRows}</div>
-        <div style="display:flex;gap:6px;">
+        <div style="display:flex;gap:8px;">
           ${btn3D}
           ${btnPanoLargeHtml}
           <button data-act="download" data-tip="다운로드" aria-label="다운로드" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-border);background:var(--ant-bg);color:var(--ant-text);cursor:pointer;display:flex;align-items:center;justify-content:center;">${DL_SVG}</button>
@@ -818,7 +818,7 @@ export default function Explorer() {
           <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 15, fontWeight: 700, color: 'var(--ant-primary)' }}>데이터 탐색</div>
           <div style={{ height: '100%', display: 'flex', alignItems: 'center', padding: '0 14px', fontSize: 15, fontWeight: 600, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>데이터 관리</div>
         </nav>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
           <div className={`hsearch${s.keyword ? ' open' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <div className="hsearch-field">
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -845,7 +845,7 @@ export default function Explorer() {
           </div>
           <button
             title="로그아웃"
-            style={{ display: 'flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', border: 'none', background: 'transparent', color: 'var(--ant-text-secondary)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', letterSpacing: 0.3, cursor: 'pointer', borderRadius: 8 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, height: 34, padding: '0 12px', border: 'none', background: 'transparent', color: 'var(--ant-text-secondary)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', letterSpacing: 0.3, cursor: 'pointer', borderRadius: 8 }}
           >
             <Icon name="IconLogoutOutlined" size={16} />LOGOUT
           </button>
@@ -859,7 +859,7 @@ export default function Explorer() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <div style={{ fontSize: 11, color: 'var(--ant-text-secondary)', marginBottom: 5, fontWeight: 700 }}>상태</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   <button onClick={() => patch({ statusSel: {} })} style={mchip(!Object.values(s.statusSel).some(Boolean))}>전체</button>
                   {[['published', 'Published'], ['draft', 'Draft']].map(([k, label]) => (
                     <button key={k} onClick={() => toggleStatusSel(k)} style={mchip(!!s.statusSel[k])}>{label}</button>
@@ -870,7 +870,7 @@ export default function Explorer() {
                 <div style={{ fontSize: 11, color: 'var(--ant-text-secondary)', marginBottom: 5, fontWeight: 700 }}>
                   기간 <span style={{ color: 'var(--ant-text-quaternary)', fontWeight: 500 }}>· 복수 선택</span>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   <button onClick={() => patch({ yearSel: {} })} style={mchip(!Object.values(s.yearSel).some(Boolean))}>전체</button>
                   {YEARS.map((y) => (
                     <button key={y} onClick={() => toggleYearSel(y)} style={mchip(!!s.yearSel[y])}>{y}</button>
@@ -886,12 +886,12 @@ export default function Explorer() {
               <span style={{ position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--ant-text-tertiary)', display: 'flex' }}><Icon name="IconDownOutlined" size={11} /></span>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
               {CATS.map((c) => {
                 const on = !!s.activeCats[c.key];
                 const count = catCounts[c.key];
                 return (
-                  <button key={c.key} onClick={() => toggleCat(c.key)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 9px', borderRadius: 20, fontSize: 11.5, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500, border: `1px solid ${on ? c.color : 'transparent'}`, background: on ? c.color + '14' : 'var(--ant-bg)', color: on ? c.color : 'var(--ant-text-secondary)' }}>
+                  <button key={c.key} onClick={() => toggleCat(c.key)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 26, padding: '0 9px', borderRadius: 20, fontSize: 11.5, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500, border: `1px solid ${on ? c.color : 'transparent'}`, background: on ? c.color + '14' : 'var(--ant-bg)', color: on ? c.color : 'var(--ant-text-secondary)' }}>
                     <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flex: 'none' }} />
                     {c.label}
                     <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 1, color: on ? c.color : 'var(--ant-text-tertiary)', opacity: count === 0 ? 0.45 : 1 }}>{count}</span>
@@ -905,7 +905,7 @@ export default function Explorer() {
             <span style={{ fontSize: 13, fontWeight: 700 }}>결과 {filtered.length}건</span>
             {hasFilters && <button onClick={resetFilters} style={{ fontSize: 11, color: 'var(--ant-primary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>필터 초기화</button>}
             {s.project !== '프로젝트 선택' && (
-              <button onClick={toggleTimeline} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, height: 28, padding: '0 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${s.timelineOn ? 'var(--ant-primary)' : 'var(--ant-border)'}`, background: s.timelineOn ? 'var(--ant-primary)' : 'var(--ant-bg)', color: s.timelineOn ? '#fff' : 'var(--ant-text-secondary)' }}>
+              <button onClick={toggleTimeline} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, height: 28, padding: '0 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${s.timelineOn ? 'var(--ant-primary)' : 'var(--ant-border)'}`, background: s.timelineOn ? 'var(--ant-primary)' : 'var(--ant-bg)', color: s.timelineOn ? '#fff' : 'var(--ant-text-secondary)' }}>
                 <Icon name="IconCalendarOutlined" size={14} />타임라인
               </button>
             )}
@@ -923,12 +923,12 @@ export default function Explorer() {
               const noGeo = it.lat == null;
               return (
                 <div key={it.id} onMouseEnter={(e) => onItemEnter(it, e)} onMouseLeave={() => onItemLeave(it)} onClick={() => onItemClick(it)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', borderRadius: 9, cursor: 'pointer', background: rowBg, border: rowBorder, marginBottom: 8 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 10px', borderRadius: 9, cursor: 'pointer', background: rowBg, border: rowBorder, marginBottom: 8 }}>
                   <div style={{ width: 29, height: 29, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c.color, boxShadow: `0 1px 3px ${c.color}55` }}>
                     <Icon name={c.icon} size={15} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
                       <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 600, padding: '0 6px', borderRadius: 20, lineHeight: '16px', color: it.status === 'published' ? 'var(--ant-success)' : 'var(--ant-warning)', background: it.status === 'published' ? 'var(--ant-success-bg)' : 'var(--ant-warning-bg)', border: `1px solid ${it.status === 'published' ? 'var(--ant-success-border)' : 'var(--ant-warning-border)'}` }}>
                         {it.status === 'published' ? 'Pub' : 'Draft'}
@@ -955,7 +955,7 @@ export default function Explorer() {
             {[['light', '일반지도', 'IconEnvironmentOutlined'], ['satellite', '위성', 'IconGlobalOutlined'], ['3d', '3D', 'IconBoxPlotOutlined']].map(([key, label, icon]) => {
               const on = s.basemap === key;
               return (
-                <button key={key} onClick={() => setBasemap(key)} style={{ display: 'flex', alignItems: 'center', gap: 5, height: 28, padding: '0 12px', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', background: on ? 'var(--ant-primary)' : 'transparent', color: on ? '#fff' : 'var(--ant-text-secondary)' }}>
+                <button key={key} onClick={() => setBasemap(key)} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 28, padding: '0 12px', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', background: on ? 'var(--ant-primary)' : 'transparent', color: on ? '#fff' : 'var(--ant-text-secondary)' }}>
                   <Icon name={icon} size={14} />{label}
                 </button>
               );
@@ -963,19 +963,19 @@ export default function Explorer() {
           </div>
 
           {!s.three3DActive && !timelineVisible && (
-            <button onClick={() => patch({ boundsFilter: !s.boundsFilter })} style={{ position: 'absolute', top: 12, left: 12, zIndex: 4, display: 'flex', alignItems: 'center', gap: 6, height: 34, padding: '0 12px', borderRadius: 9, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.14)', border: `1px solid ${s.boundsFilter ? 'var(--ant-primary)' : 'var(--ant-border-secondary)'}`, background: s.boundsFilter ? 'var(--ant-primary)' : 'var(--ant-bg)', color: s.boundsFilter ? '#fff' : 'var(--ant-text-secondary)' }}>
+            <button onClick={() => patch({ boundsFilter: !s.boundsFilter })} style={{ position: 'absolute', top: 12, left: 12, zIndex: 4, display: 'flex', alignItems: 'center', gap: 8, height: 34, padding: '0 12px', borderRadius: 9, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.14)', border: `1px solid ${s.boundsFilter ? 'var(--ant-primary)' : 'var(--ant-border-secondary)'}`, background: s.boundsFilter ? 'var(--ant-primary)' : 'var(--ant-bg)', color: s.boundsFilter ? '#fff' : 'var(--ant-text-secondary)' }}>
               <Icon name="IconBorderOuterOutlined" size={14} />이 지역으로 검색
             </button>
           )}
 
           {timelineVisible && (
             <div style={{ position: 'absolute', top: 56, left: 12, right: 12, zIndex: 9, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(8px)', border: '1px solid var(--ant-border-secondary)', borderRadius: 12, boxShadow: '0 4px 18px rgba(0,0,0,0.12)', padding: '10px 18px 38px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 26 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 26 }}>
                 <span style={{ display: 'flex', color: 'var(--ant-primary)' }}><Icon name="IconCalendarOutlined" size={16} /></span>
                 <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>{timelineProject}</span>
                 <span style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', whiteSpace: 'nowrap' }}>시계열 · 노드 클릭 시 지도에 실측 3D 표시</span>
                 {timelineHasCompare && (
-                  <button onClick={toggleCompare} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, height: 28, padding: '0 13px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                  <button onClick={toggleCompare} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, height: 28, padding: '0 13px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
                     <span style={{ display: 'flex', color: 'var(--ant-primary)' }}><Icon name="IconSwapRightOutlined" size={14} /></span>시점 비교
                   </button>
                 )}
@@ -1012,10 +1012,10 @@ export default function Explorer() {
           )}
 
           {s.three3DActive && !timelineVisible && (
-            <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 6, display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(15,20,28,0.82)', backdropFilter: 'blur(6px)', color: '#fff', padding: '7px 8px 7px 14px', borderRadius: 10, boxShadow: '0 6px 22px rgba(0,0,0,0.35)' }}>
+            <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 6, display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(15,20,28,0.82)', backdropFilter: 'blur(6px)', color: '#fff', padding: '7px 8px 7px 14px', borderRadius: 10, boxShadow: '0 6px 22px rgba(0,0,0,0.35)' }}>
               <span title="지도 위 3D 렌더링" style={{ width: 7, height: 7, borderRadius: '50%', background: '#4096ff', boxShadow: '0 0 8px #4096ff', cursor: 'help' }} />
               <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{s.three3DTitle}</span>
-              <button onClick={hide3D} style={{ display: 'flex', alignItems: 'center', gap: 5, height: 26, padding: '0 11px', border: 'none', borderRadius: 7, background: 'rgba(255,255,255,0.16)', color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              <button onClick={hide3D} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 26, padding: '0 11px', border: 'none', borderRadius: 7, background: 'rgba(255,255,255,0.16)', color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 <Icon name="IconCloseOutlined" size={11} />3D 렌더링 닫기
               </button>
             </div>
@@ -1034,7 +1034,7 @@ export default function Explorer() {
                     <Icon name="IconSwapRightOutlined" size={19} />
                   </div>
                 </div>
-                <button onClick={() => patch({ compareOpen: false })} style={{ position: 'absolute', top: 14, right: 14, zIndex: 5, display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 13px', border: 'none', borderRadius: 8, background: 'rgba(15,20,28,0.85)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
+                <button onClick={() => patch({ compareOpen: false })} style={{ position: 'absolute', top: 14, right: 14, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 13px', border: 'none', borderRadius: 8, background: 'rgba(15,20,28,0.85)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
                   <Icon name="IconCloseOutlined" size={13} />비교 닫기
                 </button>
                 <div style={{ position: 'absolute', top: 14, left: 14, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1058,9 +1058,9 @@ export default function Explorer() {
           {SHOW_LEGEND && (
             <div style={{ position: 'absolute', bottom: 22, left: 12, zIndex: 4, background: 'rgba(255,255,255,0.94)', backdropFilter: 'blur(4px)', borderRadius: 10, padding: '10px 12px', boxShadow: '0 2px 10px rgba(0,0,0,0.14)', border: '1px solid var(--ant-border-secondary)' }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', marginBottom: 7, textTransform: 'uppercase', letterSpacing: 0.4 }}>데이터 유형</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px 16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
                 {CATS.map((c) => (
-                  <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11.5, color: 'var(--ant-text-secondary)' }}>
+                  <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--ant-text-secondary)' }}>
                     <span style={{ width: 9, height: 9, borderRadius: '50%', background: c.color, flex: 'none', boxShadow: `0 0 0 2px ${c.color}22` }} />{c.label}
                   </div>
                 ))}
@@ -1068,7 +1068,7 @@ export default function Explorer() {
             </div>
           )}
 
-          <div style={{ position: 'absolute', bottom: 22, right: 12, zIndex: 4, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 11, padding: '5px 10px', borderRadius: 7, display: 'flex', alignItems: 'center', gap: 6, pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', bottom: 22, right: 12, zIndex: 4, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 11, padding: '5px 10px', borderRadius: 7, display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
             <span style={{ display: 'flex', opacity: 0.85 }}><Icon name="IconAimOutlined" size={12} /></span>
             마커에 올려 미리보기 · 클릭해 상세
           </div>
@@ -1080,12 +1080,12 @@ export default function Explorer() {
         const left = PANEL_WIDTH + 8;
         return (
           <div style={{ position: 'fixed', left, top: s.docHover.top, width: 252, zIndex: 40, background: 'var(--ant-bg-elevated)', border: '1px solid var(--ant-border-secondary)', borderRadius: 12, boxShadow: 'var(--ant-shadow)', padding: '12px 13px', pointerEvents: 'none' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 9 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9 }}>
               <div style={{ width: 36, height: 36, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c.color, boxShadow: `0 1px 3px ${c.color}55` }}>
                 <Icon name={c.icon} size={18} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{docHoverItem.title}</span>
                   <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 600, padding: '0 7px', borderRadius: 20, lineHeight: '16px', color: docHoverItem.status === 'published' ? 'var(--ant-success)' : 'var(--ant-warning)', background: docHoverItem.status === 'published' ? 'var(--ant-success-bg)' : 'var(--ant-warning-bg)', border: `1px solid ${docHoverItem.status === 'published' ? 'var(--ant-success-border)' : 'var(--ant-warning-border)'}` }}>
                     {docHoverItem.status === 'published' ? 'Published' : 'Draft'}
@@ -1095,7 +1095,7 @@ export default function Explorer() {
               </div>
             </div>
             <div style={{ fontSize: 11.5, color: 'var(--ant-text-secondary)', lineHeight: 1.55, borderTop: '1px solid var(--ant-border-secondary)', paddingTop: 9 }}>{docHoverItem.desc}</div>
-            <div style={{ fontSize: 10.5, color: 'var(--ant-text-tertiary)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div style={{ fontSize: 10.5, color: 'var(--ant-text-tertiary)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ display: 'flex' }}><Icon name="IconFileSearchOutlined" size={11} /></span>위치 정보 없음 · 클릭 시 상세로 이동
             </div>
           </div>
@@ -1110,7 +1110,7 @@ export default function Explorer() {
         <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(6,10,16,0.94)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', flex: 'none' }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>파노라마 {panoViewer.index + 1} / {panoViewer.images.length}</span>
-            <button onClick={closePanoViewer} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 32, padding: '0 13px', border: 'none', borderRadius: 8, background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+            <button onClick={closePanoViewer} style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 13px', border: 'none', borderRadius: 8, background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
               <Icon name="IconCloseOutlined" size={13} />닫기
             </button>
           </div>
@@ -1126,7 +1126,7 @@ export default function Explorer() {
               style={{ height: '86vh', width: 'auto', maxWidth: 'none', userSelect: 'none', pointerEvents: 'none', margin: '0 auto', display: 'block' }}
             />
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18, padding: '12px 0 6px', flex: 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 20, padding: '12px 0 6px', flex: 'none' }}>
             <button onClick={() => panoViewerStep(-1)} title="이전 사진" style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
             <span style={{ color: '#fff', fontSize: 12, fontWeight: 600, minWidth: 56, textAlign: 'center' }}>{panoViewer.index + 1} / {panoViewer.images.length}</span>
             <button onClick={() => panoViewerStep(1)} title="다음 사진" style={{ width: 40, height: 40, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
