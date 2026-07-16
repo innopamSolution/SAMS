@@ -224,8 +224,11 @@ export default function Explorer() {
   // several scans of the same building). Left as-is, MapLibre draws them as
   // one indistinguishable dot even at max zoom — spread exact duplicates a
   // few meters apart in a small circle so each data-type color stays visible
-  // once zoomed in, without touching the item's real lng/lat used elsewhere
-  // (popups, flyTo, 3D anchoring all still use the true coordinates).
+  // once zoomed in. The jittered position each item actually renders at is
+  // recorded in markerPosRef so popups/flyTo can point at the real dot
+  // instead of the pre-jitter coordinate (3D anchoring still uses the true
+  // it.lng/it.lat elsewhere, since that's real-world accurate data, not a
+  // marker-declutter hack).
   const pushMapData = (geo) => {
     const src = mapRef.current && mapRef.current.getSource('assets');
     if (!src) return;
@@ -237,6 +240,7 @@ export default function Explorer() {
     });
     const SPREAD_M = 6;
     const features = [];
+    const positions = {};
     groups.forEach((items) => {
       const n = items.length;
       const mPerDegLat = 111320;
@@ -248,6 +252,7 @@ export default function Explorer() {
           lng += (SPREAD_M * Math.cos(angle)) / mPerDegLng;
           lat += (SPREAD_M * Math.sin(angle)) / mPerDegLat;
         }
+        positions[i.id] = [lng, lat];
         features.push({
           type: 'Feature', id: i.id,
           geometry: { type: 'Point', coordinates: [lng, lat] },
@@ -255,8 +260,14 @@ export default function Explorer() {
         });
       });
     });
+    markerPosRef.current = positions;
     src.setData({ type: 'FeatureCollection', features });
   };
+
+  // The lngLat an item's marker dot is actually rendered at right now
+  // (post-jitter). Falls back to the item's true coordinates before the
+  // first pushMapData call.
+  const markerLngLat = (it) => markerPosRef.current[it.id] || [it.lng, it.lat];
 
   const showHoverCard = (it) => {
     const map = mapRef.current;
