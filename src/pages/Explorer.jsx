@@ -281,7 +281,7 @@ export default function Explorer() {
         <div style="font-size:12px;font-weight:700;color:var(--ant-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.title}</div>
       </div></div>`;
     const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 16, maxWidth: '170px', anchor: 'bottom' })
-      .setLngLat([it.lng, it.lat]).setHTML(html).addTo(map);
+      .setLngLat(markerLngLat(it)).setHTML(html).addTo(map);
     hoverPopupRef.current = popup;
     startTurntables(popup);
   };
