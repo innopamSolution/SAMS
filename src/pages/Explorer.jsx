@@ -859,7 +859,7 @@ export default function Explorer() {
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         {/* Left panel */}
         <aside style={{ width: PANEL_WIDTH, flex: 'none', background: 'var(--ant-bg)', borderRight: '1px solid var(--ant-border-secondary)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', backgroundColor: '#EBECEF' }}>
+          <div style={{ padding: '14px 16px 12px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: 'linear-gradient(120deg, #F5EEF4 0%, #EEF1EF 50%, #EAF3F1 100%)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <div style={{ fontSize: 11, color: 'var(--ant-text-secondary)', marginBottom: 5, fontWeight: 700 }}>상태</div>
