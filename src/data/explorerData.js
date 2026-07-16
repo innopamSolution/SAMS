@@ -1,3 +1,9 @@
+// Static asset paths must be resolved against Vite's configured base path
+// (e.g. '/SAMS/' when deployed as a GitHub Pages project site) rather than
+// hardcoded as root-absolute — otherwise fetch()/<img> requests 404 once the
+// app isn't served from the domain root.
+const asset = (path) => import.meta.env.BASE_URL + path.replace(/^\//, '');
+
 export const CATS = [
   { key: 'pointcloud', label: '포인트클라우드', color: '#ed4046', icon: 'IconCatPointCloud' },
   { key: 'model3d', label: '3D 모델', color: '#8856dc', icon: 'IconCatModel3D' },
