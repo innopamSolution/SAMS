@@ -921,13 +921,13 @@ export default function Explorer() {
               const c = CAT_MAP[it.cat];
               const isActive = s.activeId === it.id;
               const isHover = s.hoveredId === it.id;
-              let rowBg = 'transparent', rowBorder = '1px solid transparent';
-              if (isActive) { rowBg = 'var(--ant-primary-bg)'; rowBorder = '1px solid var(--ant-primary-border)'; }
-              else if (isHover) { rowBg = 'var(--ant-fill-quaternary)'; rowBorder = '1px solid var(--ant-border-secondary)'; }
+              let rowBg = 'transparent';
+              if (isActive) { rowBg = 'var(--ant-primary-bg)'; }
+              else if (isHover) { rowBg = 'var(--ant-fill-quaternary)'; }
               const noGeo = it.lat == null;
               return (
                 <div key={it.id} onMouseEnter={(e) => onItemEnter(it, e)} onMouseLeave={() => onItemLeave(it)} onClick={() => onItemClick(it)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 10px', borderRadius: 9, cursor: 'pointer', background: rowBg, border: rowBorder, marginBottom: 8 }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 10px', borderRadius: 9, cursor: 'pointer', background: rowBg, marginBottom: 8 }}>
                   <div style={{ width: 29, height: 29, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c.color, boxShadow: `0 1px 3px ${c.color}55` }}>
                     <Icon name={c.icon} size={15} />
                   </div>
