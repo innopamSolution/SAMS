@@ -88,9 +88,9 @@ function mchip(active) {
   return {
     display: 'inline-flex', alignItems: 'center', height: 27, padding: '0 12px', borderRadius: 20,
     fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500, transition: 'all .15s',
-    border: active ? '1px solid var(--ant-primary)' : '1px solid transparent',
-    background: active ? 'var(--ant-primary-bg)' : 'var(--ant-bg)',
-    color: active ? 'var(--ant-primary)' : 'var(--ant-text-secondary)',
+    border: active ? '1px solid var(--ant-text-heading)' : '1px solid transparent',
+    background: active ? 'var(--ant-text-heading)' : 'var(--ant-bg)',
+    color: active ? '#fff' : 'var(--ant-text-secondary)',
   };
 }
 
