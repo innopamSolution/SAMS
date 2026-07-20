@@ -191,6 +191,19 @@ export default function Explorer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panoViewer]);
 
+  // Full-screen video lightbox — the popup thumbnail only shows a short,
+  // muted, looping preview; this is where the full clip actually plays.
+  const [videoViewer, setVideoViewer] = useState(null);
+  const openVideoViewer = (it) => setVideoViewer({ url: it.videoUrl, title: it.title });
+  const closeVideoViewer = () => setVideoViewer(null);
+
+  useEffect(() => {
+    if (!videoViewer) return;
+    const onKey = (e) => { if (e.key === 'Escape') closeVideoViewer(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [videoViewer]);
+
   const mapElRef = useRef(null);
   const mapRef = useRef(null);
   const hoverPopupRef = useRef(null);
