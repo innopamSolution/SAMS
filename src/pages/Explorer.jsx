@@ -404,6 +404,8 @@ export default function Explorer() {
     const btn3D = can3D ? `<button data-act="show3d" data-tip="지도에서 3D 렌더링" aria-label="지도에서 3D 렌더링" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-primary);background:var(--ant-primary-bg);color:var(--ant-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;">${CUBE_SVG}</button>` : '';
     const canPanoLarge = it.cat === 'pano' && it.panoImages && it.panoImages.length > 0;
     const btnPanoLargeHtml = canPanoLarge ? `<button data-act="pano-large" data-tip="크게 보기" aria-label="크게 보기" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-primary);background:var(--ant-primary-bg);color:var(--ant-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;">${EXPAND_SVG}</button>` : '';
+    const canVideoLarge = it.cat === 'video' && !!it.videoUrl;
+    const btnVideoLargeHtml = canVideoLarge ? `<button data-act="video-large" data-tip="영상재생하기" aria-label="영상재생하기" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-primary);background:var(--ant-primary-bg);color:var(--ant-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;">${PLAY_SVG}</button>` : '';
     const html = `<div style="width:236px;font-family:var(--ant-font-sans);">
       ${thumbHtml(it, CAT_MAP, true)}
       <div style="padding:10px 12px 12px;">
