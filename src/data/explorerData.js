@@ -30,7 +30,7 @@ export const ITEMS = [
   { id: 'e4', title: '현장 실측 보고서', cat: 'document', date: '2025-01-20', size: 'PDF · 42쪽', extra: '', status: 'published', epsg: '—', site: '성수동, 서울', project: 'K-Seongsu Project', lng: null, lat: null, projectLng: PROJECT_LOC.lng, projectLat: PROJECT_LOC.lat, desc: '스캔 · 모델링 결과 종합 정리' },
   { id: 'e5', title: 'HQ 매뉴얼', cat: 'model3d', date: '2024-09-06', size: '18.5MB', extra: '734.9K vertex', status: 'published', epsg: '—', site: '성수동, 서울', project: 'K-Seongsu Project', lng: PROJECT_LOC.lng, lat: PROJECT_LOC.lat, desc: 'Rhinoceros 8 · COLLADA 설계 모델 · 정점 컬러(텍스처 없음)', meshUrl: asset('/data/k-hq-model.bin') },
   { id: 'e6', title: '삼양비즈니스폼 3D', cat: 'model3d', date: '2026-07-14', size: '14.9MB', extra: '568.7K vertex', status: 'published', epsg: '—', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.0574941, lat: 37.5397025, desc: 'Cesium 3D Tiles · 텍스처 베이크 정점 컬러', meshUrl: asset('/data/samyang-mesh.bin') },
-  { id: 'e7', title: '현대테라스타워 드론 영상', cat: 'video', date: '2025-03-18', size: '28.1MB', extra: '0:24', status: 'published', epsg: '5186', site: '성수동, 서울', project: '', lng: 127.053644, lat: 37.543983, desc: 'DJI 드론 촬영 · H.264 MP4 · 3840x2160 → 1920x1080 웹 최적화', videoUrl: asset('/uploads/video/hyundai-terrace-drone.mp4') },
+  { id: 'e7', title: '현대테라스타워 드론 영상', cat: 'video', date: '2025-03-18', size: '28.1MB', extra: '0:24', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.053644, lat: 37.543983, desc: 'DJI 드론 촬영 · H.264 MP4 · 3840x2160 → 1920x1080 웹 최적화', videoUrl: asset('/uploads/video/hyundai-terrace-drone.mp4') },
 ];
 
 export const PROJECTS = ['프로젝트 선택', 'K-Seongsu Project'];
