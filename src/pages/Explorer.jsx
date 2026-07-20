@@ -1131,7 +1131,7 @@ export default function Explorer() {
       {panoViewer && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(6,10,16,0.94)', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', flex: 'none' }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>파노라마 {panoViewer.index + 1} / {panoViewer.images.length}</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{panoViewer.label} {panoViewer.index + 1} / {panoViewer.images.length}</span>
             <button onClick={closePanoViewer} style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 13px', border: 'none', borderRadius: 8, background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
               <Icon name="IconCloseOutlined" size={13} />닫기
             </button>
