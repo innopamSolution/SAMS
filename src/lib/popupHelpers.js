@@ -58,7 +58,7 @@ export function wireGallery(root, it) {
   if (!frame) return;
   const badge = root.querySelector('.sams-gbadge');
   const isReal = frame.classList.contains('sams-gframe-real');
-  const images = isReal ? (it.panoImages || []) : null;
+  const images = isReal ? (it.panoImages || it.images || []) : null;
   const total = isReal ? images.length : (parseInt(it.extra, 10) || 24);
   const N = isReal ? images.length : Math.min(total, 6);
   let idx = 0;
