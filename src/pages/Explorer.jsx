@@ -443,6 +443,8 @@ export default function Explorer() {
         openPanoViewer(it.panoImages, idx);
       });
     }
+    const btnVideoLarge = rootEl.querySelector('[data-act="video-large"]');
+    if (btnVideoLarge) btnVideoLarge.addEventListener('click', () => openVideoViewer(it));
     popup.on('close', () => {
       if (stateRef.current.activeId) setFS(stateRef.current.activeId, 'active', false);
       patch({ activeId: null });
