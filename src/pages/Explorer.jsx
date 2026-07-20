@@ -440,7 +440,7 @@ export default function Explorer() {
       btnPanoLarge.addEventListener('click', () => {
         const frame = rootEl.querySelector('.sams-gframe-real');
         const idx = frame ? parseInt(frame.dataset.idx, 10) || 0 : 0;
-        openPanoViewer(it.panoImages, idx);
+        openPanoViewer(it.panoImages || it.images, idx, it.panoImages ? '파노라마' : '이미지');
       });
     }
     const btnVideoLarge = rootEl.querySelector('[data-act="video-large"]');
