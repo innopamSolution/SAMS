@@ -1156,6 +1156,25 @@ export default function Explorer() {
           <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.55)', fontSize: 11, padding: '0 0 14px', flex: 'none' }}>드래그해서 좌우로 이동 · ← → 키로 다음 사진</div>
         </div>
       )}
+
+      {videoViewer && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(6,10,16,0.94)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', flex: 'none' }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: '#fff' }}>{videoViewer.title}</span>
+            <button onClick={closeVideoViewer} style={{ display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 13px', border: 'none', borderRadius: 8, background: 'rgba(255,255,255,0.14)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+              <Icon name="IconCloseOutlined" size={13} />닫기
+            </button>
+          </div>
+          <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <video
+              src={videoViewer.url}
+              controls
+              autoPlay
+              style={{ maxHeight: '86vh', maxWidth: '92vw', display: 'block', margin: '0 auto', background: '#000' }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
