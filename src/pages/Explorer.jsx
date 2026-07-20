@@ -156,7 +156,7 @@ export default function Explorer() {
   // since drag-to-pan interaction doesn't need to flow through it.
   const [panoViewer, setPanoViewer] = useState(null);
   const panoScrollRef = useRef(null);
-  const openPanoViewer = (images, index) => setPanoViewer({ images, index });
+  const openPanoViewer = (images, index, label) => setPanoViewer({ images, index, label: label || '파노라마' });
   const closePanoViewer = () => setPanoViewer(null);
   const panoViewerStep = (delta) => setPanoViewer((v) => (v ? { ...v, index: (v.index + delta + v.images.length) % v.images.length } : v));
   const beginPanoDrag = (e) => {
