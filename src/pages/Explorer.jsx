@@ -567,6 +567,18 @@ export default function Explorer() {
         openPanoViewer(it.panoImages, 0);
         return;
       }
+      if (it.cat === 'image' && it.images && it.images.length) {
+        patch({ selectedNodeId: nd.id });
+        if (map && it.lat != null) map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 700 });
+        openPanoViewer(it.images, 0, '이미지');
+        return;
+      }
+      if (it.cat === 'video' && it.videoUrl) {
+        patch({ selectedNodeId: nd.id });
+        if (map && it.lat != null) map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 700 });
+        openVideoViewer(it);
+        return;
+      }
       if ((it.meshUrl || it.pointCloudUrl) && it.lat != null) {
         if (state.three3DActive && state.selectedNodeId === nd.id) {
           hide3D();
