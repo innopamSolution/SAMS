@@ -856,7 +856,7 @@ export default function Explorer() {
               })}
             </div>
             {hasFilters && <button onClick={resetFilters} style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>필터 초기화</button>}
-            {s.groupBy === 'time' && hasCompare && (
+            {hasCompare && (
               <button onClick={toggleCompare} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, height: 28, padding: '0 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${s.compareOpen ? 'var(--ant-primary)' : 'var(--ant-border)'}`, background: s.compareOpen ? 'var(--ant-primary)' : 'var(--ant-bg)', color: s.compareOpen ? '#fff' : 'var(--ant-text-secondary)' }}>
                 <Icon name="IconSwapRightOutlined" size={14} />시점 비교
               </button>
@@ -871,7 +871,7 @@ export default function Explorer() {
                   <span style={{ display: 'flex', alignItems: 'center', color: 'var(--ant-primary)' }}>
                     <Icon name={g.icon} size={14} />
                   </span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--ant-text)' }}>{g.label}</span>
+                  <span style={{ fontSize: 13, color: 'var(--ant-primary)' }}>{g.label}</span>
                 </div>
                 <div style={{ marginLeft: 12, paddingLeft: 8, borderLeft: '2px solid var(--ant-border-secondary)' }}>
                   {g.items.map((it) => {
