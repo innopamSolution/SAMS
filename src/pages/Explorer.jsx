@@ -883,7 +883,7 @@ export default function Explorer() {
                 <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.project}</span>
                 <button onClick={() => showToast('콜렉션 관리 페이지 준비 중')} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, height: 24, padding: '0 12px', borderRadius: 12, border: '1px solid var(--ant-primary)', background: 'var(--ant-bg)', color: 'var(--ant-primary)', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
                   Edit
-                  <Icon name="IconSwapRightOutlined" size={12} />
+                  <span style={{ display: 'flex', transform: 'rotate(-90deg)' }}><Icon name="IconDownOutlined" size={10} /></span>
                 </button>
               </div>
               {COLLECTIONS[s.project]?.desc && (
