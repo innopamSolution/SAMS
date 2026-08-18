@@ -878,7 +878,7 @@ export default function Explorer() {
           </div>
 
           {s.project !== '전체 프로젝트' && (
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: 'var(--ant-bg)' }}>
+            <div style={{ padding: '20px 16px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: 'var(--ant-bg)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.project}</span>
                 <button onClick={() => showToast('콜렉션 편집 준비 중')} style={{ flex: 'none', height: 24, padding: '0 12px', borderRadius: 12, border: '1px solid var(--ant-primary)', background: 'var(--ant-bg)', color: 'var(--ant-primary)', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
