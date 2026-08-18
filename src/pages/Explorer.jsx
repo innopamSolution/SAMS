@@ -798,33 +798,26 @@ export default function Explorer() {
         <aside style={{ width: PANEL_WIDTH, flex: 'none', background: 'var(--ant-bg)', borderRight: '1px solid var(--ant-border-secondary)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{ padding: '16px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: 'linear-gradient(120deg, #F1F2F4 0%, #EBECEF 50%, #E4E5E8 100%)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <span style={{ position: 'absolute', left: 8, display: 'flex', color: 'var(--ant-text-tertiary)', pointerEvents: 'none' }}>
-                  <Icon name="IconSearchOutlined" size={14} />
-                </span>
-                <input
-                  value={s.keyword}
-                  onChange={(e) => patch({ keyword: e.target.value })}
-                  placeholder="이름 · 제목 · 키워드 검색"
-                  style={{ width: '100%', height: 32, padding: '0 28px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--ant-text)' }}
-                />
-                {!!s.keyword && (
-                  <span onClick={() => patch({ keyword: '' })} style={{ position: 'absolute', right: 8, color: 'var(--ant-text-tertiary)', display: 'flex', cursor: 'pointer' }}>
-                    <Icon name="IconCloseCircleOutlined" size={14} />
-                  </span>
-                )}
-              </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)' }}>프로젝트</span>
-                <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-                  <select value={s.project} onChange={(e) => selectProject(e.target.value)} style={{ width: '100%', height: 28, border: '1px solid var(--ant-border)', borderRadius: 20, padding: '0 32px 0 12px', fontSize: 12, fontWeight: 500, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'var(--ant-bg)', appearance: 'none', cursor: 'pointer', outline: 'none' }}>
-                    {PROJECTS.map((p) => <option key={p} value={p}>{p === '전체 프로젝트' ? '전체' : p}</option>)}
-                  </select>
-                  <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--ant-text-tertiary)', display: 'flex' }}><Icon name="IconDownOutlined" size={11} /></span>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                  <span style={{ position: 'absolute', left: 8, display: 'flex', color: 'var(--ant-text-tertiary)', pointerEvents: 'none' }}>
+                    <Icon name="IconSearchOutlined" size={14} />
+                  </span>
+                  <input
+                    value={s.keyword}
+                    onChange={(e) => patch({ keyword: e.target.value })}
+                    placeholder="이름 · 제목 · 키워드 검색"
+                    style={{ width: '100%', height: 32, padding: '0 28px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--ant-text)' }}
+                  />
+                  {!!s.keyword && (
+                    <span onClick={() => patch({ keyword: '' })} style={{ position: 'absolute', right: 8, color: 'var(--ant-text-tertiary)', display: 'flex', cursor: 'pointer' }}>
+                      <Icon name="IconCloseCircleOutlined" size={14} />
+                    </span>
+                  )}
                 </div>
-                <button onClick={() => patch({ advOpen: !s.advOpen })} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, height: 28, padding: '0 8px', border: 'none', borderRadius: 8, background: 'transparent', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', color: 'var(--ant-text-secondary)' }}>
+                <button onClick={() => patch({ advOpen: !s.advOpen })} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, height: 32, padding: '0 8px', border: 'none', borderRadius: 8, background: 'transparent', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', color: 'var(--ant-text-secondary)' }}>
                   세부 검색
-                  {(Object.values(s.statusSel).some(Boolean) || Object.values(s.yearSel).some(Boolean)) && !s.advOpen && (
+                  {(s.project !== '전체 프로젝트' || Object.values(s.statusSel).some(Boolean) || Object.values(s.yearSel).some(Boolean)) && !s.advOpen && (
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ant-primary)' }} />
                   )}
                   <span style={{ display: 'flex', transform: s.advOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>
@@ -832,6 +825,17 @@ export default function Explorer() {
                   </span>
                 </button>
               </div>
+              {s.advOpen && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)' }}>콜렉션</span>
+                  <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                    <select value={s.project} onChange={(e) => selectProject(e.target.value)} style={{ width: '100%', height: 28, border: '1px solid var(--ant-border)', borderRadius: 20, padding: '0 32px 0 12px', fontSize: 12, fontWeight: 500, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'var(--ant-bg)', appearance: 'none', cursor: 'pointer', outline: 'none' }}>
+                      {PROJECTS.map((p) => <option key={p} value={p}>{p === '전체 프로젝트' ? '전체' : p}</option>)}
+                    </select>
+                    <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--ant-text-tertiary)', display: 'flex' }}><Icon name="IconDownOutlined" size={11} /></span>
+                  </div>
+                </div>
+              )}
               {s.advOpen && (
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--ant-text-secondary)', marginBottom: 5, fontWeight: 700 }}>상태</div>
