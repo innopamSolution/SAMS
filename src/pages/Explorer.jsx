@@ -886,7 +886,7 @@ export default function Explorer() {
                 </button>
               </div>
               {COLLECTIONS[s.project]?.desc && (
-                <div style={{ marginTop: 4, fontSize: 11.5, lineHeight: 1.5, color: 'var(--ant-text-secondary)' }}>{COLLECTIONS[s.project].desc}</div>
+                <div style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.5, color: 'var(--ant-text-secondary)' }}>{COLLECTIONS[s.project].desc}</div>
               )}
             </div>
           )}
