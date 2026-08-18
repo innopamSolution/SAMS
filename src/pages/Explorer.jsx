@@ -25,6 +25,7 @@ const initialState = {
   compareB: 't5',
   swipeX: 50,
   groupBy: 'time',
+  advOpen: false,
   statusSel: {},
   yearSel: {},
   project: '전체 프로젝트',
