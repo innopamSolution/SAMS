@@ -908,7 +908,7 @@ export default function Explorer() {
             {hasFilters && <button onClick={resetFilters} style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>필터 초기화</button>}
             {hasCompare && (
               <button onClick={toggleCompare} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, height: 28, padding: '0 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${s.compareOpen ? 'var(--ant-primary)' : 'var(--ant-border)'}`, background: s.compareOpen ? 'var(--ant-primary)' : 'var(--ant-bg)', color: s.compareOpen ? '#fff' : 'var(--ant-text-secondary)' }}>
-                <Icon name="IconSwapRightOutlined" size={14} />시점 비교
+                시점 비교
               </button>
             )}
           </div>
