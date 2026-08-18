@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import Icon from '../components/Icon';
 import {
-  CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, TIMELINE, TL_CATS, PROJECT_LOC, structLngLat,
+  CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, PROJECT_LOC, structLngLat, footprintRing,
 } from '../data/explorerData';
 import { buildMainStyle, buildCompareStyle, addAssetLayers } from '../lib/mapStyles';
 import { add3DLayer, addRealPointCloudLayer, addRealMeshLayer } from '../lib/three3d';
@@ -20,16 +20,14 @@ const YEARS = ['2024', '2023', '2022', '2021'];
 const initialState = {
   keyword: '',
   activeCats: {},
-  selectedNodeId: null,
-  hoveredNodeId: null,
   compareOpen: false,
   compareA: 't1',
   compareB: 't5',
   swipeX: 50,
-  timelineOn: false,
+  groupBy: 'time',
   statusSel: {},
   yearSel: {},
-  project: '프로젝트 선택',
+  project: '전체 프로젝트',
   epsg: '좌표계 전체',
   boundsFilter: false,
   mapBounds: null,
@@ -51,7 +49,7 @@ function computeFiltered(s) {
     if (cats.length && !cats.includes(i.cat)) return false;
     if (ss.length && !ss.includes(i.status)) return false;
     if (ys.length && !ys.some((y) => i.date.startsWith(y))) return false;
-    if (s.project !== '프로젝트 선택' && i.project !== s.project) return false;
+    if (s.project !== '전체 프로젝트' && i.project !== s.project) return false;
     if (s.epsg !== '좌표계 전체' && 'EPSG:' + i.epsg !== s.epsg) return false;
     if (kw) {
       const hay = (i.title + ' ' + i.site + ' ' + i.project + ' ' + i.desc).toLowerCase();
@@ -77,7 +75,7 @@ function computeCatCounts(s) {
   ITEMS.forEach((i) => {
     if (ss.length && !ss.includes(i.status)) return;
     if (ys.length && !ys.some((y) => i.date.startsWith(y))) return;
-    if (s.project !== '프로젝트 선택' && i.project !== s.project) return;
+    if (s.project !== '전체 프로젝트' && i.project !== s.project) return;
     if (kw && !(i.title + ' ' + i.site + ' ' + i.project + ' ' + i.desc).toLowerCase().includes(kw)) return;
     if (counts[i.cat] != null) counts[i.cat]++;
   });
@@ -96,45 +94,18 @@ function mchip(active) {
 
 function itemById(id) { return ITEMS.find((i) => i.id === id); }
 
-// Every project's timeline is derived from its own geo-tagged ITEMS, sorted
-// by date. TIMELINE is kept as a legacy hook for a hand-authored pc/compare
-// dataset (currently empty) — real projects don't need it.
 function itemToTimelineNode(it) {
   return { id: it.id, date: it.date.replace(/-/g, '.'), label: it.title, cat: 'actual', struct: null, item: it };
 }
 
-function projectTimeline(project) {
-  const itemNodes = ITEMS
-    .filter((i) => i.project === project && i.lat != null)
+// 시점 비교 candidates: any geo-tagged item with real 3D scan data (point
+// cloud / mesh), regardless of which project it belongs to.
+function comparableNodes() {
+  return ITEMS
+    .filter((i) => i.lat != null && (i.pointCloudUrl || i.meshUrl))
     .slice()
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
     .map(itemToTimelineNode);
-  if (itemNodes.length) return itemNodes;
-  return project === PROJECT_LOC.project ? TIMELINE : [];
-}
-
-// Same shape as projectTimeline, but built only from items that survive the
-// active list filters — so the timeline reflects what's actually visible in
-// the results list rather than every geo-tagged item in the project.
-function filteredProjectTimeline(filteredItems, project) {
-  const itemNodes = filteredItems
-    .filter((i) => i.project === project && i.lat != null)
-    .slice()
-    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
-    .map(itemToTimelineNode);
-  if (itemNodes.length) return itemNodes;
-  return project === PROJECT_LOC.project ? TIMELINE : [];
-}
-
-// A node is "comparable" (can be rendered as a 3D side in 시점 비교) if it
-// either carries the legacy procedural pc stats, or points at real scan
-// data (point cloud / mesh) via its backing item.
-function isComparableNode(n) {
-  return !!(n.pc || (n.item && (n.item.pointCloudUrl || n.item.meshUrl)));
-}
-
-function comparableNodesFor(project) {
-  return projectTimeline(project).filter(isComparableNode);
 }
 
 function cmpNodeLngLat(node) {
@@ -215,7 +186,6 @@ export default function Explorer() {
   const toastTimerRef = useRef(null);
   const navTopRef = useRef(null);
   const nav3DRef = useRef(null);
-  const tlPrevBaseRef = useRef(null);
   const prev3DRef = useRef(null);
   const cmpMapARef = useRef(null);
   const cmpMapBRef = useRef(null);
@@ -299,17 +269,6 @@ export default function Explorer() {
     startTurntables(popup);
   };
 
-  // In timeline mode the node dots on the panel are the only way to pick a
-  // point in time, so the map's own clusters/markers are just visual noise —
-  // hide them for as long as the timeline stays on.
-  const updateClusterVisibility = () => {
-    const map = mapRef.current;
-    if (!map || !layersReadyRef.current) return;
-    const hide = stateRef.current.timelineOn && stateRef.current.project !== '프로젝트 선택';
-    ['clusters', 'cluster-count', 'pt-halo', 'unclustered'].forEach((l) => {
-      try { map.setLayoutProperty(l, 'visibility', hide ? 'none' : 'visible'); } catch { /* noop */ }
-    });
-  };
 
   const hide3D = () => {
     const map = mapRef.current;
@@ -319,7 +278,6 @@ export default function Explorer() {
     }
     patch({ three3DActive: false, three3DTitle: '' });
     setBasemap('light');
-    updateClusterVisibility();
     // If this 3D render was opened from a detail popup's "3D 보기" button,
     // bring that same popup back up in the state it was left in.
     if (popupReopenRef.current) {
@@ -550,72 +508,7 @@ export default function Explorer() {
   const toggleCat = (k) => patch((s) => ({ activeCats: { ...s.activeCats, [k]: !s.activeCats[k] } }));
   const toggleStatusSel = (k) => patch((s) => ({ statusSel: { ...s.statusSel, [k]: !s.statusSel[k] } }));
   const toggleYearSel = (k) => patch((s) => ({ yearSel: { ...s.yearSel, [k]: !s.yearSel[k] } }));
-  const resetFilters = () => patch({ keyword: '', activeCats: {}, statusSel: {}, yearSel: {}, project: '프로젝트 선택', epsg: '좌표계 전체', boundsFilter: false });
-
-  const onSelectNode = (nd) => {
-    if (nd.item) {
-      // Timeline nodes are a faster path than the list/marker entry points:
-      // point cloud & mesh items render straight into 3D (re-clicking the
-      // same node toggles it off), panorama items jump straight to the large
-      // viewer — no popup detour in between. The timeline panel itself stays
-      // put through all of this (its visibility no longer depends on 3D state).
-      const it = nd.item;
-      const map = mapRef.current;
-      if (it.cat === 'pano' && it.panoImages && it.panoImages.length) {
-        patch({ selectedNodeId: nd.id });
-        if (map && it.lat != null) map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 700 });
-        openPanoViewer(it.panoImages, 0);
-        return;
-      }
-      if (it.cat === 'image' && it.images && it.images.length) {
-        patch({ selectedNodeId: nd.id });
-        if (map && it.lat != null) map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 700 });
-        openPanoViewer(it.images, 0, '이미지');
-        return;
-      }
-      if (it.cat === 'video' && it.videoUrl) {
-        patch({ selectedNodeId: nd.id });
-        if (map && it.lat != null) map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 700 });
-        openVideoViewer(it);
-        return;
-      }
-      if ((it.meshUrl || it.pointCloudUrl) && it.lat != null) {
-        if (state.three3DActive && state.selectedNodeId === nd.id) {
-          hide3D();
-          patch({ selectedNodeId: null });
-          return;
-        }
-        patch({ selectedNodeId: nd.id });
-        show3DOnMap(it);
-        return;
-      }
-      patch({ selectedNodeId: nd.id });
-      if (map) map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 700 });
-      openDetail(it);
-      return;
-    }
-    patch({ selectedNodeId: nd.id });
-    const ll = structLngLat(nd.struct);
-    if (nd.pc) {
-      render3DAt(ll, nd.date + ' · ' + nd.label, nd.pc.color, Math.round(nd.pc.count * 1.1 + 2600), nd.pc.H * 7);
-    } else {
-      const map = mapRef.current;
-      if (map) map.flyTo({ center: ll, zoom: Math.max(map.getZoom(), 16.5), duration: 700 });
-      showToast(nd.date + ' · ' + nd.label);
-    }
-  };
-
-  const toggleTimeline = () => {
-    const on = !stateRef.current.timelineOn;
-    patch({ timelineOn: on });
-    if (on) { tlPrevBaseRef.current = stateRef.current.basemap; setBasemap('3d'); }
-    else {
-      if (tlPrevBaseRef.current) { setBasemap(tlPrevBaseRef.current); tlPrevBaseRef.current = null; }
-      const map = mapRef.current;
-      if (map && map.getLayer('sams-3d')) map.removeLayer('sams-3d');
-      patch({ selectedNodeId: null, three3DActive: false, three3DTitle: '' });
-    }
-  };
+  const resetFilters = () => patch({ keyword: '', activeCats: {}, statusSel: {}, yearSel: {}, project: '전체 프로젝트', epsg: '좌표계 전체', boundsFilter: false });
 
   const toggleCompare = () => patch((s) => ({ compareOpen: !s.compareOpen }));
 
@@ -635,22 +528,16 @@ export default function Explorer() {
     window.addEventListener('pointerup', up);
   };
 
-  const onProjectChange = (e) => {
-    const v = e.target.value;
+  const selectProject = (v) => {
     const prevProject = stateRef.current.project;
     const p = { project: v };
     if (v !== prevProject) {
-      // Switching projects invalidates any timeline node/compare selection
-      // and 3D render tied to the previous project's own timeline dataset.
-      p.compareOpen = false;
-      p.selectedNodeId = null;
+      // Switching projects tears down any 3D render tied to the previous
+      // project's items. (시점 비교 is project-independent now, so it stays
+      // open across project switches.)
       if (stateRef.current.three3DActive) p.three3DActive = false;
       const map = mapRef.current;
       if (map && map.getLayer('sams-3d')) map.removeLayer('sams-3d');
-      if (v === '프로젝트 선택' && stateRef.current.timelineOn) {
-        p.timelineOn = false;
-        if (tlPrevBaseRef.current) { setBasemap(tlPrevBaseRef.current); tlPrevBaseRef.current = null; }
-      }
     }
     patch(p);
   };
@@ -686,7 +573,6 @@ export default function Explorer() {
       const geo = computeFiltered(stateRef.current).filter((i) => i.lat != null);
       lastSigRef.current = geo.map((i) => i.id).join(',');
       pushMapData(geo);
-      updateClusterVisibility();
     });
 
     map.on('mouseenter', 'unclustered', (e) => { map.getCanvas().style.cursor = 'pointer'; onMarkerEnter(e.features[0].id); });
@@ -727,8 +613,8 @@ export default function Explorer() {
   }, [state.keyword, state.activeCats, state.statusSel, state.yearSel, state.project, state.epsg, state.boundsFilter, state.mapBounds]);
 
   // ── Compare mode maps ──────────────────────────────────────────
-  function cmpNode(id, project, fallback) {
-    const nodes = comparableNodesFor(project);
+  function cmpNode(id, fallback) {
+    const nodes = comparableNodes();
     if (!nodes.length) return null;
     return nodes.find((n) => n.id === id) || (fallback === 'last' ? nodes[nodes.length - 1] : nodes[0]);
   }
@@ -775,9 +661,8 @@ export default function Explorer() {
     if (!document.getElementById('cmp-map-a')) return;
     const ok = await ensureThree();
     if (!ok) { showToast('3D 엔진을 불러오지 못했습니다'); return; }
-    const project = stateRef.current.project;
-    const nodeA = cmpNode(stateRef.current.compareA, project, 'first');
-    const nodeB = cmpNode(stateRef.current.compareB, project, 'last');
+    const nodeA = cmpNode(stateRef.current.compareA, 'first');
+    const nodeB = cmpNode(stateRef.current.compareB, 'last');
     if (!nodeA || !nodeB) return;
     const centerA = cmpNodeLngLat(nodeA);
     cmpMapARef.current = makeCmpMap('cmp-map-a', nodeA, centerA);
@@ -800,15 +685,45 @@ export default function Explorer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.compareOpen, state.compareA, state.compareB]);
 
-  useEffect(() => { updateClusterVisibility(); }, [state.timelineOn, state.project]);
-
   useEffect(() => () => { clearTimeout(toastTimerRef.current); destroyCompareMaps(); }, []);
 
   // ── Derived render data ────────────────────────────────────────
   const s = state;
   const filtered = computeFiltered(s);
+  // Group results either by acquisition month (newest first) — so simultaneous
+  // multi-space campaigns read as one block — or by target space, so repeated
+  // acquisitions of the same place stack together.
+  const listGroups = (() => {
+    if (s.groupBy === 'space') {
+      const m = new Map();
+      for (const it of filtered) {
+        if (!m.has(it.space)) m.set(it.space, []);
+        m.get(it.space).push(it);
+      }
+      return [...m.entries()]
+        .map(([key, items]) => {
+          const sorted = [...items].sort((a, b) => b.date.localeCompare(a.date));
+          return { key, icon: 'IconEnvironmentOutlined', label: key, items: sorted };
+        })
+        .sort((a, b) => b.items[0].date.localeCompare(a.items[0].date));
+    }
+    const m = new Map();
+    for (const it of filtered) {
+      const key = it.date.slice(0, 7);
+      if (!m.has(key)) m.set(key, []);
+      m.get(key).push(it);
+    }
+    return [...m.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([key, items]) => ({
+        key,
+        icon: 'IconCalendarOutlined',
+        label: `${Number(key.slice(0, 4))}년 ${Number(key.slice(5, 7))}월`,
+        items,
+      }));
+  })();
   const activeCatKeys = Object.keys(s.activeCats).filter((k) => s.activeCats[k]);
-  const hasFilters = !!(s.keyword || activeCatKeys.length || Object.values(s.statusSel).some(Boolean) || Object.values(s.yearSel).some(Boolean) || s.project !== '프로젝트 선택' || s.epsg !== '좌표계 전체' || s.boundsFilter);
+  const hasFilters = !!(s.keyword || activeCatKeys.length || Object.values(s.statusSel).some(Boolean) || Object.values(s.yearSel).some(Boolean) || s.project !== '전체 프로젝트' || s.epsg !== '좌표계 전체' || s.boundsFilter);
   const catCounts = computeCatCounts(s);
 
   let boundsNotice = '';
@@ -817,13 +732,10 @@ export default function Explorer() {
     boundsNotice = '현재 지도 범위에 맞춰 필터링 중' + (outCount > 0 ? ' · 범위 밖 ' + outCount + '건 숨김' : '');
   }
 
-  const activeTimeline = filteredProjectTimeline(filtered, s.project);
-  const timelineVisible = s.timelineOn && !s.compareOpen && s.project !== '프로젝트 선택' && activeTimeline.length > 0;
-  const timelineProject = s.project !== '프로젝트 선택' ? s.project : '전체 데이터';
-  const cmpNodesAll = comparableNodesFor(s.project);
-  const timelineHasCompare = cmpNodesAll.length >= 2;
-  const cmpNodeA = cmpNode(s.compareA, s.project, 'first');
-  const cmpNodeB = cmpNode(s.compareB, s.project, 'last');
+  const cmpNodesAll = comparableNodes();
+  const hasCompare = cmpNodesAll.length >= 2;
+  const cmpNodeA = cmpNode(s.compareA, 'first');
+  const cmpNodeB = cmpNode(s.compareB, 'last');
 
   let docHoverItem = null;
   if (s.docHover) docHoverItem = itemById(s.docHover.id);
@@ -853,30 +765,6 @@ export default function Explorer() {
           <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>데이터 관리</div>
         </nav>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div className={`hsearch${s.keyword ? ' open' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <div className="hsearch-field">
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <input
-                  className="hsearch-input"
-                  value={s.keyword}
-                  onChange={(e) => patch({ keyword: e.target.value })}
-                  placeholder="이름 · 제목 · 키워드 검색"
-                />
-                {!!s.keyword && (
-                  <span onClick={() => patch({ keyword: '' })} style={{ position: 'absolute', right: 2, color: 'var(--ant-text-tertiary)', display: 'flex', cursor: 'pointer' }}>
-                    <Icon name="IconCloseCircleOutlined" size={14} />
-                  </span>
-                )}
-              </div>
-            </div>
-            <button
-              className="hsearch-btn"
-              onClick={() => document.querySelector('.hsearch-input')?.focus()}
-              title="검색"
-            >
-              <Icon name="IconSearchOutlined" size={20} />
-            </button>
-          </div>
           <button
             title="로그아웃"
             style={{ display: 'flex', alignItems: 'center', gap: 8, height: 34, padding: '0 12px', border: 'none', background: 'transparent', color: 'var(--ant-text-secondary)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', letterSpacing: 0.3, cursor: 'pointer', borderRadius: 8 }}
@@ -891,6 +779,22 @@ export default function Explorer() {
         <aside style={{ width: PANEL_WIDTH, flex: 'none', background: 'var(--ant-bg)', borderRight: '1px solid var(--ant-border-secondary)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{ padding: '16px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: 'linear-gradient(120deg, #F1F2F4 0%, #EBECEF 50%, #E4E5E8 100%)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <span style={{ position: 'absolute', left: 8, display: 'flex', color: 'var(--ant-text-tertiary)', pointerEvents: 'none' }}>
+                  <Icon name="IconSearchOutlined" size={14} />
+                </span>
+                <input
+                  value={s.keyword}
+                  onChange={(e) => patch({ keyword: e.target.value })}
+                  placeholder="이름 · 제목 · 키워드 검색"
+                  style={{ width: '100%', height: 32, padding: '0 28px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--ant-text)' }}
+                />
+                {!!s.keyword && (
+                  <span onClick={() => patch({ keyword: '' })} style={{ position: 'absolute', right: 8, color: 'var(--ant-text-tertiary)', display: 'flex', cursor: 'pointer' }}>
+                    <Icon name="IconCloseCircleOutlined" size={14} />
+                  </span>
+                )}
+              </div>
               <div>
                 <div style={{ fontSize: 11, color: 'var(--ant-text-secondary)', marginBottom: 5, fontWeight: 700 }}>상태</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -913,11 +817,14 @@ export default function Explorer() {
               </div>
             </div>
 
-            <div style={{ position: 'relative', marginTop: 12 }}>
-              <select value={s.project} onChange={onProjectChange} style={{ width: '100%', height: 34, border: '1px solid var(--ant-border)', borderRadius: 'var(--ant-radius)', padding: '0 32px 0 11px', fontSize: 13, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'var(--ant-bg)', appearance: 'none', cursor: 'pointer', outline: 'none' }}>
-                {PROJECTS.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
-              <span style={{ position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--ant-text-tertiary)', display: 'flex' }}><Icon name="IconDownOutlined" size={11} /></span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+              <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)' }}>프로젝트</span>
+              <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                <select value={s.project} onChange={(e) => selectProject(e.target.value)} style={{ width: '100%', height: 28, border: '1px solid var(--ant-border)', borderRadius: 20, padding: '0 32px 0 12px', fontSize: 12, fontWeight: 500, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'var(--ant-bg)', appearance: 'none', cursor: 'pointer', outline: 'none' }}>
+                  {PROJECTS.map((p) => <option key={p} value={p}>{p === '전체 프로젝트' ? '전체' : p}</option>)}
+                </select>
+                <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--ant-text-tertiary)', display: 'flex' }}><Icon name="IconDownOutlined" size={11} /></span>
+              </div>
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
@@ -937,47 +844,70 @@ export default function Explorer() {
 
           <div style={{ padding: '9px 16px', borderBottom: '1px solid var(--ant-border-secondary)', display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
             <span style={{ fontSize: 13, fontWeight: 700 }}>결과 {filtered.length}건</span>
-            {hasFilters && <button onClick={resetFilters} style={{ fontSize: 11, color: 'var(--ant-primary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>필터 초기화</button>}
-            {s.project !== '프로젝트 선택' && (
-              <button onClick={toggleTimeline} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, height: 28, padding: '0 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${s.timelineOn ? 'var(--ant-primary)' : 'var(--ant-border)'}`, background: s.timelineOn ? 'var(--ant-primary)' : 'var(--ant-bg)', color: s.timelineOn ? '#fff' : 'var(--ant-text-secondary)' }}>
-                <Icon name="IconCalendarOutlined" size={14} />타임라인
+            <div style={{ position: 'relative', display: 'inline-flex', height: 28, borderRadius: 14, background: 'var(--ant-fill-quaternary)', border: '1px solid var(--ant-border-secondary)', boxSizing: 'border-box' }}>
+              <div style={{ position: 'absolute', top: -1, left: s.groupBy === 'time' ? -1 : 49, width: 48, height: 28, borderRadius: 14, background: 'var(--ant-bg)', border: '1px solid var(--ant-border)', boxSizing: 'border-box', boxShadow: '0 1px 2px rgba(0,0,0,0.06)', transition: 'left .25s cubic-bezier(.4,0,.2,1)' }} />
+              {[['time', '시기'], ['space', '공간']].map(([key, label]) => {
+                const on = s.groupBy === key;
+                return (
+                  <button key={key} onClick={() => patch({ groupBy: key })} style={{ position: 'relative', zIndex: 1, width: 48, height: 26, padding: 0, fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', border: 'none', background: 'transparent', color: on ? 'var(--ant-text)' : 'var(--ant-text-tertiary)', transition: 'color .25s' }}>
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {hasFilters && <button onClick={resetFilters} style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>필터 초기화</button>}
+            {hasCompare && (
+              <button onClick={toggleCompare} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, height: 28, padding: '0 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${s.compareOpen ? 'var(--ant-primary)' : 'var(--ant-border)'}`, background: s.compareOpen ? 'var(--ant-primary)' : 'var(--ant-bg)', color: s.compareOpen ? '#fff' : 'var(--ant-text-secondary)' }}>
+                <Icon name="IconSwapRightOutlined" size={14} />시점 비교
               </button>
             )}
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px 16px' }}>
             {!!boundsNotice && <div style={{ fontSize: 11, color: 'var(--ant-warning)', background: 'var(--ant-warning-bg)', border: '1px solid var(--ant-warning-border)', borderRadius: 6, padding: '6px 9px', margin: '4px 4px 8px' }}>{boundsNotice}</div>}
-            {filtered.map((it) => {
-              const c = CAT_MAP[it.cat];
-              const isActive = s.activeId === it.id;
-              const isHover = s.hoveredId === it.id;
-              let rowBg = 'transparent';
-              if (isActive) { rowBg = '#ECEEFC'; }
-              else if (isHover) { rowBg = 'var(--ant-fill-quaternary)'; }
-              const noGeo = it.lat == null;
-              return (
-                <div key={it.id} onMouseEnter={(e) => onItemEnter(it, e)} onMouseLeave={() => onItemLeave(it)} onClick={() => onItemClick(it)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '9px 10px', borderRadius: 9, cursor: 'pointer', background: rowBg, marginBottom: 8 }}>
-                  <div style={{ width: 29, height: 29, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c.color, boxShadow: `0 1px 3px ${c.color}55` }}>
-                    <Icon name={c.icon} size={15} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
-                      <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 600, padding: '0 6px', borderRadius: 20, lineHeight: '16px', color: it.status === 'published' ? 'var(--ant-success)' : 'var(--ant-warning)', background: it.status === 'published' ? 'var(--ant-success-bg)' : 'var(--ant-warning-bg)', border: `1px solid ${it.status === 'published' ? 'var(--ant-success-border)' : 'var(--ant-warning-border)'}` }}>
-                        {it.status === 'published' ? 'Pub' : 'Draft'}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 11.5, color: 'var(--ant-text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {it.date} · {it.size}{it.extra ? ` · ${it.extra}` : ''}
-                    </div>
-                  </div>
-                  <span style={{ flex: 'none', display: 'flex', alignItems: 'center', color: noGeo ? 'var(--ant-text-quaternary)' : c.color + '88' }}>
-                    <Icon name={noGeo ? 'IconFileSearchOutlined' : 'IconEnvironmentOutlined'} size={13} />
+            {listGroups.map((g) => (
+              <div key={g.key} style={{ marginBottom: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px 4px' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', color: 'var(--ant-primary)' }}>
+                    <Icon name={g.icon} size={14} />
                   </span>
+                  <span style={{ fontSize: 13, color: 'var(--ant-primary)' }}>{g.label}</span>
                 </div>
-              );
-            })}
+                <div style={{ marginLeft: 12, paddingLeft: 8, borderLeft: '2px solid var(--ant-border-secondary)' }}>
+                  {g.items.map((it) => {
+                    const c = CAT_MAP[it.cat];
+                    const isActive = s.activeId === it.id;
+                    const isHover = s.hoveredId === it.id;
+                    let rowBg = 'transparent';
+                    if (isActive) { rowBg = '#ECEEFC'; }
+                    else if (isHover) { rowBg = 'var(--ant-fill-quaternary)'; }
+                    const noGeo = it.lat == null;
+                    return (
+                      <div key={it.id} onMouseEnter={(e) => onItemEnter(it, e)} onMouseLeave={() => onItemLeave(it)} onClick={() => onItemClick(it)}
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 8px', borderRadius: 8, cursor: 'pointer', background: rowBg, marginBottom: 4 }}>
+                        <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c.color, boxShadow: `0 1px 3px ${c.color}55` }}>
+                          <Icon name={c.icon} size={15} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
+                            <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 600, padding: '0 6px', borderRadius: 20, lineHeight: '16px', color: it.status === 'published' ? 'var(--ant-success)' : 'var(--ant-warning)', background: it.status === 'published' ? 'var(--ant-success-bg)' : 'var(--ant-warning-bg)', border: `1px solid ${it.status === 'published' ? 'var(--ant-success-border)' : 'var(--ant-warning-border)'}` }}>
+                              {it.status === 'published' ? 'Pub' : 'Draft'}
+                            </span>
+                          </div>
+                          <div style={{ fontSize: 11.5, color: 'var(--ant-text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {s.groupBy === 'space' ? '' : `${it.space} · `}{it.date} · {it.size}{it.extra ? ` · ${it.extra}` : ''}
+                          </div>
+                        </div>
+                        <span style={{ flex: 'none', display: 'flex', alignItems: 'center', color: noGeo ? 'var(--ant-text-quaternary)' : c.color + '88' }}>
+                          <Icon name={noGeo ? 'IconFileSearchOutlined' : 'IconEnvironmentOutlined'} size={13} />
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </aside>
 
@@ -996,56 +926,13 @@ export default function Explorer() {
             })}
           </div>
 
-          {!s.three3DActive && !timelineVisible && (
+          {!s.three3DActive && (
             <button onClick={() => patch({ boundsFilter: !s.boundsFilter })} style={{ position: 'absolute', top: 12, left: 12, zIndex: 4, display: 'flex', alignItems: 'center', gap: 8, height: 34, padding: '0 12px', borderRadius: 9, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.14)', border: `1px solid ${s.boundsFilter ? 'var(--ant-primary)' : 'var(--ant-border-secondary)'}`, background: s.boundsFilter ? 'var(--ant-primary)' : 'var(--ant-bg)', color: s.boundsFilter ? '#fff' : 'var(--ant-text-secondary)' }}>
               <Icon name="IconBorderOuterOutlined" size={14} />이 지역으로 검색
             </button>
           )}
 
-          {timelineVisible && (
-            <div style={{ position: 'absolute', top: 56, left: 12, right: 12, zIndex: 9, background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(8px)', border: '1px solid var(--ant-border-secondary)', borderRadius: 12, boxShadow: '0 4px 18px rgba(0,0,0,0.12)', padding: '10px 18px 38px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 26 }}>
-                <span style={{ display: 'flex', color: 'var(--ant-primary)' }}><Icon name="IconCalendarOutlined" size={16} /></span>
-                <span style={{ fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' }}>{timelineProject}</span>
-                <span style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', whiteSpace: 'nowrap' }}>시계열 · 노드 클릭 시 지도에 실측 3D 표시</span>
-                {timelineHasCompare && (
-                  <button onClick={toggleCompare} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, height: 28, padding: '0 13px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
-                    <span style={{ display: 'flex', color: 'var(--ant-primary)' }}><Icon name="IconSwapRightOutlined" size={14} /></span>시점 비교
-                  </button>
-                )}
-              </div>
-              <div style={{ position: 'relative', height: 84, margin: '0 52px' }}>
-                <div style={{ position: 'absolute', top: '50%', left: -10, right: -10, height: 2, borderRadius: 3, background: 'var(--ant-border)', transform: 'translateY(-50%)' }} />
-                {activeTimeline.map((n, i) => {
-                  const leftPct = activeTimeline.length > 1 ? (i / (activeTimeline.length - 1)) * 100 : 50;
-                  const above = i % 2 === 0;
-                  const c = TL_CATS[n.cat].color;
-                  const active = s.selectedNodeId === n.id;
-                  const hovered = s.hoveredNodeId === n.id;
-                  const emph = active || hovered;
-                  return (
-                    <div key={n.id} style={{ position: 'absolute', left: `${leftPct}%`, top: 0, height: '100%', zIndex: active ? 3 : emph ? 2 : 1 }}>
-                      <div style={{ position: 'absolute', left: 0, [above ? 'bottom' : 'top']: 'calc(50% + 18px)', transform: 'translateX(-50%)', minWidth: 76, maxWidth: 120, textAlign: 'center', pointerEvents: 'none', padding: active ? '4px 9px' : '2px 4px', borderRadius: 8, background: active ? '#fff' : 'transparent', boxShadow: active ? '0 2px 10px rgba(0,0,0,0.14)' : 'none', transition: 'all .2s' }}>
-                        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 0.2, color: active ? c : emph ? 'var(--ant-text)' : 'var(--ant-text-secondary)', transition: 'color .2s' }}>{n.date}</div>
-                        <div style={{ fontSize: 10.5, lineHeight: 1.25, marginTop: 1, color: active ? 'var(--ant-text-secondary)' : 'var(--ant-text-tertiary)', fontWeight: active ? 600 : 500, transition: 'color .2s' }}>{n.label}</div>
-                      </div>
-                      <div style={{ position: 'absolute', left: 0, transform: 'translateX(-50%)', width: 2, [above ? 'bottom' : 'top']: '50%', height: 14, background: active ? c : 'transparent', transition: 'background .2s' }} />
-                      <button
-                        onClick={() => onSelectNode(n)}
-                        onMouseEnter={() => patch({ hoveredNodeId: n.id })}
-                        onMouseLeave={() => patch({ hoveredNodeId: null })}
-                        style={{ position: 'absolute', top: '50%', left: 0, transform: `translate(-50%,-50%) scale(${active ? 1 : emph ? 0.92 : 0.8})`, width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0, background: active ? c + '22' : 'transparent', boxShadow: active ? `0 0 0 2px ${c},0 2px 10px ${c}55` : 'none', transition: 'all .2s cubic-bezier(.4,0,.2,1)' }}
-                      >
-                        <span style={{ width: active ? 11 : 9, height: active ? 11 : 9, borderRadius: '50%', background: active || emph ? c : 'var(--ant-bg)', border: `2px solid ${active ? '#fff' : c}`, boxShadow: active ? 'none' : '0 1px 3px rgba(0,0,0,0.18)', transition: 'all .2s' }} />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {s.three3DActive && !timelineVisible && (
+          {s.three3DActive && (
             <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 6, display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(15,20,28,0.82)', backdropFilter: 'blur(6px)', color: '#fff', padding: '7px 8px 7px 14px', borderRadius: 10, boxShadow: '0 6px 22px rgba(0,0,0,0.35)' }}>
               <span title="지도 위 3D 렌더링" style={{ width: 7, height: 7, borderRadius: '50%', background: '#4096ff', boxShadow: '0 0 8px #4096ff', cursor: 'help' }} />
               <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{s.three3DTitle}</span>
