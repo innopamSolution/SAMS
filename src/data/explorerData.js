@@ -53,6 +53,13 @@ export function footprintRing(it) {
 }
 
 export const PROJECTS = ['전체 프로젝트', 'K-Seongsu Project'];
+
+// Collection metadata shown in the results-panel header when one is selected.
+export const COLLECTIONS = {
+  'K-Seongsu Project': {
+    desc: '성수동 일대 디지털트윈 구축 콜렉션. 실측 포인트클라우드·3D 모델·드론 영상·현장 문서를 시기별로 통합 관리합니다.',
+  },
+};
 export const EPSGS = ['좌표계 전체', 'EPSG:5186', 'EPSG:5187'];
 
 export const TIMELINE = [];
