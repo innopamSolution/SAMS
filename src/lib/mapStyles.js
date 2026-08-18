@@ -61,7 +61,30 @@ export function buildCompareStyle() {
   };
 }
 
+// Zoom level at which point markers start being backed by the data's real
+// coverage rectangle on the ground.
+export const FOOTPRINT_MINZOOM = 16;
+
 export function addAssetLayers(map) {
+  map.addSource('footprints', {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  map.addLayer({
+    id: 'footprint-fill',
+    type: 'fill',
+    source: 'footprints',
+    minzoom: FOOTPRINT_MINZOOM,
+    paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.08 },
+  });
+  map.addLayer({
+    id: 'footprint-line',
+    type: 'line',
+    source: 'footprints',
+    minzoom: FOOTPRINT_MINZOOM,
+    paint: { 'line-color': ['get', 'color'], 'line-width': 1.5, 'line-dasharray': [2, 2], 'line-opacity': 0.85 },
+  });
+
   map.addSource('assets', {
     type: 'geojson',
     promoteId: 'id',
