@@ -827,7 +827,7 @@ export default function Explorer() {
               </div>
               {s.advOpen && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)' }}>콜렉션</span>
+                  <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)' }}>Collection</span>
                   <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
                     <select value={s.project} onChange={(e) => selectProject(e.target.value)} style={{ width: '100%', height: 28, border: '1px solid var(--ant-border)', borderRadius: 20, padding: '0 32px 0 12px', fontSize: 12, fontWeight: 500, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'var(--ant-bg)', appearance: 'none', cursor: 'pointer', outline: 'none' }}>
                       {PROJECTS.map((p) => <option key={p} value={p}>{p === '전체 프로젝트' ? '전체' : p}</option>)}
