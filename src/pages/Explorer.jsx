@@ -201,6 +201,7 @@ export default function Explorer() {
   const setFS = (id, key, val) => {
     if (!mapRef.current || !layersReadyRef.current) return;
     try { mapRef.current.setFeatureState({ source: 'assets', id }, { [key]: val }); } catch { /* noop */ }
+    try { mapRef.current.setFeatureState({ source: 'footprints', id }, { [key]: val }); } catch { /* noop */ }
   };
 
   // Multiple items can legitimately share the exact same coordinates (e.g.
