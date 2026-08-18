@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import Icon from '../components/Icon';
 import {
-  CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, PROJECT_LOC, structLngLat, footprintRing,
+  CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, PROJECT_LOC, structLngLat, footprintRing, COLLECTIONS,
 } from '../data/explorerData';
 import { buildMainStyle, buildCompareStyle, addAssetLayers } from '../lib/mapStyles';
 import { add3DLayer, addRealPointCloudLayer, addRealMeshLayer } from '../lib/three3d';
