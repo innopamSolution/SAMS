@@ -245,6 +245,23 @@ export default function Explorer() {
     });
     markerPosRef.current = positions;
     src.setData({ type: 'FeatureCollection', features });
+
+    // Mirror the same filtered set into the footprint source so the coverage
+    // rectangles (visible past FOOTPRINT_MINZOOM) always match the list.
+    const fpSrc = mapRef.current.getSource('footprints');
+    if (fpSrc) {
+      fpSrc.setData({
+        type: 'FeatureCollection',
+        features: geo
+          .map((i) => ({ i, ring: footprintRing(i) }))
+          .filter(({ ring }) => ring)
+          .map(({ i, ring }) => ({
+            type: 'Feature', id: i.id,
+            geometry: { type: 'Polygon', coordinates: [ring] },
+            properties: { id: i.id, color: CAT_MAP[i.cat].color },
+          })),
+      });
+    }
   };
 
   // The lngLat an item's marker dot is actually rendered at right now
