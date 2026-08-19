@@ -351,6 +351,28 @@ export default function Explorer() {
     patch({ three3DActive: true, three3DTitle: it.title + ' · 실측 메시' });
   };
 
+  // Opening the detail drawer also drives the map to the item: zoom past the
+  // footprint threshold so the real coverage area is visible, keep the item
+  // centered in the space left of the floating drawer, and for scan data
+  // (mesh / point cloud) render the actual 3D on the map right away.
+  const openDrawer = (it) => {
+    patch({ drawerId: it.id });
+    const map = mapRef.current;
+    if (!map || it.lat == null) return;
+    map.setPadding({ top: 0, bottom: 0, left: 0, right: 384 });
+    if (it.meshUrl || it.pointCloudUrl) {
+      show3DOnMap(it);
+    } else {
+      map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 900 });
+    }
+  };
+
+  const closeDrawer = () => {
+    patch({ drawerId: null });
+    const map = mapRef.current;
+    if (map) map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+  };
+
   const show3DOnMap = async (it, { reopenPopup } = {}) => {
     const map = mapRef.current;
     if (!map) return;
