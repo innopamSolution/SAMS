@@ -1015,7 +1015,7 @@ export default function Explorer() {
                           <Icon name={dc.icon} size={15} />
                         </div>
                         <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dit.title}</span>
-                        <button onClick={() => patch({ drawerId: null })} aria-label="닫기" style={{ flex: 'none', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>
+                        <button onClick={closeDrawer} aria-label="닫기" style={{ flex: 'none', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>
                           <Icon name="IconCloseOutlined" size={14} />
                         </button>
                       </div>
