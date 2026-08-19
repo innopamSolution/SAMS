@@ -1045,7 +1045,7 @@ export default function Explorer() {
                           return (
                             <button key={cn} onClick={() => selectProject(on ? '전체 프로젝트' : cn)} title={COLLECTIONS[cn]?.desc || cn}
                               style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 28, padding: '0 12px', borderRadius: 14, border: `1px solid ${on ? 'var(--ant-primary)' : 'var(--ant-border)'}`, background: on ? 'var(--ant-primary)' : 'var(--ant-bg)', color: on ? '#fff' : 'var(--ant-text)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
-                              <span aria-hidden="true">🧺</span>{cn}
+                              {cn}
                             </button>
                           );
                         })}
