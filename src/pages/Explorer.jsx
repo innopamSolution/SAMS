@@ -971,6 +971,108 @@ export default function Explorer() {
         <div style={{ flex: 1, position: 'relative', minWidth: 0, background: '#eaeef2' }}>
           <div ref={mapElRef} id="sams-map" style={{ position: 'absolute', inset: 0 }} />
 
+          {/* Item detail drawer */}
+          {(() => {
+            const dit = s.drawerId ? itemById(s.drawerId) : null;
+            const dc = dit ? CAT_MAP[dit.cat] : null;
+            const related = dit ? ITEMS.filter((i) => i.id !== dit.id && i.space === dit.space) : [];
+            const thread = dit ? comments[dit.id] || [] : [];
+            const addComment = () => {
+              const t = commentDraft.trim();
+              if (!t || !dit) return;
+              setComments((c) => ({ ...c, [dit.id]: [...(c[dit.id] || []), { author: '나', date: new Date().toISOString().slice(0, 10), text: t }] }));
+              setCommentDraft('');
+            };
+            return (
+              <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 360, zIndex: 30, background: 'var(--ant-bg)', boxShadow: '-4px 0 20px rgba(0,0,0,0.12)', transform: dit ? 'translateX(0)' : 'translateX(100%)', transition: 'transform .28s cubic-bezier(.4,0,.2,1)', display: 'flex', flexDirection: 'column', pointerEvents: dit ? 'auto' : 'none' }}>
+                {dit && (
+                  <>
+                    <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: dc.color }}>
+                          <Icon name={dc.icon} size={15} />
+                        </div>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dit.title}</span>
+                        <button onClick={() => patch({ drawerId: null })} aria-label="닫기" style={{ flex: 'none', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>
+                          <Icon name="IconCloseOutlined" size={14} />
+                        </button>
+                      </div>
+                      <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>
+                        {dc.label} · {dit.status === 'published' ? 'Published' : 'Draft'} · {dit.date}
+                      </div>
+                    </div>
+
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', marginBottom: 8 }}>상세 설명</div>
+                      <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--ant-text)' }}>{dit.desc}</div>
+                      <table style={{ width: '100%', marginTop: 12, fontSize: 12, borderCollapse: 'collapse' }}>
+                        <tbody>
+                          {[['위치', dit.site], ['취득일', dit.date], ['크기', dit.size], ['규모', dit.extra || '—'], ['좌표계', dit.epsg === '—' ? '—' : `EPSG:${dit.epsg}`]].map(([k, v]) => (
+                            <tr key={k}>
+                              <td style={{ padding: '4px 0', color: 'var(--ant-text-tertiary)', width: 64, verticalAlign: 'top' }}>{k}</td>
+                              <td style={{ padding: '4px 0', color: 'var(--ant-text)' }}>{v}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>담겨있는 콜렉션</div>
+                      <div onClick={() => selectProject(dit.project)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--ant-border)', cursor: 'pointer', background: 'var(--ant-bg)' }}>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--ant-text)' }}>{dit.project}</span>
+                        <span style={{ flex: 'none', fontSize: 11, color: 'var(--ant-primary)' }}>필터 적용</span>
+                      </div>
+                      {COLLECTIONS[dit.project]?.desc && (
+                        <div style={{ marginTop: 4, fontSize: 11, lineHeight: 1.5, color: 'var(--ant-text-tertiary)' }}>{COLLECTIONS[dit.project].desc}</div>
+                      )}
+
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>연관된 데이터 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· 같은 공간 {related.length}건</span></div>
+                      {related.length === 0 && <div style={{ fontSize: 12, color: 'var(--ant-text-tertiary)' }}>같은 공간에 다른 데이터가 없습니다.</div>}
+                      {related.map((r) => {
+                        const rc = CAT_MAP[r.cat];
+                        return (
+                          <div key={r.id} onClick={() => patch({ drawerId: r.id })} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px', borderRadius: 8, cursor: 'pointer', marginBottom: 4 }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ant-fill-quaternary)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
+                            <div style={{ width: 24, height: 24, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: rc.color }}>
+                              <Icon name={rc.icon} size={12} />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.title}</div>
+                              <div style={{ fontSize: 11, color: 'var(--ant-text-tertiary)' }}>{r.date} · {r.size}</div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>코멘트 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {thread.length}건</span></div>
+                      {thread.length === 0 && <div style={{ fontSize: 12, color: 'var(--ant-text-tertiary)', marginBottom: 8 }}>아직 코멘트가 없습니다.</div>}
+                      {thread.map((cm, i) => (
+                        <div key={i} style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--ant-fill-quaternary)', marginBottom: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ant-text)' }}>{cm.author}</span>
+                            <span style={{ fontSize: 10.5, color: 'var(--ant-text-quaternary)' }}>{cm.date}</span>
+                          </div>
+                          <div style={{ marginTop: 4, fontSize: 12, lineHeight: 1.5, color: 'var(--ant-text-secondary)' }}>{cm.text}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ padding: '12px 20px 16px', borderTop: '1px solid var(--ant-border-secondary)', flex: 'none', display: 'flex', gap: 8 }}>
+                      <input
+                        value={commentDraft}
+                        onChange={(e) => setCommentDraft(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') addComment(); }}
+                        placeholder="코멘트 입력"
+                        style={{ flex: 1, minWidth: 0, height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--ant-text)' }}
+                      />
+                      <button onClick={addComment} style={{ flex: 'none', height: 32, padding: '0 16px', borderRadius: 8, border: 'none', background: 'var(--ant-primary)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>등록</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
+
           <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 4, display: 'flex', background: 'var(--ant-bg)', borderRadius: 9, padding: 3, boxShadow: '0 2px 10px rgba(0,0,0,0.14)', border: '1px solid var(--ant-border-secondary)' }}>
             {[['light', '일반지도', 'IconEnvironmentOutlined'], ['satellite', '위성', 'IconGlobalOutlined'], ['3d', '3D', 'IconBoxPlotOutlined']].map(([key, label, icon]) => {
               const on = s.basemap === key;
