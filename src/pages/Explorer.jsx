@@ -1052,7 +1052,7 @@ export default function Explorer() {
                       {related.map((r) => {
                         const rc = CAT_MAP[r.cat];
                         return (
-                          <div key={r.id} onClick={() => patch({ drawerId: r.id })} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px', borderRadius: 8, cursor: 'pointer', marginBottom: 4 }}
+                          <div key={r.id} onClick={() => openDrawer(r)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px', borderRadius: 8, cursor: 'pointer', marginBottom: 4 }}
                             onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ant-fill-quaternary)'; }}
                             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
                             <div style={{ width: 24, height: 24, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: rc.color }}>
