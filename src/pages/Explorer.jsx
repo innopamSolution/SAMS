@@ -127,6 +127,11 @@ export default function Explorer() {
 
   // Full-screen panorama lightbox — independent of the main state object
   // since drag-to-pan interaction doesn't need to flow through it.
+  // Item detail drawer — comments live in local state so 등록 works in-session,
+  // seeded with the sample threads from explorerData.
+  const [comments, setComments] = useState(() => ({ ...SEED_COMMENTS }));
+  const [commentDraft, setCommentDraft] = useState('');
+
   const [panoViewer, setPanoViewer] = useState(null);
   const panoScrollRef = useRef(null);
   const openPanoViewer = (images, index, label) => setPanoViewer({ images, index, label: label || '파노라마' });
