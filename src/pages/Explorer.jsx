@@ -1047,8 +1047,9 @@ export default function Explorer() {
                         <div style={{ marginTop: 4, fontSize: 11, lineHeight: 1.5, color: 'var(--ant-text-tertiary)' }}>{COLLECTIONS[dit.project].desc}</div>
                       )}
 
-                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>연관된 데이터 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· 같은 공간 {related.length}건</span></div>
-                      {related.length === 0 && <div style={{ fontSize: 12, color: 'var(--ant-text-tertiary)' }}>같은 공간에 다른 데이터가 없습니다.</div>}
+                      {related.length > 0 && (
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>연관된 데이터 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· 같은 공간 {related.length}건</span></div>
+                      )}
                       {related.map((r) => {
                         const rc = CAT_MAP[r.cat];
                         return (
