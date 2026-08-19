@@ -409,7 +409,7 @@ export default function Explorer() {
     const rootEl = popup.getElement();
     const btnD = rootEl.querySelector('[data-act="detail"]');
     const btnDl = rootEl.querySelector('[data-act="download"]');
-    if (btnD) btnD.addEventListener('click', () => showToast('Detail 화면으로 이동: ' + it.title));
+    if (btnD) btnD.addEventListener('click', () => { popup.remove(); patch({ drawerId: it.id }); });
     if (btnDl) btnDl.addEventListener('click', () => showToast('다운로드 시작: ' + it.title + ' (' + it.size + ')'));
     const btn3d = rootEl.querySelector('[data-act="show3d"]');
     if (btn3d) btn3d.addEventListener('click', () => show3DOnMap(it, { reopenPopup: true }));
