@@ -54,6 +54,20 @@ export function footprintRing(it) {
 
 export const PROJECTS = ['전체 프로젝트', 'K-Seongsu Project'];
 
+// Seed comments shown in the item detail drawer (keyed by item id).
+export const SEED_COMMENTS = {
+  e1: [
+    { author: '김측량', date: '2023-09-12', text: '북측 파사드 일부 반사 노이즈가 있어 재스캔 검토가 필요합니다.' },
+    { author: '박모델', date: '2023-09-14', text: '노이즈 구간은 e2 메시 생성 시 필터링 처리했습니다.' },
+  ],
+  e2: [
+    { author: '박모델', date: '2023-09-20', text: '정점 컬러 기반이라 근접 시 텍스처 해상도 한계가 있습니다.' },
+  ],
+  e7: [
+    { author: '이드론', date: '2025-03-18', text: '풍속 8m/s 조건에서 촬영. 후반부 짐벌 미세 흔들림 있음.' },
+  ],
+};
+
 // Collection metadata shown in the results-panel header when one is selected.
 export const COLLECTIONS = {
   'K-Seongsu Project': {
