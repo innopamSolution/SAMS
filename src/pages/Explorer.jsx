@@ -26,6 +26,7 @@ const initialState = {
   swipeX: 50,
   groupBy: 'time',
   advOpen: false,
+  drawerId: null,
   statusSel: {},
   yearSel: {},
   project: '전체 프로젝트',
