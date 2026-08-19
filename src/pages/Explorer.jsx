@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import Icon from '../components/Icon';
 import {
-  CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, PROJECT_LOC, structLngLat, footprintRing, COLLECTIONS, SEED_COMMENTS,
+  CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, PROJECT_LOC, structLngLat, footprintRing, COLLECTIONS, SEED_COMMENTS, itemCollections,
 } from '../data/explorerData';
 import { buildMainStyle, buildCompareStyle, addAssetLayers } from '../lib/mapStyles';
 import { add3DLayer, addRealPointCloudLayer, addRealMeshLayer } from '../lib/three3d';
@@ -51,7 +51,7 @@ function computeFiltered(s) {
     if (cats.length && !cats.includes(i.cat)) return false;
     if (ss.length && !ss.includes(i.status)) return false;
     if (ys.length && !ys.some((y) => i.date.startsWith(y))) return false;
-    if (s.project !== '전체 프로젝트' && i.project !== s.project) return false;
+    if (s.project !== '전체 프로젝트' && !itemCollections(i).includes(s.project)) return false;
     if (s.epsg !== '좌표계 전체' && 'EPSG:' + i.epsg !== s.epsg) return false;
     if (kw) {
       const hay = (i.title + ' ' + i.site + ' ' + i.project + ' ' + i.desc).toLowerCase();
@@ -77,7 +77,7 @@ function computeCatCounts(s) {
   ITEMS.forEach((i) => {
     if (ss.length && !ss.includes(i.status)) return;
     if (ys.length && !ys.some((y) => i.date.startsWith(y))) return;
-    if (s.project !== '전체 프로젝트' && i.project !== s.project) return;
+    if (s.project !== '전체 프로젝트' && !itemCollections(i).includes(s.project)) return;
     if (kw && !(i.title + ' ' + i.site + ' ' + i.project + ' ' + i.desc).toLowerCase().includes(kw)) return;
     if (counts[i.cat] != null) counts[i.cat]++;
   });
@@ -1038,14 +1038,18 @@ export default function Explorer() {
                         </tbody>
                       </table>
 
-                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>담겨있는 콜렉션</div>
-                      <div onClick={() => selectProject(dit.project)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--ant-border)', cursor: 'pointer', background: 'var(--ant-bg)' }}>
-                        <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--ant-text)' }}>{dit.project}</span>
-                        <span style={{ flex: 'none', fontSize: 11, color: 'var(--ant-primary)' }}>필터 적용</span>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>담긴 COLLECTION</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {itemCollections(dit).map((cn) => {
+                          const on = s.project === cn;
+                          return (
+                            <button key={cn} onClick={() => selectProject(on ? '전체 프로젝트' : cn)} title={COLLECTIONS[cn]?.desc || cn}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 28, padding: '0 12px', borderRadius: 14, border: `1px solid ${on ? 'var(--ant-primary)' : 'var(--ant-border)'}`, background: on ? 'var(--ant-primary)' : 'var(--ant-bg)', color: on ? '#fff' : 'var(--ant-text)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                              <span aria-hidden="true">🧺</span>{cn}
+                            </button>
+                          );
+                        })}
                       </div>
-                      {COLLECTIONS[dit.project]?.desc && (
-                        <div style={{ marginTop: 4, fontSize: 11, lineHeight: 1.5, color: 'var(--ant-text-tertiary)' }}>{COLLECTIONS[dit.project].desc}</div>
-                      )}
 
                       {related.length > 0 && (
                         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>연관된 데이터 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· 같은 공간 {related.length}건</span></div>
