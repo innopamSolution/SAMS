@@ -984,7 +984,7 @@ export default function Explorer() {
               setCommentDraft('');
             };
             return (
-              <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 360, zIndex: 30, background: 'var(--ant-bg)', boxShadow: '-4px 0 20px rgba(0,0,0,0.12)', transform: dit ? 'translateX(0)' : 'translateX(100%)', transition: 'transform .28s cubic-bezier(.4,0,.2,1)', display: 'flex', flexDirection: 'column', pointerEvents: dit ? 'auto' : 'none' }}>
+              <div style={{ position: 'absolute', top: 12, right: 12, bottom: 12, width: 360, zIndex: 30, background: 'var(--ant-bg)', borderRadius: 16, border: '1px solid var(--ant-border-secondary)', boxShadow: '0 8px 28px rgba(0,0,0,0.16)', overflow: 'hidden', transform: dit ? 'translateX(0)' : 'translateX(calc(100% + 24px))', transition: 'transform .28s cubic-bezier(.4,0,.2,1)', display: 'flex', flexDirection: 'column', pointerEvents: dit ? 'auto' : 'none' }}>
                 {dit && (
                   <>
                     <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none' }}>
