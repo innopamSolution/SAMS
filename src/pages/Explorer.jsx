@@ -1028,6 +1028,17 @@ export default function Explorer() {
                       <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>
                         {dc.label} · {dit.status === 'published' ? 'Published' : 'Draft'} · {dit.date}
                       </div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                        <button onClick={() => viewRealData(dit)} style={{ flex: 1, height: 28, borderRadius: 8, border: 'none', background: 'var(--ant-primary)', color: '#fff', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                          실데이터 보기
+                        </button>
+                        <button onClick={() => showToast(`다운로드 시작: ${dit.title} (${dit.size})`)} style={{ flex: 1, height: 28, borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                          다운로드
+                        </button>
+                        <button onClick={() => showToast('관리 페이지 준비 중')} style={{ flex: 1, height: 28, borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                          관리
+                        </button>
+                      </div>
                     </div>
 
                     <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
