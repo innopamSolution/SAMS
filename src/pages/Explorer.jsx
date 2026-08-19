@@ -1026,17 +1026,19 @@ export default function Explorer() {
 
                     <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', marginBottom: 8 }}>상세 설명</div>
-                      <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--ant-text)' }}>{dit.desc}</div>
-                      <table style={{ width: '100%', marginTop: 12, fontSize: 12, borderCollapse: 'collapse' }}>
-                        <tbody>
-                          {[['위치', dit.site], ['취득일', dit.date], ['크기', dit.size], ['규모', dit.extra || '—'], ['좌표계', dit.epsg === '—' ? '—' : `EPSG:${dit.epsg}`]].map(([k, v]) => (
-                            <tr key={k}>
-                              <td style={{ padding: '4px 0', color: 'var(--ant-text-tertiary)', width: 64, verticalAlign: 'top' }}>{k}</td>
-                              <td style={{ padding: '4px 0', color: 'var(--ant-text)' }}>{v}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--ant-border-secondary)', padding: 12 }}>
+                        <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--ant-text)' }}>{dit.desc}</div>
+                        <table style={{ width: '100%', marginTop: 12, fontSize: 12, borderCollapse: 'collapse' }}>
+                          <tbody>
+                            {[['위치', dit.site], ['취득일', dit.date], ['크기', dit.size], ['규모', dit.extra || '—'], ['좌표계', dit.epsg === '—' ? '—' : `EPSG:${dit.epsg}`]].map(([k, v]) => (
+                              <tr key={k}>
+                                <td style={{ padding: '4px 0', color: 'var(--ant-text-tertiary)', width: 64, verticalAlign: 'top' }}>{k}</td>
+                                <td style={{ padding: '4px 0', color: 'var(--ant-text)' }}>{v}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
 
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>담긴 COLLECTION</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
