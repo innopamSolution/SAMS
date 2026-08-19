@@ -1009,17 +1009,17 @@ export default function Explorer() {
               <div style={{ position: 'absolute', top: 12, right: 12, bottom: 12, width: 360, zIndex: 30, background: 'rgba(255,255,255,0.90)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', borderRadius: 16, border: '1px solid var(--ant-border-secondary)', boxShadow: '0 8px 28px rgba(0,0,0,0.16)', overflow: 'hidden', transform: dit ? 'translateX(0)' : 'translateX(calc(100% + 24px))', transition: 'transform .28s cubic-bezier(.4,0,.2,1)', display: 'flex', flexDirection: 'column', pointerEvents: dit ? 'auto' : 'none' }}>
                 {dit && (
                   <>
-                    <div style={{ padding: '16px 20px 12px', flex: 'none', background: 'rgba(15,20,28,0.92)' }}>
+                    <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: '#fff' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: dc.color }}>
                           <Icon name={dc.icon} size={15} />
                         </div>
-                        <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dit.title}</span>
-                        <button onClick={closeDrawer} aria-label="닫기" style={{ flex: 'none', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: 8, background: 'transparent', color: 'rgba(255,255,255,0.65)', cursor: 'pointer' }}>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dit.title}</span>
+                        <button onClick={closeDrawer} aria-label="닫기" style={{ flex: 'none', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>
                           <Icon name="IconCloseOutlined" size={14} />
                         </button>
                       </div>
-                      <div style={{ marginTop: 4, fontSize: 11.5, color: 'rgba(255,255,255,0.55)' }}>
+                      <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>
                         {dc.label} · {dit.status === 'published' ? 'Published' : 'Draft'} · {dit.date}
                       </div>
                     </div>
