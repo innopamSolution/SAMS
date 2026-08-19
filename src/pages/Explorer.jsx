@@ -1067,8 +1067,9 @@ export default function Explorer() {
                         );
                       })}
 
-                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>코멘트 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {thread.length}건</span></div>
-                      {thread.length === 0 && <div style={{ fontSize: 12, color: 'var(--ant-text-tertiary)', marginBottom: 8 }}>아직 코멘트가 없습니다.</div>}
+                      {thread.length > 0 && (
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>코멘트 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {thread.length}건</span></div>
+                      )}
                       {thread.map((cm, i) => (
                         <div key={i} style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--ant-fill-quaternary)', marginBottom: 8 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
