@@ -360,11 +360,17 @@ export default function Explorer() {
     const map = mapRef.current;
     if (!map || it.lat == null) return;
     map.setPadding({ top: 0, bottom: 0, left: 0, right: 384 });
-    if (it.meshUrl || it.pointCloudUrl) {
-      show3DOnMap(it);
-    } else {
-      map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 900 });
-    }
+    map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 900 });
+  };
+
+  // 실데이터 보기 button in the drawer header: mesh/point cloud renders in 3D
+  // on the map, media items open their respective large viewers.
+  const viewRealData = (it) => {
+    if (it.meshUrl || it.pointCloudUrl) { show3DOnMap(it); return; }
+    if (it.cat === 'pano' && it.panoImages && it.panoImages.length) { openPanoViewer(it.panoImages, 0); return; }
+    if (it.images && it.images.length) { openPanoViewer(it.images, 0, '이미지'); return; }
+    if (it.videoUrl) { openVideoViewer(it); return; }
+    showToast('표시할 실데이터가 없습니다');
   };
 
   const closeDrawer = () => {
