@@ -118,7 +118,7 @@ function cmpPtsLabel(node) {
   return node.pc ? node.pc.pts : node.item.extra;
 }
 
-export default function Explorer() {
+export default function Explorer({ onNavigate = () => {} }) {
   const [state, setState] = useState(initialState);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -755,6 +755,14 @@ export default function Explorer() {
 
   useEffect(() => () => { clearTimeout(toastTimerRef.current); destroyCompareMaps(); }, []);
 
+  // The management page can rename or delete the collection currently used as
+  // the filter — fall back to 전체 프로젝트 when the selection no longer exists.
+  useEffect(() => {
+    if (state.project !== '전체 프로젝트' && !PROJECTS.includes(state.project)) {
+      patch({ project: '전체 프로젝트' });
+    }
+  });
+
   // ── Derived render data ────────────────────────────────────────
   const s = state;
   const filtered = computeFiltered(s);
@@ -830,7 +838,7 @@ export default function Explorer() {
         </div>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 4, height: '100%', flex: 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, color: 'var(--ant-text-heading)', background: '#ECEEFC' }}>데이터 탐색</div>
-          <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>데이터 관리</div>
+          <div onClick={() => onNavigate('manage')} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>데이터 관리</div>
         </nav>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
           <button
@@ -930,7 +938,7 @@ export default function Explorer() {
             <div style={{ padding: '20px 16px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: 'var(--ant-bg)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.project}</span>
-                <button onClick={() => showToast('콜렉션 관리 페이지 준비 중')} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, height: 24, padding: '0 12px', borderRadius: 12, border: '1px solid var(--ant-primary)', background: 'var(--ant-bg)', color: 'var(--ant-primary)', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                <button onClick={() => onNavigate('manage', s.project)} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, height: 24, padding: '0 12px', borderRadius: 12, border: '1px solid var(--ant-primary)', background: 'var(--ant-bg)', color: 'var(--ant-primary)', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
                   Edit
                   <span style={{ display: 'flex', transform: 'rotate(-90deg)' }}><Icon name="IconDownOutlined" size={10} /></span>
                 </button>
@@ -1060,7 +1068,7 @@ export default function Explorer() {
                           <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: DL_SVG }} />
                           다운로드
                         </button>
-                        <button onClick={() => showToast('관리 페이지 준비 중')} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
+                        <button onClick={() => onNavigate('manage', dit.project)} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
                           <span style={{ display: 'flex', transform: 'rotate(-90deg)' }}><Icon name="IconDownOutlined" size={13} /></span>
                           데이터관리
                         </button>
