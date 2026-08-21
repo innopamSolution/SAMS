@@ -194,6 +194,8 @@ export default function Explorer() {
   const navTopRef = useRef(null);
   const nav3DRef = useRef(null);
   const prev3DRef = useRef(null);
+  // Drawer to restore when a 3D render launched from the drawer is closed.
+  const drawerReturnRef = useRef(null);
   const cmpMapARef = useRef(null);
   const cmpMapBRef = useRef(null);
   const cmpLockRef = useRef(false);
