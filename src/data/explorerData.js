@@ -78,10 +78,14 @@ export const COLLECTIONS = {
   },
 };
 
-// Every collection an item belongs to. Falls back to the item's primary
-// project for data that predates multi-collection membership.
+// Live, editable collection membership (item id → collection names). Seeded
+// from each item's collections field (or its primary project); the collection
+// edit panel mutates this at runtime.
+export const MEMBERSHIP = Object.fromEntries(ITEMS.map((i) => [i.id, (i.collections || [i.project]).slice()]));
+
+// Every collection an item belongs to.
 export function itemCollections(it) {
-  return it.collections || [it.project];
+  return MEMBERSHIP[it.id] || [it.project];
 }
 export const EPSGS = ['좌표계 전체', 'EPSG:5186', 'EPSG:5187'];
 
