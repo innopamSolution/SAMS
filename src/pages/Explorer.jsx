@@ -408,6 +408,9 @@ export default function Explorer() {
     const map = mapRef.current;
     if (!it || !map) return;
     popupReopenRef.current = null;
+    // A preview popup and a (possibly different item's) detail drawer open at
+    // the same time reads confusingly — close the drawer when a popup opens.
+    if (stateRef.current.drawerId) closeDrawer();
     if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
     if (detailPopupRef.current) detailPopupRef.current.remove();
     if (stateRef.current.activeId) setFS(stateRef.current.activeId, 'active', false);
