@@ -1146,6 +1146,7 @@ export default function Explorer({ onNavigate = () => {} }) {
                           <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--ant-border-secondary)', padding: 4 }}>
                             {related.map((r) => {
                               const rc = CAT_MAP[r.cat];
+                              const kind = relKind(r.id);
                               return (
                                 <div key={r.id} onClick={() => openDrawer(r)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px', borderRadius: 8, cursor: 'pointer' }}
                                   onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ant-fill-quaternary)'; }}
@@ -1157,6 +1158,11 @@ export default function Explorer({ onNavigate = () => {} }) {
                                     <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.title}</div>
                                     <div style={{ fontSize: 11, color: 'var(--ant-text-tertiary)' }}>{r.date} · {r.size}</div>
                                   </div>
+                                  {kind && (
+                                    <span style={{ flex: 'none', fontSize: 10, fontWeight: 600, padding: '0 8px', lineHeight: '18px', borderRadius: 9, background: kind === 'origin' ? 'var(--ant-fill-quaternary)' : 'rgba(22,119,255,0.08)', color: kind === 'origin' ? 'var(--ant-text-secondary)' : 'var(--ant-primary)' }}>
+                                      {kind === 'origin' ? '원본' : '파생'}
+                                    </span>
+                                  )}
                                 </div>
                               );
                             })}
