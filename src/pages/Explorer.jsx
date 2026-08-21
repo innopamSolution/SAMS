@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import Icon from '../components/Icon';
 import {
-  CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, PROJECT_LOC, structLngLat, footprintRing, COLLECTIONS, SEED_COMMENTS, itemCollections,
+  CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, PROJECT_LOC, structLngLat, footprintRing, COLLECTIONS, SEED_COMMENTS, itemCollections, MEMBERSHIP,
 } from '../data/explorerData';
 import { buildMainStyle, buildCompareStyle, addAssetLayers } from '../lib/mapStyles';
 import { add3DLayer, addRealPointCloudLayer, addRealMeshLayer } from '../lib/three3d';
@@ -131,6 +131,18 @@ export default function Explorer({ onNavigate = () => {} }) {
   // seeded with the sample threads from explorerData.
   const [comments, setComments] = useState(() => ({ ...SEED_COMMENTS }));
   const [commentDraft, setCommentDraft] = useState('');
+  // 담긴 COLLECTION 섹션의 + (연결할 콜렉션 목록) 펼침 상태
+  const [collAddOpen, setCollAddOpen] = useState(false);
+
+  const linkCollTo = (id, cn) => {
+    MEMBERSHIP[id] = [...(MEMBERSHIP[id] || []), cn];
+    setCollAddOpen(false);
+    patch({});
+  };
+  const unlinkCollFrom = (id, cn) => {
+    MEMBERSHIP[id] = (MEMBERSHIP[id] || []).filter((n) => n !== cn);
+    patch({});
+  };
 
   const [panoViewer, setPanoViewer] = useState(null);
   const panoScrollRef = useRef(null);
@@ -366,6 +378,7 @@ export default function Explorer({ onNavigate = () => {} }) {
   // centered in the space left of the floating drawer, and for scan data
   // (mesh / point cloud) render the actual 3D on the map right away.
   const openDrawer = (it) => {
+    setCollAddOpen(false);
     patch({ drawerId: it.id });
     const map = mapRef.current;
     if (!map || it.lat == null) return;
@@ -385,6 +398,7 @@ export default function Explorer({ onNavigate = () => {} }) {
   };
 
   const closeDrawer = () => {
+    setCollAddOpen(false);
     drawerReturnRef.current = null;
     patch({ drawerId: null });
     const map = mapRef.current;
@@ -1088,16 +1102,36 @@ export default function Explorer({ onNavigate = () => {} }) {
                       </div>
 
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>담긴 COLLECTION</div>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                         {itemCollections(dit).map((cn) => {
                           const on = s.project === cn;
                           return (
-                            <button key={cn} onClick={() => selectProject(on ? '전체 프로젝트' : cn)} title={COLLECTIONS[cn]?.desc || cn}
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 28, padding: '0 12px', borderRadius: 14, border: `1px solid ${on ? 'var(--ant-primary)' : 'var(--ant-border)'}`, background: on ? 'var(--ant-primary)' : 'var(--ant-bg)', color: on ? '#fff' : 'var(--ant-text)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
-                              {cn}
-                            </button>
+                            <span key={cn} style={{ display: 'inline-flex', alignItems: 'stretch', height: 28, borderRadius: 14, overflow: 'hidden', border: `1px solid ${on ? 'var(--ant-primary)' : 'var(--ant-border)'}`, background: on ? 'var(--ant-primary)' : 'var(--ant-bg)' }}>
+                              <span onClick={() => selectProject(on ? '전체 프로젝트' : cn)} title={COLLECTIONS[cn]?.desc || cn}
+                                style={{ display: 'flex', alignItems: 'center', padding: '0 4px 0 12px', fontSize: 12, fontWeight: 600, color: on ? '#fff' : 'var(--ant-text)', cursor: 'pointer' }}>
+                                {cn}
+                              </span>
+                              <span onClick={() => unlinkCollFrom(dit.id, cn)} title="콜렉션에서 제외"
+                                style={{ display: 'flex', alignItems: 'center', padding: '0 8px 0 4px', color: on ? 'rgba(255,255,255,0.75)' : 'var(--ant-text-tertiary)', cursor: 'pointer' }}>
+                                <Icon name="IconCloseOutlined" size={10} />
+                              </span>
+                            </span>
                           );
                         })}
+                        {(() => {
+                          const avail = PROJECTS.filter((p) => p !== '전체 프로젝트' && !itemCollections(dit).includes(p));
+                          if (avail.length === 0) return null;
+                          if (!collAddOpen) {
+                            return (
+                              <button onClick={() => setCollAddOpen(true)} title="콜렉션에 추가" style={{ width: 28, height: 28, borderRadius: 14, border: '1px dashed var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text-secondary)', fontSize: 14, fontFamily: 'inherit', cursor: 'pointer', lineHeight: 1 }}>+</button>
+                            );
+                          }
+                          return avail.map((cn) => (
+                            <button key={cn} onClick={() => linkCollTo(dit.id, cn)} style={{ height: 28, padding: '0 12px', borderRadius: 14, border: '1px dashed var(--ant-primary)', background: 'rgba(22,119,255,0.04)', color: 'var(--ant-primary)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                              + {cn}
+                            </button>
+                          ));
+                        })()}
                       </div>
 
                       {related.length > 0 && (
