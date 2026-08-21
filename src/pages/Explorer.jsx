@@ -194,6 +194,8 @@ export default function Explorer() {
   const navTopRef = useRef(null);
   const nav3DRef = useRef(null);
   const prev3DRef = useRef(null);
+  // Drawer to restore when a 3D render launched from the drawer is closed.
+  const drawerReturnRef = useRef(null);
   const cmpMapARef = useRef(null);
   const cmpMapBRef = useRef(null);
   const cmpLockRef = useRef(false);
@@ -310,6 +312,14 @@ export default function Explorer() {
       popupReopenRef.current = null;
       openDetail(it);
     }
+    // If it was opened from the detail drawer's 3D 렌더링 button, bring the
+    // drawer back so the user lands where they left off.
+    if (drawerReturnRef.current) {
+      const id = drawerReturnRef.current;
+      drawerReturnRef.current = null;
+      patch({ drawerId: id });
+      if (map) map.setPadding({ top: 0, bottom: 0, left: 0, right: 384 });
+    }
   };
 
   const render3DAt = async (lngLat, title, color, count, H) => {
@@ -364,9 +374,10 @@ export default function Explorer() {
   };
 
   // 실데이터 보기 button in the drawer header: mesh/point cloud renders in 3D
-  // on the map, media items open their respective large viewers.
+  // on the map (closing the drawer so the map gets the full width), media
+  // items open their respective large viewers on top.
   const viewRealData = (it) => {
-    if (it.meshUrl || it.pointCloudUrl) { show3DOnMap(it); return; }
+    if (it.meshUrl || it.pointCloudUrl) { closeDrawer(); drawerReturnRef.current = it.id; show3DOnMap(it); return; }
     if (it.cat === 'pano' && it.panoImages && it.panoImages.length) { openPanoViewer(it.panoImages, 0); return; }
     if (it.images && it.images.length) { openPanoViewer(it.images, 0, '이미지'); return; }
     if (it.videoUrl) { openVideoViewer(it); return; }
@@ -374,6 +385,7 @@ export default function Explorer() {
   };
 
   const closeDrawer = () => {
+    drawerReturnRef.current = null;
     patch({ drawerId: null });
     const map = mapRef.current;
     if (map) map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
@@ -396,6 +408,9 @@ export default function Explorer() {
     const map = mapRef.current;
     if (!it || !map) return;
     popupReopenRef.current = null;
+    // A preview popup and a (possibly different item's) detail drawer open at
+    // the same time reads confusingly — close the drawer when a popup opens.
+    if (stateRef.current.drawerId) closeDrawer();
     if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
     if (detailPopupRef.current) detailPopupRef.current.remove();
     if (stateRef.current.activeId) setFS(stateRef.current.activeId, 'active', false);
