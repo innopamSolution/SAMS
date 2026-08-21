@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import Icon from '../components/Icon';
 import {
-  CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, PROJECT_LOC, structLngLat,
+  CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, PROJECT_LOC, structLngLat, footprintRing, COLLECTIONS, SEED_COMMENTS, itemCollections,
 } from '../data/explorerData';
 import { buildMainStyle, buildCompareStyle, addAssetLayers } from '../lib/mapStyles';
 import { add3DLayer, addRealPointCloudLayer, addRealMeshLayer } from '../lib/three3d';
@@ -25,6 +25,8 @@ const initialState = {
   compareB: 't5',
   swipeX: 50,
   groupBy: 'time',
+  advOpen: false,
+  drawerId: null,
   statusSel: {},
   yearSel: {},
   project: '전체 프로젝트',
@@ -49,7 +51,7 @@ function computeFiltered(s) {
     if (cats.length && !cats.includes(i.cat)) return false;
     if (ss.length && !ss.includes(i.status)) return false;
     if (ys.length && !ys.some((y) => i.date.startsWith(y))) return false;
-    if (s.project !== '전체 프로젝트' && i.project !== s.project) return false;
+    if (s.project !== '전체 프로젝트' && !itemCollections(i).includes(s.project)) return false;
     if (s.epsg !== '좌표계 전체' && 'EPSG:' + i.epsg !== s.epsg) return false;
     if (kw) {
       const hay = (i.title + ' ' + i.site + ' ' + i.project + ' ' + i.desc).toLowerCase();
@@ -75,7 +77,7 @@ function computeCatCounts(s) {
   ITEMS.forEach((i) => {
     if (ss.length && !ss.includes(i.status)) return;
     if (ys.length && !ys.some((y) => i.date.startsWith(y))) return;
-    if (s.project !== '전체 프로젝트' && i.project !== s.project) return;
+    if (s.project !== '전체 프로젝트' && !itemCollections(i).includes(s.project)) return;
     if (kw && !(i.title + ' ' + i.site + ' ' + i.project + ' ' + i.desc).toLowerCase().includes(kw)) return;
     if (counts[i.cat] != null) counts[i.cat]++;
   });
@@ -125,6 +127,11 @@ export default function Explorer() {
 
   // Full-screen panorama lightbox — independent of the main state object
   // since drag-to-pan interaction doesn't need to flow through it.
+  // Item detail drawer — comments live in local state so 등록 works in-session,
+  // seeded with the sample threads from explorerData.
+  const [comments, setComments] = useState(() => ({ ...SEED_COMMENTS }));
+  const [commentDraft, setCommentDraft] = useState('');
+
   const [panoViewer, setPanoViewer] = useState(null);
   const panoScrollRef = useRef(null);
   const openPanoViewer = (images, index, label) => setPanoViewer({ images, index, label: label || '파노라마' });
@@ -201,6 +208,7 @@ export default function Explorer() {
   const setFS = (id, key, val) => {
     if (!mapRef.current || !layersReadyRef.current) return;
     try { mapRef.current.setFeatureState({ source: 'assets', id }, { [key]: val }); } catch { /* noop */ }
+    try { mapRef.current.setFeatureState({ source: 'footprints', id }, { [key]: val }); } catch { /* noop */ }
   };
 
   // Multiple items can legitimately share the exact same coordinates (e.g.
@@ -245,6 +253,23 @@ export default function Explorer() {
     });
     markerPosRef.current = positions;
     src.setData({ type: 'FeatureCollection', features });
+
+    // Mirror the same filtered set into the footprint source so the coverage
+    // rectangles (visible past FOOTPRINT_MINZOOM) always match the list.
+    const fpSrc = mapRef.current.getSource('footprints');
+    if (fpSrc) {
+      fpSrc.setData({
+        type: 'FeatureCollection',
+        features: geo
+          .map((i) => ({ i, ring: footprintRing(i) }))
+          .filter(({ ring }) => ring)
+          .map(({ i, ring }) => ({
+            type: 'Feature', id: i.id,
+            geometry: { type: 'Polygon', coordinates: [ring] },
+            properties: { id: i.id, color: CAT_MAP[i.cat].color },
+          })),
+      });
+    }
   };
 
   // The lngLat an item's marker dot is actually rendered at right now
@@ -326,6 +351,34 @@ export default function Explorer() {
     patch({ three3DActive: true, three3DTitle: it.title + ' · 실측 메시' });
   };
 
+  // Opening the detail drawer also drives the map to the item: zoom past the
+  // footprint threshold so the real coverage area is visible, keep the item
+  // centered in the space left of the floating drawer, and for scan data
+  // (mesh / point cloud) render the actual 3D on the map right away.
+  const openDrawer = (it) => {
+    patch({ drawerId: it.id });
+    const map = mapRef.current;
+    if (!map || it.lat == null) return;
+    map.setPadding({ top: 0, bottom: 0, left: 0, right: 384 });
+    map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 900 });
+  };
+
+  // 실데이터 보기 button in the drawer header: mesh/point cloud renders in 3D
+  // on the map, media items open their respective large viewers.
+  const viewRealData = (it) => {
+    if (it.meshUrl || it.pointCloudUrl) { show3DOnMap(it); return; }
+    if (it.cat === 'pano' && it.panoImages && it.panoImages.length) { openPanoViewer(it.panoImages, 0); return; }
+    if (it.images && it.images.length) { openPanoViewer(it.images, 0, '이미지'); return; }
+    if (it.videoUrl) { openVideoViewer(it); return; }
+    showToast('표시할 실데이터가 없습니다');
+  };
+
+  const closeDrawer = () => {
+    patch({ drawerId: null });
+    const map = mapRef.current;
+    if (map) map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+  };
+
   const show3DOnMap = async (it, { reopenPopup } = {}) => {
     const map = mapRef.current;
     if (!map) return;
@@ -389,7 +442,7 @@ export default function Explorer() {
     const rootEl = popup.getElement();
     const btnD = rootEl.querySelector('[data-act="detail"]');
     const btnDl = rootEl.querySelector('[data-act="download"]');
-    if (btnD) btnD.addEventListener('click', () => showToast('Detail 화면으로 이동: ' + it.title));
+    if (btnD) btnD.addEventListener('click', () => { popup.remove(); openDrawer(it); });
     if (btnDl) btnDl.addEventListener('click', () => showToast('다운로드 시작: ' + it.title + ' (' + it.size + ')'));
     const btn3d = rootEl.querySelector('[data-act="show3d"]');
     if (btn3d) btn3d.addEventListener('click', () => show3DOnMap(it, { reopenPopup: true }));
@@ -779,52 +832,68 @@ export default function Explorer() {
         <aside style={{ width: PANEL_WIDTH, flex: 'none', background: 'var(--ant-bg)', borderRight: '1px solid var(--ant-border-secondary)', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{ padding: '16px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: 'linear-gradient(120deg, #F1F2F4 0%, #EBECEF 50%, #E4E5E8 100%)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                <span style={{ position: 'absolute', left: 8, display: 'flex', color: 'var(--ant-text-tertiary)', pointerEvents: 'none' }}>
-                  <Icon name="IconSearchOutlined" size={14} />
-                </span>
-                <input
-                  value={s.keyword}
-                  onChange={(e) => patch({ keyword: e.target.value })}
-                  placeholder="이름 · 제목 · 키워드 검색"
-                  style={{ width: '100%', height: 32, padding: '0 28px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--ant-text)' }}
-                />
-                {!!s.keyword && (
-                  <span onClick={() => patch({ keyword: '' })} style={{ position: 'absolute', right: 8, color: 'var(--ant-text-tertiary)', display: 'flex', cursor: 'pointer' }}>
-                    <Icon name="IconCloseCircleOutlined" size={14} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                  <span style={{ position: 'absolute', left: 8, display: 'flex', color: 'var(--ant-text-tertiary)', pointerEvents: 'none' }}>
+                    <Icon name="IconSearchOutlined" size={14} />
                   </span>
-                )}
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--ant-text-secondary)', marginBottom: 5, fontWeight: 700 }}>상태</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  <button onClick={() => patch({ statusSel: {} })} style={mchip(!Object.values(s.statusSel).some(Boolean))}>전체</button>
-                  {[['published', 'Published'], ['draft', 'Draft']].map(([k, label]) => (
-                    <button key={k} onClick={() => toggleStatusSel(k)} style={mchip(!!s.statusSel[k])}>{label}</button>
-                  ))}
+                  <input
+                    value={s.keyword}
+                    onChange={(e) => patch({ keyword: e.target.value })}
+                    placeholder="이름 · 제목 · 키워드 검색"
+                    style={{ width: '100%', height: 32, padding: '0 28px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--ant-text)' }}
+                  />
+                  {!!s.keyword && (
+                    <span onClick={() => patch({ keyword: '' })} style={{ position: 'absolute', right: 8, color: 'var(--ant-text-tertiary)', display: 'flex', cursor: 'pointer' }}>
+                      <Icon name="IconCloseCircleOutlined" size={14} />
+                    </span>
+                  )}
                 </div>
+                <button onClick={() => patch({ advOpen: !s.advOpen })} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, height: 32, padding: '0 8px', border: 'none', borderRadius: 8, background: 'transparent', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', color: 'var(--ant-text-secondary)' }}>
+                  세부 검색
+                  {(s.project !== '전체 프로젝트' || Object.values(s.statusSel).some(Boolean) || Object.values(s.yearSel).some(Boolean)) && !s.advOpen && (
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ant-primary)' }} />
+                  )}
+                  <span style={{ display: 'flex', transform: s.advOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>
+                    <Icon name="IconDownOutlined" size={10} />
+                  </span>
+                </button>
               </div>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--ant-text-secondary)', marginBottom: 5, fontWeight: 700 }}>
-                  기간 <span style={{ color: 'var(--ant-text-quaternary)', fontWeight: 500 }}>· 복수 선택</span>
+              {s.advOpen && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)' }}>Collection</span>
+                  <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                    <select value={s.project} onChange={(e) => selectProject(e.target.value)} style={{ width: '100%', height: 28, border: '1px solid var(--ant-border)', borderRadius: 20, padding: '0 32px 0 12px', fontSize: 12, fontWeight: 500, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'var(--ant-bg)', appearance: 'none', cursor: 'pointer', outline: 'none' }}>
+                      {PROJECTS.map((p) => <option key={p} value={p}>{p === '전체 프로젝트' ? '전체' : p}</option>)}
+                    </select>
+                    <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--ant-text-tertiary)', display: 'flex' }}><Icon name="IconDownOutlined" size={11} /></span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  <button onClick={() => patch({ yearSel: {} })} style={mchip(!Object.values(s.yearSel).some(Boolean))}>전체</button>
-                  {YEARS.map((y) => (
-                    <button key={y} onClick={() => toggleYearSel(y)} style={mchip(!!s.yearSel[y])}>{y}</button>
-                  ))}
+              )}
+              {s.advOpen && (
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--ant-text-secondary)', marginBottom: 5, fontWeight: 700 }}>상태</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    <button onClick={() => patch({ statusSel: {} })} style={mchip(!Object.values(s.statusSel).some(Boolean))}>전체</button>
+                    {[['published', 'Published'], ['draft', 'Draft']].map(([k, label]) => (
+                      <button key={k} onClick={() => toggleStatusSel(k)} style={mchip(!!s.statusSel[k])}>{label}</button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
-              <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)' }}>프로젝트</span>
-              <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-                <select value={s.project} onChange={(e) => selectProject(e.target.value)} style={{ width: '100%', height: 28, border: '1px solid var(--ant-border)', borderRadius: 20, padding: '0 32px 0 12px', fontSize: 12, fontWeight: 500, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'var(--ant-bg)', appearance: 'none', cursor: 'pointer', outline: 'none' }}>
-                  {PROJECTS.map((p) => <option key={p} value={p}>{p === '전체 프로젝트' ? '전체' : p}</option>)}
-                </select>
-                <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--ant-text-tertiary)', display: 'flex' }}><Icon name="IconDownOutlined" size={11} /></span>
-              </div>
+              )}
+              {s.advOpen && (
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--ant-text-secondary)', marginBottom: 5, fontWeight: 700 }}>
+                    기간 <span style={{ color: 'var(--ant-text-quaternary)', fontWeight: 500 }}>· 복수 선택</span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    <button onClick={() => patch({ yearSel: {} })} style={mchip(!Object.values(s.yearSel).some(Boolean))}>전체</button>
+                    {YEARS.map((y) => (
+                      <button key={y} onClick={() => toggleYearSel(y)} style={mchip(!!s.yearSel[y])}>{y}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
@@ -842,6 +911,21 @@ export default function Explorer() {
             </div>
           </div>
 
+          {s.project !== '전체 프로젝트' && (
+            <div style={{ padding: '20px 16px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: 'var(--ant-bg)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.project}</span>
+                <button onClick={() => showToast('콜렉션 관리 페이지 준비 중')} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, height: 24, padding: '0 12px', borderRadius: 12, border: '1px solid var(--ant-primary)', background: 'var(--ant-bg)', color: 'var(--ant-primary)', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                  Edit
+                  <span style={{ display: 'flex', transform: 'rotate(-90deg)' }}><Icon name="IconDownOutlined" size={10} /></span>
+                </button>
+              </div>
+              {COLLECTIONS[s.project]?.desc && (
+                <div style={{ marginTop: 8, fontSize: 11.5, lineHeight: 1.5, color: 'var(--ant-text-secondary)' }}>{COLLECTIONS[s.project].desc}</div>
+              )}
+            </div>
+          )}
+
           <div style={{ padding: '9px 16px', borderBottom: '1px solid var(--ant-border-secondary)', display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
             <span style={{ fontSize: 13, fontWeight: 700 }}>결과 {filtered.length}건</span>
             <div style={{ position: 'relative', display: 'inline-flex', height: 28, borderRadius: 14, background: 'var(--ant-fill-quaternary)', border: '1px solid var(--ant-border-secondary)', boxSizing: 'border-box' }}>
@@ -858,7 +942,7 @@ export default function Explorer() {
             {hasFilters && <button onClick={resetFilters} style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>필터 초기화</button>}
             {hasCompare && (
               <button onClick={toggleCompare} style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8, height: 28, padding: '0 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', border: `1px solid ${s.compareOpen ? 'var(--ant-primary)' : 'var(--ant-border)'}`, background: s.compareOpen ? 'var(--ant-primary)' : 'var(--ant-bg)', color: s.compareOpen ? '#fff' : 'var(--ant-text-secondary)' }}>
-                <Icon name="IconSwapRightOutlined" size={14} />시점 비교
+                시점 비교
               </button>
             )}
           </div>
@@ -914,6 +998,142 @@ export default function Explorer() {
         {/* Map area */}
         <div style={{ flex: 1, position: 'relative', minWidth: 0, background: '#eaeef2' }}>
           <div ref={mapElRef} id="sams-map" style={{ position: 'absolute', inset: 0 }} />
+
+          {/* Item detail drawer */}
+          {(() => {
+            const dit = s.drawerId ? itemById(s.drawerId) : null;
+            const dc = dit ? CAT_MAP[dit.cat] : null;
+            // Same per-type naming/icon as the map preview popup buttons.
+            const viewMeta = !dit ? null
+              : dit.meshUrl || dit.pointCloudUrl ? { label: '3D 렌더링', svg: CUBE_SVG }
+              : dit.videoUrl ? { label: '영상재생하기', svg: PLAY_SVG }
+              : (dit.panoImages && dit.panoImages.length) || (dit.images && dit.images.length) ? { label: '크게 보기', svg: EXPAND_SVG }
+              : null;
+            const related = dit ? ITEMS.filter((i) => i.id !== dit.id && i.space === dit.space) : [];
+            const thread = dit ? comments[dit.id] || [] : [];
+            const addComment = () => {
+              const t = commentDraft.trim();
+              if (!t || !dit) return;
+              setComments((c) => ({ ...c, [dit.id]: [...(c[dit.id] || []), { author: '나', date: new Date().toISOString().slice(0, 10), text: t }] }));
+              setCommentDraft('');
+            };
+            return (
+              <div style={{ position: 'absolute', top: 12, right: 12, width: 360, maxHeight: 'calc(100% - 24px)', zIndex: 30, background: 'rgba(255,255,255,0.90)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', borderRadius: 16, border: '1px solid var(--ant-border-secondary)', boxShadow: '0 8px 28px rgba(0,0,0,0.16)', overflow: 'hidden', transform: dit ? 'translateX(0)' : 'translateX(calc(100% + 24px))', transition: 'transform .28s cubic-bezier(.4,0,.2,1)', display: 'flex', flexDirection: 'column', pointerEvents: dit ? 'auto' : 'none' }}>
+                {dit && (
+                  <>
+                    <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: '#fff' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: dc.color }}>
+                          <Icon name={dc.icon} size={15} />
+                        </div>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{dit.title}</span>
+                        <button onClick={closeDrawer} aria-label="닫기" style={{ flex: 'none', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>
+                          <Icon name="IconCloseOutlined" size={14} />
+                        </button>
+                      </div>
+                      <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>
+                        {dc.label} · {dit.status === 'published' ? 'Published' : 'Draft'} · {dit.date}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 4 }}>
+                        {viewMeta && (
+                          <button onClick={() => viewRealData(dit)} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
+                            <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: viewMeta.svg }} />
+                            {viewMeta.label}
+                          </button>
+                        )}
+                        <button onClick={() => showToast(`다운로드 시작: ${dit.title} (${dit.size})`)} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
+                          <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: DL_SVG }} />
+                          다운로드
+                        </button>
+                        <button onClick={() => showToast('관리 페이지 준비 중')} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
+                          <span style={{ display: 'flex', transform: 'rotate(-90deg)' }}><Icon name="IconDownOutlined" size={13} /></span>
+                          데이터관리
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '16px 20px' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', marginBottom: 8 }}>상세 설명</div>
+                      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--ant-border-secondary)', padding: 12 }}>
+                        <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--ant-text)' }}>{dit.desc}</div>
+                        <table style={{ width: '100%', marginTop: 12, fontSize: 12, borderCollapse: 'collapse' }}>
+                          <tbody>
+                            {[['위치', dit.site], ['취득일', dit.date], ['크기', dit.size], ['규모', dit.extra || '—'], ['좌표계', dit.epsg === '—' ? '—' : `EPSG:${dit.epsg}`], ['좌표값', dit.lat != null ? `${dit.lat.toFixed(6)}, ${dit.lng.toFixed(6)}` : '—']].map(([k, v]) => (
+                              <tr key={k}>
+                                <td style={{ padding: '4px 0', color: 'var(--ant-text-tertiary)', width: 64, verticalAlign: 'top' }}>{k}</td>
+                                <td style={{ padding: '4px 0', color: 'var(--ant-text)' }}>{v}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>담긴 COLLECTION</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {itemCollections(dit).map((cn) => {
+                          const on = s.project === cn;
+                          return (
+                            <button key={cn} onClick={() => selectProject(on ? '전체 프로젝트' : cn)} title={COLLECTIONS[cn]?.desc || cn}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 28, padding: '0 12px', borderRadius: 14, border: `1px solid ${on ? 'var(--ant-primary)' : 'var(--ant-border)'}`, background: on ? 'var(--ant-primary)' : 'var(--ant-bg)', color: on ? '#fff' : 'var(--ant-text)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                              {cn}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {related.length > 0 && (
+                        <>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>연관된 데이터 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {related.length}건</span></div>
+                          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--ant-border-secondary)', padding: 4 }}>
+                            {related.map((r) => {
+                              const rc = CAT_MAP[r.cat];
+                              return (
+                                <div key={r.id} onClick={() => openDrawer(r)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px', borderRadius: 8, cursor: 'pointer' }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ant-fill-quaternary)'; }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
+                                  <div style={{ width: 24, height: 24, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: rc.color }}>
+                                    <Icon name={rc.icon} size={12} />
+                                  </div>
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.title}</div>
+                                    <div style={{ fontSize: 11, color: 'var(--ant-text-tertiary)' }}>{r.date} · {r.size}</div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+
+                      {thread.length > 0 && (
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>코멘트 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {thread.length}건</span></div>
+                      )}
+                      {thread.map((cm, i) => (
+                        <div key={i} style={{ padding: '8px 12px', borderRadius: 12, background: '#fff', border: '1px solid var(--ant-border-secondary)', marginBottom: 8 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ant-text)' }}>{cm.author}</span>
+                            <span style={{ fontSize: 10.5, color: 'var(--ant-text-quaternary)' }}>{cm.date}</span>
+                          </div>
+                          <div style={{ marginTop: 4, fontSize: 12, lineHeight: 1.5, color: 'var(--ant-text-secondary)' }}>{cm.text}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ padding: '12px 20px 16px', borderTop: '1px solid var(--ant-border-secondary)', flex: 'none', display: 'flex', gap: 8 }}>
+                      <input
+                        value={commentDraft}
+                        onChange={(e) => setCommentDraft(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') addComment(); }}
+                        placeholder="코멘트 입력"
+                        style={{ flex: 1, minWidth: 0, height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--ant-text)' }}
+                      />
+                      <button onClick={addComment} style={{ flex: 'none', height: 32, padding: '0 16px', borderRadius: 8, border: 'none', background: 'var(--ant-primary)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>등록</button>
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })()}
 
           <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 4, display: 'flex', background: 'var(--ant-bg)', borderRadius: 9, padding: 3, boxShadow: '0 2px 10px rgba(0,0,0,0.14)', border: '1px solid var(--ant-border-secondary)' }}>
             {[['light', '일반지도', 'IconEnvironmentOutlined'], ['satellite', '위성', 'IconGlobalOutlined'], ['3d', '3D', 'IconBoxPlotOutlined']].map(([key, label, icon]) => {

@@ -61,7 +61,43 @@ export function buildCompareStyle() {
   };
 }
 
+// Zoom level at which point markers start being backed by the data's real
+// coverage rectangle on the ground.
+export const FOOTPRINT_MINZOOM = 16;
+
 export function addAssetLayers(map) {
+  map.addSource('footprints', {
+    type: 'geojson',
+    promoteId: 'id',
+    data: { type: 'FeatureCollection', features: [] },
+  });
+  // Below FOOTPRINT_MINZOOM the rectangles stay hidden unless the item is
+  // hovered (미리보기) or clicked — then its footprint shows at any zoom.
+  const fpEmphasized = ['any',
+    ['boolean', ['feature-state', 'hover'], false],
+    ['boolean', ['feature-state', 'active'], false],
+  ];
+  map.addLayer({
+    id: 'footprint-fill',
+    type: 'fill',
+    source: 'footprints',
+    paint: {
+      'fill-color': ['get', 'color'],
+      'fill-opacity': ['step', ['zoom'], ['case', fpEmphasized, 0.12, 0], FOOTPRINT_MINZOOM, ['case', fpEmphasized, 0.14, 0.08]],
+    },
+  });
+  map.addLayer({
+    id: 'footprint-line',
+    type: 'line',
+    source: 'footprints',
+    paint: {
+      'line-color': ['get', 'color'],
+      'line-width': ['case', fpEmphasized, 2, 1.5],
+      'line-dasharray': [2, 2],
+      'line-opacity': ['step', ['zoom'], ['case', fpEmphasized, 0.95, 0], FOOTPRINT_MINZOOM, 0.85],
+    },
+  });
+
   map.addSource('assets', {
     type: 'geojson',
     promoteId: 'id',
