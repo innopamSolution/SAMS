@@ -310,6 +310,14 @@ export default function Explorer() {
       popupReopenRef.current = null;
       openDetail(it);
     }
+    // If it was opened from the detail drawer's 3D 렌더링 button, bring the
+    // drawer back so the user lands where they left off.
+    if (drawerReturnRef.current) {
+      const id = drawerReturnRef.current;
+      drawerReturnRef.current = null;
+      patch({ drawerId: id });
+      if (map) map.setPadding({ top: 0, bottom: 0, left: 0, right: 384 });
+    }
   };
 
   const render3DAt = async (lngLat, title, color, count, H) => {
