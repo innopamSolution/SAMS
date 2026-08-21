@@ -68,6 +68,21 @@ export const SEED_COMMENTS = {
   ],
 };
 
+// 아이템 간 파생 관계 (item id → 원본이 되는 item id 목록). 메시·보고서처럼
+// 다른 데이터에서 파생된 산출물의 계보를 기록하며, 드로어에서 런타임 편집된다.
+export const DERIVATIONS = {
+  e2: ['e1'],
+  e4: ['e1', 'e2'],
+};
+
+export function originIdsOf(id) {
+  return DERIVATIONS[id] || [];
+}
+
+export function derivedIdsOf(id) {
+  return Object.keys(DERIVATIONS).filter((k) => (DERIVATIONS[k] || []).includes(id));
+}
+
 // Collection metadata shown in the results-panel header when one is selected.
 export const COLLECTIONS = {
   'K-Seongsu Project': {
