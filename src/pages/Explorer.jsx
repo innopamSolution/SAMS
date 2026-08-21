@@ -1003,6 +1003,12 @@ export default function Explorer() {
           {(() => {
             const dit = s.drawerId ? itemById(s.drawerId) : null;
             const dc = dit ? CAT_MAP[dit.cat] : null;
+            // Same per-type naming/icon as the map preview popup buttons.
+            const viewMeta = !dit ? null
+              : dit.meshUrl || dit.pointCloudUrl ? { label: '지도에서 3D 렌더링', svg: CUBE_SVG }
+              : dit.videoUrl ? { label: '영상재생하기', svg: PLAY_SVG }
+              : (dit.panoImages && dit.panoImages.length) || (dit.images && dit.images.length) ? { label: '크게 보기', svg: EXPAND_SVG }
+              : null;
             const related = dit ? ITEMS.filter((i) => i.id !== dit.id && i.space === dit.space) : [];
             const thread = dit ? comments[dit.id] || [] : [];
             const addComment = () => {
