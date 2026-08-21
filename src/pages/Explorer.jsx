@@ -1034,18 +1034,18 @@ export default function Explorer() {
                       <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>
                         {dc.label} · {dit.status === 'published' ? 'Published' : 'Draft'} · {dit.date}
                       </div>
-                      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 4 }}>
                         {viewMeta && (
-                          <button onClick={() => viewRealData(dit)} style={{ flex: 1, minWidth: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 28, padding: '0 8px', borderRadius: 8, border: 'none', background: 'var(--ant-primary)', color: '#fff', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          <button onClick={() => viewRealData(dit)} style={{ flex: 1, minWidth: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 32, padding: '0 8px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                             <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: viewMeta.svg }} />
                             {viewMeta.label}
                           </button>
                         )}
-                        <button onClick={() => showToast(`다운로드 시작: ${dit.title} (${dit.size})`)} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 28, padding: '0 12px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <button onClick={() => showToast(`다운로드 시작: ${dit.title} (${dit.size})`)} style={{ flex: 1, minWidth: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 32, padding: '0 8px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: DL_SVG }} />
                           다운로드
                         </button>
-                        <button onClick={() => showToast('관리 페이지 준비 중')} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 28, padding: '0 12px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                        <button onClick={() => showToast('관리 페이지 준비 중')} style={{ flex: 1, minWidth: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4, height: 32, padding: '0 8px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                           <Icon name="IconBuildOutlined" size={13} />
                           관리
                         </button>
