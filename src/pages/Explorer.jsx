@@ -385,6 +385,7 @@ export default function Explorer() {
   };
 
   const closeDrawer = () => {
+    drawerReturnRef.current = null;
     patch({ drawerId: null });
     const map = mapRef.current;
     if (map) map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
