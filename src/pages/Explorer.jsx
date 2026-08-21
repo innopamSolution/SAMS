@@ -364,9 +364,10 @@ export default function Explorer() {
   };
 
   // 실데이터 보기 button in the drawer header: mesh/point cloud renders in 3D
-  // on the map, media items open their respective large viewers.
+  // on the map (closing the drawer so the map gets the full width), media
+  // items open their respective large viewers on top.
   const viewRealData = (it) => {
-    if (it.meshUrl || it.pointCloudUrl) { show3DOnMap(it); return; }
+    if (it.meshUrl || it.pointCloudUrl) { closeDrawer(); show3DOnMap(it); return; }
     if (it.cat === 'pano' && it.panoImages && it.panoImages.length) { openPanoViewer(it.panoImages, 0); return; }
     if (it.images && it.images.length) { openPanoViewer(it.images, 0, '이미지'); return; }
     if (it.videoUrl) { openVideoViewer(it); return; }

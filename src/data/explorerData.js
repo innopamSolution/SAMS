@@ -30,8 +30,8 @@ export const ITEMS = [
   { id: 'e4', space: 'HQ(이마트)', title: 'HQ 현장 실측 보고서', cat: 'document', date: '2025-01-20', size: 'PDF · 42쪽', extra: '', status: 'published', epsg: '—', site: '성수동, 서울', project: 'K-Seongsu Project', lng: null, lat: null, projectLng: PROJECT_LOC.lng, projectLat: PROJECT_LOC.lat, desc: '스캔 · 모델링 결과 종합 정리' },
   { id: 'e5', extent: [90, 60, 20], space: 'HQ(이마트)', title: 'HQ 매뉴얼', cat: 'model3d', date: '2024-09-06', size: '18.5MB', extra: '734.9K vertex', status: 'published', epsg: '—', site: '성수동, 서울', project: 'K-Seongsu Project', lng: PROJECT_LOC.lng, lat: PROJECT_LOC.lat, desc: 'Rhinoceros 8 · COLLADA 설계 모델 · 정점 컬러(텍스처 없음)', meshUrl: asset('/data/k-hq-model.bin') },
   { id: 'e6', extent: [70, 50, -12], space: '삼양비즈니스폼', title: '삼양비즈니스폼 3D', cat: 'model3d', date: '2026-07-14', size: '14.9MB', extra: '568.7K vertex', status: 'published', epsg: '—', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.0574941, lat: 37.5397025, desc: 'Cesium 3D Tiles · 텍스처 베이크 정점 컬러', meshUrl: asset('/data/samyang-mesh.bin') },
-  { id: 'e7', extent: [160, 110, 8], space: '현대테라스타워', collections: ['K-Seongsu Project', 'hanil-drone-2024'], title: '현대테라스타워 드론 영상', cat: 'video', date: '2025-03-18', size: '28.1MB', extra: '0:24', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.053644, lat: 37.543983, desc: 'DJI 드론 촬영 · H.264 MP4 · 3840x2160 → 1920x1080 웹 최적화', videoUrl: asset('/uploads/video/hyundai-terrace-drone.mp4') },
-  { id: 'e8', extent: [120, 80, -5], space: '메가박스', collections: ['K-Seongsu Project', 'hanil-drone-2024'], title: '메가박스 촬영', cat: 'image', date: '2025-03-19', size: '2.3MB', extra: '3장', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.045252, lat: 37.541770, desc: 'DJI 드론 촬영 · JPEG 3매 · 1920px 웹 최적화', images: [asset('/uploads/image/megabox-01.jpg'), asset('/uploads/image/megabox-02.jpg'), asset('/uploads/image/megabox-03.jpg')] },
+  { id: 'e7', extent: [160, 110, 8], space: '현대테라스타워', title: '현대테라스타워 드론 영상', cat: 'video', date: '2025-03-18', size: '28.1MB', extra: '0:24', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.053644, lat: 37.543983, desc: 'DJI 드론 촬영 · H.264 MP4 · 3840x2160 → 1920x1080 웹 최적화', videoUrl: asset('/uploads/video/hyundai-terrace-drone.mp4') },
+  { id: 'e8', extent: [120, 80, -5], space: '메가박스', title: '메가박스 촬영', cat: 'image', date: '2025-03-19', size: '2.3MB', extra: '3장', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.045252, lat: 37.541770, desc: 'DJI 드론 촬영 · JPEG 3매 · 1920px 웹 최적화', images: [asset('/uploads/image/megabox-01.jpg'), asset('/uploads/image/megabox-02.jpg'), asset('/uploads/image/megabox-03.jpg')] },
 ];
 
 // The real-world coverage rectangle of an item's data, as a closed GeoJSON
@@ -52,7 +52,7 @@ export function footprintRing(it) {
   return ring;
 }
 
-export const PROJECTS = ['전체 프로젝트', 'K-Seongsu Project', 'hanil-drone-2024'];
+export const PROJECTS = ['전체 프로젝트', 'K-Seongsu Project'];
 
 // Seed comments shown in the item detail drawer (keyed by item id).
 export const SEED_COMMENTS = {
@@ -73,16 +73,7 @@ export const COLLECTIONS = {
   'K-Seongsu Project': {
     desc: '성수동 일대 디지털트윈 구축 콜렉션. 실측 포인트클라우드·3D 모델·드론 영상·현장 문서를 시기별로 통합 관리합니다.',
   },
-  'hanil-drone-2024': {
-    desc: '한일엔지니어링 드론 촬영 콜렉션. 2024-2025년 정기 드론 취득 영상·이미지를 모았습니다.',
-  },
 };
-
-// Every collection an item belongs to. Falls back to the item's primary
-// project for data that predates multi-collection membership.
-export function itemCollections(it) {
-  return it.collections || [it.project];
-}
 export const EPSGS = ['좌표계 전체', 'EPSG:5186', 'EPSG:5187'];
 
 export const TIMELINE = [];
