@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import Icon from '../components/Icon';
 import {
-  CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, PROJECT_LOC, structLngLat, footprintRing, COLLECTIONS, SEED_COMMENTS, itemCollections, MEMBERSHIP,
+  CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, PROJECT_LOC, structLngLat, footprintRing, COLLECTIONS, SEED_COMMENTS, itemCollections, MEMBERSHIP, DERIVATIONS, originIdsOf, derivedIdsOf,
 } from '../data/explorerData';
 import { buildMainStyle, buildCompareStyle, addAssetLayers } from '../lib/mapStyles';
 import { add3DLayer, addRealPointCloudLayer, addRealMeshLayer } from '../lib/three3d';
@@ -141,6 +141,21 @@ export default function Explorer({ onNavigate = () => {} }) {
   };
   const unlinkCollFrom = (id, cn) => {
     MEMBERSHIP[id] = (MEMBERSHIP[id] || []).filter((n) => n !== cn);
+    patch({});
+  };
+
+  // 연결된 아이템(파생 관계) 편집 — 'origin' | 'derived' 픽커 펼침 상태
+  const [linkAddOpen, setLinkAddOpen] = useState(null);
+
+  const linkItem = (id, otherId, kind) => {
+    if (kind === 'origin') DERIVATIONS[id] = [...(DERIVATIONS[id] || []), otherId];
+    else DERIVATIONS[otherId] = [...(DERIVATIONS[otherId] || []), id];
+    setLinkAddOpen(null);
+    patch({});
+  };
+  const unlinkItem = (id, otherId, kind) => {
+    if (kind === 'origin') DERIVATIONS[id] = (DERIVATIONS[id] || []).filter((x) => x !== otherId);
+    else DERIVATIONS[otherId] = (DERIVATIONS[otherId] || []).filter((x) => x !== id);
     patch({});
   };
 
@@ -379,6 +394,7 @@ export default function Explorer({ onNavigate = () => {} }) {
   // (mesh / point cloud) render the actual 3D on the map right away.
   const openDrawer = (it) => {
     setCollAddOpen(false);
+    setLinkAddOpen(null);
     patch({ drawerId: it.id });
     const map = mapRef.current;
     if (!map || it.lat == null) return;
@@ -399,6 +415,7 @@ export default function Explorer({ onNavigate = () => {} }) {
 
   const closeDrawer = () => {
     setCollAddOpen(false);
+    setLinkAddOpen(null);
     drawerReturnRef.current = null;
     patch({ drawerId: null });
     const map = mapRef.current;
@@ -1133,6 +1150,69 @@ export default function Explorer({ onNavigate = () => {} }) {
                           ));
                         })()}
                       </div>
+
+                      {(() => {
+                        const origins = originIdsOf(dit.id).map(itemById).filter(Boolean);
+                        const derived = derivedIdsOf(dit.id).map(itemById).filter(Boolean);
+                        const linkedRows = [
+                          ...origins.map((r) => ({ r, kind: 'origin' })),
+                          ...derived.map((r) => ({ r, kind: 'derived' })),
+                        ];
+                        const candidates = ITEMS.filter((i) => i.id !== dit.id && !originIdsOf(dit.id).includes(i.id) && !derivedIdsOf(dit.id).includes(i.id));
+                        return (
+                          <>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>
+                              연결된 아이템{linkedRows.length > 0 && <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}> · {linkedRows.length}건</span>}
+                            </div>
+                            {linkedRows.length > 0 && (
+                              <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--ant-border-secondary)', padding: 4, marginBottom: 8 }}>
+                                {linkedRows.map(({ r, kind }) => {
+                                  const rc = CAT_MAP[r.cat];
+                                  return (
+                                    <div key={kind + r.id} onClick={() => openDrawer(r)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px', borderRadius: 8, cursor: 'pointer' }}
+                                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ant-fill-quaternary)'; }}
+                                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
+                                      <div style={{ width: 24, height: 24, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: rc.color }}>
+                                        <Icon name={rc.icon} size={12} />
+                                      </div>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.title}</div>
+                                        <div style={{ fontSize: 11, color: 'var(--ant-text-tertiary)' }}>{r.date} · {r.size}</div>
+                                      </div>
+                                      <span style={{ flex: 'none', fontSize: 10, fontWeight: 600, padding: '0 8px', lineHeight: '18px', borderRadius: 9, background: kind === 'origin' ? 'var(--ant-fill-quaternary)' : 'rgba(22,119,255,0.08)', color: kind === 'origin' ? 'var(--ant-text-secondary)' : 'var(--ant-primary)' }}>
+                                        {kind === 'origin' ? '원본' : '파생'}
+                                      </span>
+                                      <span onClick={(e) => { e.stopPropagation(); unlinkItem(dit.id, r.id, kind); }} title="연결 해제"
+                                        style={{ flex: 'none', display: 'flex', alignItems: 'center', padding: '0 4px', color: 'var(--ant-text-tertiary)', cursor: 'pointer' }}>
+                                        <Icon name="IconCloseOutlined" size={10} />
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                              {linkAddOpen == null && candidates.length > 0 && (
+                                <>
+                                  <button onClick={() => setLinkAddOpen('origin')} style={{ height: 28, padding: '0 12px', borderRadius: 14, border: '1px dashed var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text-secondary)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>+ 원본 연결</button>
+                                  <button onClick={() => setLinkAddOpen('derived')} style={{ height: 28, padding: '0 12px', borderRadius: 14, border: '1px dashed var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text-secondary)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>+ 파생 연결</button>
+                                </>
+                              )}
+                              {linkAddOpen != null && (
+                                <>
+                                  <span style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', width: '100%' }}>{linkAddOpen === 'origin' ? '이 아이템의 원본을 선택하세요' : '이 아이템에서 파생된 아이템을 선택하세요'}</span>
+                                  {candidates.map((cd) => (
+                                    <button key={cd.id} onClick={() => linkItem(dit.id, cd.id, linkAddOpen)} style={{ height: 28, padding: '0 12px', borderRadius: 14, border: '1px dashed var(--ant-primary)', background: 'rgba(22,119,255,0.04)', color: 'var(--ant-primary)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                      + {cd.title}
+                                    </button>
+                                  ))}
+                                  <button onClick={() => setLinkAddOpen(null)} style={{ height: 28, padding: '0 12px', borderRadius: 14, border: 'none', background: 'transparent', color: 'var(--ant-text-tertiary)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}>취소</button>
+                                </>
+                              )}
+                            </div>
+                          </>
+                        );
+                      })()}
 
                       {related.length > 0 && (
                         <>
