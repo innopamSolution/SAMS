@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Icon from '../components/Icon';
 import { CATS, CAT_MAP, ITEMS, PROJECTS, COLLECTIONS, MEMBERSHIP, PROJECT_LOC, itemCollections, DERIVATIONS, originIdsOf, derivedIdsOf } from '../data/explorerData';
 
-// 데이터 관리: 콜렉션(생성·수정·삭제)과 데이터 아이템(등록·콜렉션 연결·삭제)
+// 데이터 관리: 컬렉션(생성·수정·삭제)과 데이터 아이템(등록·컬렉션 연결·삭제)
 // 관리. Explorer가 읽는 동일한 라이브 모듈 데이터(ITEMS / PROJECTS /
 // COLLECTIONS / MEMBERSHIP)를 편집하므로 탐색 화면에 즉시 반영된다.
 
@@ -24,7 +24,7 @@ const PIPE = [
   { id: 'bundle', label: '파일을 아이템으로 묶는 중' },
   { id: 'detect', label: '선택한 유형 확인 중' },
   { id: 'extract', label: '파일에서 메타데이터 읽는 중' },
-  { id: 'inherit', label: '콜렉션 기본값 채우는 중' },
+  { id: 'inherit', label: '컬렉션 기본값 채우는 중' },
   { id: 'suggest', label: '연관 아이템 찾는 중' },
   { id: 'thumbnail', label: '미리보기 만드는 중' },
 ];
@@ -91,7 +91,7 @@ export default function DataManagement({ onNavigate, initialCollection }) {
     showToast._t = setTimeout(() => setToast(null), 2200);
   };
 
-  // ── 콜렉션 ──────────────────────────────────────────────
+  // ── 컬렉션 ──────────────────────────────────────────────
   const pick = (name) => { setSelected(name); setDraft(makeCollDraft(name)); setCollAdd(false); setCollItemQuery(''); };
   const startNew = () => { setSelected(null); setDraft(makeCollDraft(null)); setCollAdd(false); setCollItemQuery(''); };
   const memberCount = (name) => ITEMS.filter((i) => itemCollections(i).includes(name)).length;
@@ -99,8 +99,8 @@ export default function DataManagement({ onNavigate, initialCollection }) {
 
   const saveColl = () => {
     const name = draft.name.trim();
-    if (!name) { showToast('콜렉션 이름을 입력하세요'); return; }
-    if (name !== draft.orig && PROJECTS.includes(name)) { showToast('같은 이름의 콜렉션이 이미 있습니다'); return; }
+    if (!name) { showToast('컬렉션 이름을 입력하세요'); return; }
+    if (name !== draft.orig && PROJECTS.includes(name)) { showToast('같은 이름의 컬렉션이 이미 있습니다'); return; }
     if (draft.orig == null) {
       PROJECTS.push(name);
       COLLECTIONS[name] = { desc: draft.desc };
@@ -125,7 +125,7 @@ export default function DataManagement({ onNavigate, initialCollection }) {
 
   const deleteColl = () => {
     if (draft.orig == null) { pick(collNames()[0] || null); return; }
-    if (!window.confirm(`"${draft.orig}" 콜렉션을 삭제할까요?\n담긴 아이템 자체는 삭제되지 않습니다.`)) return;
+    if (!window.confirm(`"${draft.orig}" 컬렉션을 삭제할까요?\n담긴 아이템 자체는 삭제되지 않습니다.`)) return;
     const i = PROJECTS.indexOf(draft.orig);
     if (i >= 0) PROJECTS.splice(i, 1);
     delete COLLECTIONS[draft.orig];
@@ -134,7 +134,7 @@ export default function DataManagement({ onNavigate, initialCollection }) {
     setSelected(next);
     setDraft(makeCollDraft(next));
     bump();
-    showToast('콜렉션이 삭제되었습니다');
+    showToast('컬렉션이 삭제되었습니다');
   };
 
   // ── 데이터 아이템 ────────────────────────────────────────
@@ -326,7 +326,7 @@ export default function DataManagement({ onNavigate, initialCollection }) {
               <span style={{ position: 'absolute', left: 8, display: 'flex', color: 'var(--ant-text-tertiary)', pointerEvents: 'none' }}>
                 <Icon name="IconSearchOutlined" size={14} />
               </span>
-              <input value={sideQuery} onChange={(e) => setSideQuery(e.target.value)} placeholder="콜렉션 · 아이템 검색"
+              <input value={sideQuery} onChange={(e) => setSideQuery(e.target.value)} placeholder="컬렉션 · 아이템 검색"
                 style={{ width: '100%', height: 32, padding: '0 28px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--ant-text)' }} />
               {!!sideQuery && (
                 <span onClick={() => setSideQuery('')} style={{ position: 'absolute', right: 8, color: 'var(--ant-text-tertiary)', display: 'flex', cursor: 'pointer' }}>
@@ -336,7 +336,7 @@ export default function DataManagement({ onNavigate, initialCollection }) {
             </div>
           </div>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--ant-border-secondary)', display: 'flex', gap: 8 }}>
-            {[['collections', `콜렉션 ${collNames().length}`], ['items', `아이템 ${ITEMS.length}`]].map(([key, lbl]) => {
+            {[['collections', `컬렉션 ${collNames().length}`], ['items', `아이템 ${ITEMS.length}`]].map(([key, lbl]) => {
               const on = tab === key;
               return (
                 <button key={key} onClick={() => setTab(key)} style={{ flex: 1, height: 32, borderRadius: 8, border: 'none', background: on ? '#ECEEFC' : 'transparent', color: on ? 'var(--ant-text-heading)' : 'var(--ant-text-secondary)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
@@ -350,7 +350,7 @@ export default function DataManagement({ onNavigate, initialCollection }) {
             <>
               <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'flex-end' }}>
                 <button onClick={startNew} style={{ height: 28, padding: '0 12px', borderRadius: 14, border: '1px solid var(--ant-primary)', background: 'var(--ant-bg)', color: 'var(--ant-primary)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
-                  + 새 콜렉션
+                  + 새 컬렉션
                 </button>
               </div>
               <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 8px' }}>
@@ -368,7 +368,7 @@ export default function DataManagement({ onNavigate, initialCollection }) {
                 })}
                 {draft.orig == null && (
                   <div style={{ padding: '12px', borderRadius: 8, background: '#ECEEFC' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ant-primary)' }}>{draft.name.trim() || '새 콜렉션'}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ant-primary)' }}>{draft.name.trim() || '새 컬렉션'}</div>
                     <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>작성 중 · 아이템 {draftCount}건</div>
                   </div>
                 )}
@@ -419,14 +419,14 @@ export default function DataManagement({ onNavigate, initialCollection }) {
         <div style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
           {tab === 'collections' && (
             <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 24px 40px' }}>
-              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>{draft.orig == null ? '새 콜렉션 만들기' : draft.orig}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>{draft.orig == null ? '새 컬렉션 만들기' : draft.orig}</div>
 
               <div style={label}>제목</div>
-              <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="콜렉션 이름"
+              <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="컬렉션 이름"
                 style={{ ...field, height: 36, padding: '0 12px' }} />
 
               <div style={{ ...label, marginTop: 20 }}>설명</div>
-              <textarea value={draft.desc} onChange={(e) => setDraft({ ...draft, desc: e.target.value })} placeholder="콜렉션 설명" rows={3}
+              <textarea value={draft.desc} onChange={(e) => setDraft({ ...draft, desc: e.target.value })} placeholder="컬렉션 설명" rows={3}
                 style={{ ...field, padding: '8px 12px', resize: 'vertical', lineHeight: 1.6 }} />
 
               <div style={{ ...label, marginTop: 20 }}>담긴 아이템 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {draftCount}건</span></div>
@@ -447,7 +447,7 @@ export default function DataManagement({ onNavigate, initialCollection }) {
                                 <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</div>
                                 <div style={{ fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>{c.label} · {it.date} · {it.size}</div>
                               </div>
-                              <span onClick={() => setDraft({ ...draft, members: { ...draft.members, [it.id]: false } })} title="콜렉션에서 제외"
+                              <span onClick={() => setDraft({ ...draft, members: { ...draft.members, [it.id]: false } })} title="컬렉션에서 제외"
                                 style={{ flex: 'none', display: 'flex', alignItems: 'center', padding: '4px', color: 'var(--ant-text-tertiary)', cursor: 'pointer' }}>
                                 <Icon name="IconCloseOutlined" size={12} />
                               </span>
@@ -506,9 +506,9 @@ export default function DataManagement({ onNavigate, initialCollection }) {
               })()}
 
               <div style={{ display: 'flex', gap: 8, marginTop: 24 }}>
+                {draft.orig != null && <button onClick={deleteColl} style={dangerBtn}>컬렉션 삭제</button>}
+                <button onClick={() => pick(selected || collNames()[0])} style={{ ...ghostBtn, marginLeft: 'auto' }}>취소</button>
                 <button onClick={saveColl} style={primaryBtn}>{draft.orig == null ? '생성' : '저장'}</button>
-                <button onClick={() => pick(selected || collNames()[0])} style={ghostBtn}>되돌리기</button>
-                {draft.orig != null && <button onClick={deleteColl} style={{ ...dangerBtn, marginLeft: 'auto' }}>콜렉션 삭제</button>}
               </div>
             </div>
           )}
@@ -570,10 +570,10 @@ export default function DataManagement({ onNavigate, initialCollection }) {
                 if (colls.length === 0) return null;
                 return (
                   <>
-                    <div style={{ ...label, marginTop: 20 }}>연결된 콜렉션 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {colls.length}개 · 콜렉션 탭에서 편집</span></div>
+                    <div style={{ ...label, marginTop: 20 }}>연결된 컬렉션 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {colls.length}개 · 컬렉션 탭에서 편집</span></div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {colls.map((n) => (
-                        <span key={n} onClick={() => { setTab('collections'); pick(n); }} title="콜렉션 탭에서 열기"
+                        <span key={n} onClick={() => { setTab('collections'); pick(n); }} title="컬렉션 탭에서 열기"
                           style={{ display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 12px', borderRadius: 14, border: '1px solid var(--ant-border)', background: 'var(--ant-fill-quaternary)', color: 'var(--ant-text-secondary)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                           {n}
                         </span>
@@ -830,7 +830,7 @@ export default function DataManagement({ onNavigate, initialCollection }) {
                         </div>
                         <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 11, color: 'var(--ant-text-tertiary)' }}>
                           <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: 'var(--ant-success)', marginRight: 4 }} />파일에서 {fromFiles}</span>
-                          {fromColl > 0 && <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: 'var(--ant-primary)', marginRight: 4 }} />콜렉션에서 {fromColl}</span>}
+                          {fromColl > 0 && <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: 'var(--ant-primary)', marginRight: 4 }} />컬렉션에서 {fromColl}</span>}
                           {needs > 0 && <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: 'var(--ant-warning)', marginRight: 4 }} />직접 입력 {needs}</span>}
                         </div>
                       </div>
@@ -843,7 +843,7 @@ export default function DataManagement({ onNavigate, initialCollection }) {
                       <textarea value={itemDraft.desc} onChange={(e) => setItemDraft({ ...itemDraft, desc: e.target.value })} placeholder="6개월 뒤에 못 알아볼 것 같으면 한 줄 남겨두세요" rows={2}
                         style={{ ...field, padding: '8px 12px', resize: 'vertical', lineHeight: 1.6 }} />
 
-                      <div style={{ ...label, marginTop: 20 }}>콜렉션 연결 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {linkedCnt}개 · 없어도 등록됩니다</span></div>
+                      <div style={{ ...label, marginTop: 20 }}>컬렉션 연결 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {linkedCnt}개 · 없어도 등록됩니다</span></div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                         {collNames().map((n) => {
                           const on = !!itemDraft.colls[n];
