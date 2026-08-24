@@ -68,20 +68,39 @@ export const SEED_COMMENTS = {
   ],
 };
 
+// 아이템 간 파생 관계 (item id → 원본이 되는 item id 목록). 메시·보고서처럼
+// 다른 데이터에서 파생된 산출물의 계보를 기록하며, 드로어에서 런타임 편집된다.
+export const DERIVATIONS = {
+  e2: ['e1'],
+  e4: ['e1', 'e2'],
+};
+
+export function originIdsOf(id) {
+  return DERIVATIONS[id] || [];
+}
+
+export function derivedIdsOf(id) {
+  return Object.keys(DERIVATIONS).filter((k) => (DERIVATIONS[k] || []).includes(id));
+}
+
 // Collection metadata shown in the results-panel header when one is selected.
 export const COLLECTIONS = {
   'K-Seongsu Project': {
-    desc: '성수동 일대 디지털트윈 구축 콜렉션. 실측 포인트클라우드·3D 모델·드론 영상·현장 문서를 시기별로 통합 관리합니다.',
+    desc: '성수동 일대 디지털트윈 구축 컬렉션. 실측 포인트클라우드·3D 모델·드론 영상·현장 문서를 시기별로 통합 관리합니다.',
   },
   'hanil-drone-2024': {
-    desc: '한일엔지니어링 드론 촬영 콜렉션. 2024-2025년 정기 드론 취득 영상·이미지를 모았습니다.',
+    desc: '한일엔지니어링 드론 촬영 컬렉션. 2024-2025년 정기 드론 취득 영상·이미지를 모았습니다.',
   },
 };
 
-// Every collection an item belongs to. Falls back to the item's primary
-// project for data that predates multi-collection membership.
+// Live, editable collection membership (item id → collection names). Seeded
+// from each item's collections field (or its primary project); the collection
+// edit panel mutates this at runtime.
+export const MEMBERSHIP = Object.fromEntries(ITEMS.map((i) => [i.id, (i.collections || [i.project]).slice()]));
+
+// Every collection an item belongs to.
 export function itemCollections(it) {
-  return it.collections || [it.project];
+  return MEMBERSHIP[it.id] || [it.project];
 }
 export const EPSGS = ['좌표계 전체', 'EPSG:5186', 'EPSG:5187'];
 

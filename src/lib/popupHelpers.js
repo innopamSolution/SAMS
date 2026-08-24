@@ -243,6 +243,25 @@ export function wireTooltips(root) {
   });
 }
 
+// 팝업이 아닌 일반 DOM 컨테이너용 — 관리 페이지의 썸네일 카드가 쓴다.
+// 정리 함수를 돌려주므로 언마운트 시 캔버스 루프를 세울 수 있다.
+export function startTurntablesIn(root) {
+  if (!root) return () => {};
+  const canvases = [...root.querySelectorAll('canvas.sams-tt')];
+  canvases.forEach((cv) => {
+    if (cv.classList.contains('sams-tt-real')) {
+      const loader = cv.dataset.kind === 'mesh' ? loadMeshAsset : loadPointCloud;
+      loader(cv.dataset.url).then(({ positions, colors, bounds }) => {
+        if (cv._stop) return;
+        runTurntableReal(cv, positions, colors, bounds);
+      });
+    } else {
+      runTurntable(cv, cv.dataset.color);
+    }
+  });
+  return () => canvases.forEach((cv) => { cv._stop = true; });
+}
+
 export function startTurntables(popup) {
   const root = popup.getElement();
   if (!root) return;

@@ -38,6 +38,24 @@ export function buildMainStyle() {
   };
 }
 
+
+// 관리 페이지의 작은 위치 확인용 지도 — 베이스 래스터 한 장이면 충분하다.
+export function buildMiniStyle() {
+  return {
+    version: 8,
+    sources: {
+      light: {
+        type: 'raster',
+        tileSize: 256,
+        maxzoom: 19,
+        attribution: '© OpenStreetMap contributors',
+        tiles: ['a', 'b', 'c'].map((s) => `https://${s}.tile.openstreetmap.org/{z}/{x}/{y}.png`),
+      },
+    },
+    layers: [{ id: 'light-tiles', type: 'raster', source: 'light' }],
+  };
+}
+
 export function buildCompareStyle() {
   return {
     version: 8,
