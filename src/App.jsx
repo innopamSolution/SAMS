@@ -7,13 +7,17 @@ export default function App() {
   // 아이템·입력·스크롤이 그대로 남아 있어야 왕복이 끊기지 않는다.
   const [page, setPage] = useState('explorer');
   const [managedOnce, setManagedOnce] = useState(false);
-  // 관리에서 건너온 경우에만 채워지는 값 — 탐색 화면이 해당 아이템을 열고,
-  // 돌아가는 길(‹ 데이터 관리로 돌아가기)을 띄운다.
+  // 화면을 건너갈 때 "이 아이템을 열어라"를 실어 보내는 값. 탐색으로 가면 드로어를,
+  // 관리로 가면 해당 아이템 편집기를 연다. at 은 같은 아이템을 다시 눌러도
+  // 요청이 새로 도착한 것으로 구분하기 위한 것.
   const [focus, setFocus] = useState(null);
+  const [manageFocus, setManageFocus] = useState(null);
 
   const navigate = (name, payload = null) => {
     if (name === 'manage') setManagedOnce(true);
-    setFocus(name === 'explorer' && payload && payload.focusItem ? { ...payload, at: Date.now() } : null);
+    const req = payload && payload.focusItem ? { ...payload, at: Date.now() } : null;
+    setFocus(name === 'explorer' ? req : null);
+    setManageFocus(name === 'manage' ? req : null);
     setPage(name);
   };
 
@@ -24,7 +28,7 @@ export default function App() {
       </div>
       {managedOnce && (
         <div style={{ display: page === 'manage' ? 'block' : 'none', height: '100vh' }}>
-          <DataManagement onNavigate={navigate} />
+          <DataManagement onNavigate={navigate} focus={manageFocus} />
         </div>
       )}
     </>

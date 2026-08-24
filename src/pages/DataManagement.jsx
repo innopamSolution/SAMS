@@ -79,7 +79,7 @@ function fmtSize(bytes) {
   return Math.max(1, Math.round(bytes / 1024)) + 'KB';
 }
 
-export default function DataManagement({ onNavigate }) {
+export default function DataManagement({ onNavigate, focus = null }) {
   const initial = collNames()[0] || null;
   const [tab, setTab] = useState('collections');
   const [selected, setSelected] = useState(initial);
@@ -366,6 +366,18 @@ export default function DataManagement({ onNavigate }) {
   }, [locPick, miniReady]);
 
   useEffect(() => { setLocPick(false); }, [itemDraft.orig]);
+
+  // 탐색 화면 드로어의 "데이터관리"로 건너온 요청 — 아이템 탭으로 옮기고
+  // 그 아이템의 편집기를 연다.
+  const focusAtRef = useRef(0);
+  useEffect(() => {
+    if (!focus || !focus.focusItem || focus.at === focusAtRef.current) return;
+    focusAtRef.current = focus.at;
+    if (!ITEMS.some((i) => i.id === focus.focusItem)) return;
+    setTab('items');
+    pickItem(focus.focusItem);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus]);
 
   // ── 공용 스타일 ─────────────────────────────────────────
   const label = { fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', marginBottom: 8 };

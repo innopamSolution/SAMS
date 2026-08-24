@@ -1125,7 +1125,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                           <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: DL_SVG }} />
                           다운로드
                         </button>
-                        <button onClick={() => onNavigate('manage', dit.project)} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
+                        <button onClick={() => onNavigate('manage', { focusItem: dit.id })} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
                           <span style={{ display: 'flex', transform: 'rotate(-90deg)' }}><Icon name="IconDownOutlined" size={13} /></span>
                           데이터관리
                         </button>
