@@ -1091,7 +1091,7 @@ export default function Explorer({ onNavigate = () => {} }) {
                       </div>
                     </div>
 
-                    <div style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '16px 20px' }}>
+                    <div style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '16px 20px', background: 'linear-gradient(120deg, #F1F2F4 0%, #EBECEF 50%, #E4E5E8 100%)' }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', marginBottom: 8 }}>상세 설명</div>
                       <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--ant-border-secondary)', padding: 12 }}>
                         <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--ant-text)' }}>{dit.desc}</div>
