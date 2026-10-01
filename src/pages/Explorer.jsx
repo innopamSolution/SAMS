@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import Icon from '../components/Icon';
+import ConfirmDialog from '../components/ConfirmDialog';
 import {
   CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, PROJECT_LOC, structLngLat, footprintRing, COLLECTIONS, SEED_COMMENTS, itemCollections, originIdsOf, derivedIdsOf,
 } from '../data/explorerData';
@@ -104,7 +105,7 @@ function itemToTimelineNode(it) {
 // cloud / mesh), regardless of which project it belongs to.
 function comparableNodes() {
   return ITEMS
-    .filter((i) => i.lat != null && (i.pointCloudUrl || i.meshUrl))
+    .filter((i) => i.lat != null && (i.pointCloudUrl || i.meshUrl || i.tilesetPath))
     .slice()
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
     .map(itemToTimelineNode);
@@ -131,6 +132,9 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
   // seeded with the sample threads from explorerData.
   const [comments, setComments] = useState(() => ({ ...SEED_COMMENTS }));
   const [commentDraft, setCommentDraft] = useState('');
+  // 앱 안에서 그리는 확인 창 (브라우저 기본 confirm 은 미리보기 환경에서 즉시 취소된다)
+  const [confirmState, setConfirmState] = useState(null);
+  const ask = (message, onOk, extra = {}) => setConfirmState({ message, onOk, ...extra });
 
 
   const [panoViewer, setPanoViewer] = useState(null);
@@ -388,7 +392,19 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
   // 실데이터 보기 button in the drawer header: mesh/point cloud renders in 3D
   // on the map (closing the drawer so the map gets the full width), media
   // items open their respective large viewers on top.
+  // 이벤트는 그 자체로 볼 자료가 아니라 전/후 자료를 견주어 보는 것이라
+  // 기존 시점 비교(스와이프)를 전후 자료로 채워 연다. 드로어에서 열었을 때만
+  // 비교를 닫고 그 드로어로 되돌아간다 — 팝업에서 바로 왔다면 지도에 남는다.
+  const openEventCompare = (it, { returnToDrawer = false } = {}) => {
+    if (!it.compare) { showToast('비교할 자료가 연결되어 있지 않습니다'); return; }
+    if (detailPopupRef.current) { detailPopupRef.current.remove(); detailPopupRef.current = null; }
+    closeDrawer();
+    drawerReturnRef.current = returnToDrawer ? it.id : null;
+    patch({ compareA: it.compare.beforeId, compareB: it.compare.afterId, compareOpen: true });
+  };
+
   const viewRealData = (it) => {
+    if (it.cat === 'event') { openEventCompare(it, { returnToDrawer: true }); return; }
     if (it.meshUrl || it.pointCloudUrl) { closeDrawer(); drawerReturnRef.current = it.id; show3DOnMap(it); return; }
     if (it.cat === 'pano' && it.panoImages && it.panoImages.length) { openPanoViewer(it.panoImages, 0); return; }
     if (it.images && it.images.length) { openPanoViewer(it.images, 0, '이미지'); return; }
@@ -436,7 +452,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     const meta = [];
     meta.push(['위치', it.site]);
     meta.push(['취득일', it.date]);
-    meta.push(['크기', it.size]);
+    if (it.size) meta.push(['크기', it.size]);
     if (it.epsg && it.epsg !== '—') meta.push(['좌표계', 'EPSG:' + it.epsg]);
     if (it.extra) meta.push(['규모', it.extra]);
     const metaRows = meta.map((m) => `<div style="display:flex;font-size:11.5px;line-height:1.7;"><span style="width:52px;color:var(--ant-text-tertiary);flex:none;">${m[0]}</span><span style="color:var(--ant-text);font-weight:500;">${m[1]}</span></div>`).join('');
@@ -447,6 +463,11 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     const btnPanoLargeHtml = canPanoLarge ? `<button data-act="pano-large" data-tip="크게 보기" aria-label="크게 보기" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-primary);background:var(--ant-primary-bg);color:var(--ant-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;">${EXPAND_SVG}</button>` : '';
     const canVideoLarge = it.cat === 'video' && !!it.videoUrl;
     const btnVideoLargeHtml = canVideoLarge ? `<button data-act="video-large" data-tip="영상재생하기" aria-label="영상재생하기" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-primary);background:var(--ant-primary-bg);color:var(--ant-primary);cursor:pointer;display:flex;align-items:center;justify-content:center;">${PLAY_SVG}</button>` : '';
+    // 이벤트는 상세를 거치지 않고 팝업에서 바로 전후 비교로 넘어간다.
+    const canCompare = it.cat === 'event' && !!it.compare;
+    const btnCompareHtml = canCompare ? `<button data-act="event-compare" style="flex:1;height:32px;border-radius:7px;border:1px solid var(--ant-primary);background:var(--ant-primary-bg);color:var(--ant-primary);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">${EXPAND_SVG}전후 비교</button>` : '';
+    // 이벤트는 내려받을 파일이 없다.
+    const btnDlHtml = it.cat === 'event' ? '' : `<button data-act="download" data-tip="다운로드" aria-label="다운로드" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-border);background:var(--ant-bg);color:var(--ant-text);cursor:pointer;display:flex;align-items:center;justify-content:center;">${DL_SVG}</button>`;
     const html = `<div style="width:236px;font-family:var(--ant-font-sans);">
       ${thumbHtml(it, CAT_MAP, true)}
       <div style="padding:10px 12px 12px;">
@@ -462,7 +483,8 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
           ${btn3D}
           ${btnPanoLargeHtml}
           ${btnVideoLargeHtml}
-          <button data-act="download" data-tip="다운로드" aria-label="다운로드" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-border);background:var(--ant-bg);color:var(--ant-text);cursor:pointer;display:flex;align-items:center;justify-content:center;">${DL_SVG}</button>
+          ${btnCompareHtml}
+          ${btnDlHtml}
           <button data-act="detail" style="flex:1;height:32px;border-radius:7px;border:none;background:var(--ant-primary);color:#fff;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;">상세보기 →</button>
         </div>
       </div></div>`;
@@ -474,6 +496,8 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     const btnDl = rootEl.querySelector('[data-act="download"]');
     if (btnD) btnD.addEventListener('click', () => { popup.remove(); openDrawer(it); });
     if (btnDl) btnDl.addEventListener('click', () => showToast('다운로드 시작: ' + it.title + ' (' + it.size + ')'));
+    const btnCmp = rootEl.querySelector('[data-act="event-compare"]');
+    if (btnCmp) btnCmp.addEventListener('click', () => { popup.remove(); openEventCompare(it); });
     const btn3d = rootEl.querySelector('[data-act="show3d"]');
     if (btn3d) btn3d.addEventListener('click', () => show3DOnMap(it, { reopenPopup: true }));
     const btnPanoLarge = rootEl.querySelector('[data-act="pano-large"]');
@@ -613,6 +637,17 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
 
   const toggleCompare = () => patch((s) => ({ compareOpen: !s.compareOpen }));
 
+  // 이벤트의 '전후 비교'로 열린 경우, 닫으면 그 이벤트 드로어로 되돌아간다.
+  const closeCompare = () => {
+    patch({ compareOpen: false });
+    if (drawerReturnRef.current) {
+      const id = drawerReturnRef.current;
+      drawerReturnRef.current = null;
+      const back = itemById(id);
+      if (back) openDrawer(back);
+    }
+  };
+
   const beginSwipe = (e) => {
     if (e && e.preventDefault) e.preventDefault();
     const move = (ev) => {
@@ -736,7 +771,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
       } else if (node.item && node.item.pointCloudUrl) {
         const { positions, colors } = await loadPointCloud(node.item.pointCloudUrl);
         addRealPointCloudLayer(maplibregl, map, ll, positions, colors);
-      } else {
+      } else if (node.pc) {
         add3DLayer(maplibregl, map, node.pc.color, ll, Math.round(node.pc.count * 1.1 + 2600), node.pc.H * 7);
       }
     });
@@ -829,13 +864,15 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
       return [...m.entries()]
         .map(([key, items]) => {
           const sorted = [...items].sort((a, b) => b.date.localeCompare(a.date));
-          return { key, icon: 'IconEnvironmentOutlined', label: key, items: sorted };
+          return { key, icon: 'IconEnvironmentOutlined', label: key, meta: `${sorted.length}개 시기`, items: sorted };
         })
         .sort((a, b) => b.items[0].date.localeCompare(a.items[0].date));
     }
+    // 시기는 취득 회차다 — '성수클러스터 1차'처럼 한 회차가 여러 공간을 덮으므로
+    // 회차 이름으로 묶고, 날짜는 곁들여 보여준다.
     const m = new Map();
     for (const it of filtered) {
-      const key = it.date.slice(0, 7);
+      const key = `${it.date}|${it.title}`;
       if (!m.has(key)) m.set(key, []);
       m.get(key).push(it);
     }
@@ -844,7 +881,8 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
       .map(([key, items]) => ({
         key,
         icon: 'IconCalendarOutlined',
-        label: `${Number(key.slice(0, 4))}년 ${Number(key.slice(5, 7))}월`,
+        label: items[0].title,
+        meta: items[0].date,
         items,
       }));
   })();
@@ -1031,6 +1069,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                     <Icon name={g.icon} size={14} />
                   </span>
                   <span style={{ fontSize: 13, color: 'var(--ant-primary)' }}>{g.label}</span>
+                  {g.meta && <span style={{ fontSize: 11, color: 'var(--ant-text-quaternary)' }}>{g.meta}</span>}
                 </div>
                 <div style={{ marginLeft: 12, paddingLeft: 8, borderLeft: '2px solid var(--ant-border-secondary)' }}>
                   {g.items.map((it) => {
@@ -1049,13 +1088,13 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.groupBy === 'space' ? it.title : it.space}</span>
                             <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 600, padding: '0 6px', borderRadius: 20, lineHeight: '16px', color: it.status === 'published' ? 'var(--ant-success)' : 'var(--ant-warning)', background: it.status === 'published' ? 'var(--ant-success-bg)' : 'var(--ant-warning-bg)', border: `1px solid ${it.status === 'published' ? 'var(--ant-success-border)' : 'var(--ant-warning-border)'}` }}>
                               {it.status === 'published' ? 'Pub' : 'Draft'}
                             </span>
                           </div>
                           <div style={{ fontSize: 11.5, color: 'var(--ant-text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {s.groupBy === 'space' ? '' : `${it.space} · `}{it.date} · {it.size}{it.extra ? ` · ${it.extra}` : ''}
+                            {[s.groupBy === 'space' ? it.date : null, it.size, it.extra].filter(Boolean).join(' · ')}
                           </div>
                         </div>
                         <span style={{ flex: 'none', display: 'flex', alignItems: 'center', color: noGeo ? 'var(--ant-text-quaternary)' : c.color + '88' }}>
@@ -1080,6 +1119,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
             const dc = dit ? CAT_MAP[dit.cat] : null;
             // Same per-type naming/icon as the map preview popup buttons.
             const viewMeta = !dit ? null
+              : dit.cat === 'event' && dit.compare ? { label: '전후 비교', svg: EXPAND_SVG }
               : dit.meshUrl || dit.pointCloudUrl ? { label: '3D 렌더링', svg: CUBE_SVG }
               : dit.videoUrl ? { label: '영상재생하기', svg: PLAY_SVG }
               : (dit.panoImages && dit.panoImages.length) || (dit.images && dit.images.length) ? { label: '크게 보기', svg: EXPAND_SVG }
@@ -1096,6 +1136,12 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
               if (!t || !dit) return;
               setComments((c) => ({ ...c, [dit.id]: [...(c[dit.id] || []), { author: '나', date: new Date().toISOString().slice(0, 10), text: t }] }));
               setCommentDraft('');
+            };
+            const removeComment = (idx) => {
+              if (!dit) return;
+              ask('이 코멘트를 삭제할까요?', () => {
+                setComments((c) => ({ ...c, [dit.id]: (c[dit.id] || []).filter((_, i) => i !== idx) }));
+              });
             };
             return (
               <div style={{ position: 'absolute', top: 12, right: 12, width: 360, maxHeight: 'calc(100% - 24px)', zIndex: 30, background: 'rgba(255,255,255,0.90)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', borderRadius: 16, border: '1px solid var(--ant-border-secondary)', boxShadow: '0 8px 28px rgba(0,0,0,0.16)', overflow: 'hidden', transform: dit ? 'translateX(0)' : 'translateX(calc(100% + 24px))', transition: 'transform .28s cubic-bezier(.4,0,.2,1)', display: 'flex', flexDirection: 'column', pointerEvents: dit ? 'auto' : 'none' }}>
@@ -1121,10 +1167,12 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                             {viewMeta.label}
                           </button>
                         )}
+                        {dit.cat !== 'event' && (
                         <button onClick={() => showToast(`다운로드 시작: ${dit.title} (${dit.size})`)} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
                           <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: DL_SVG }} />
                           다운로드
                         </button>
+                        )}
                         <button onClick={() => onNavigate('manage', { focusItem: dit.id })} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
                           <span style={{ display: 'flex', transform: 'rotate(-90deg)' }}><Icon name="IconDownOutlined" size={13} /></span>
                           데이터관리
@@ -1135,10 +1183,10 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                     <div style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '16px 20px', background: 'linear-gradient(120deg, #F1F2F4 0%, #EBECEF 50%, #E4E5E8 100%)' }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', marginBottom: 8 }}>상세 설명</div>
                       <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--ant-border-secondary)', padding: 12 }}>
-                        <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--ant-text)' }}>{dit.desc}</div>
-                        <table style={{ width: '100%', marginTop: 12, fontSize: 12, borderCollapse: 'collapse' }}>
+                        {dit.desc && <div style={{ fontSize: 12.5, lineHeight: 1.6, color: 'var(--ant-text)' }}>{dit.desc}</div>}
+                        <table style={{ width: '100%', marginTop: dit.desc ? 12 : 0, fontSize: 12, borderCollapse: 'collapse' }}>
                           <tbody>
-                            {[['위치', dit.site], ['취득일', dit.date], ['크기', dit.size], ['규모', dit.extra || '—'], ['좌표계', dit.epsg === '—' ? '—' : `EPSG:${dit.epsg}`], ['좌표값', dit.lat != null ? `${dit.lat.toFixed(6)}, ${dit.lng.toFixed(6)}` : '—']].map(([k, v]) => (
+                            {[['위치', dit.site], ['취득일', dit.date], ['크기', dit.size], ['규모', dit.extra], ['좌표계', dit.epsg && dit.epsg !== '—' ? `EPSG:${dit.epsg}` : ''], ['좌표값', dit.lat != null ? `${dit.lat.toFixed(6)}, ${dit.lng.toFixed(6)}` : '']].filter(([, v]) => v).map(([k, v]) => (
                               <tr key={k}>
                                 <td style={{ padding: '4px 0', color: 'var(--ant-text-tertiary)', width: 64, verticalAlign: 'top' }}>{k}</td>
                                 <td style={{ padding: '4px 0', color: 'var(--ant-text)' }}>{v}</td>
@@ -1195,10 +1243,16 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>코멘트 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {thread.length}건</span></div>
                       )}
                       {thread.map((cm, i) => (
-                        <div key={i} style={{ padding: '8px 12px', borderRadius: 12, background: '#fff', border: '1px solid var(--ant-border-secondary)', marginBottom: 8 }}>
+                        <div key={i} style={{ padding: '8px 12px', borderRadius: 12, background: '#fff', border: '1px solid var(--ant-border-secondary)', marginBottom: 8 }}
+                          onMouseEnter={(e) => { const x = e.currentTarget.querySelector('[data-cm-del]'); if (x) x.style.opacity = '1'; }}
+                          onMouseLeave={(e) => { const x = e.currentTarget.querySelector('[data-cm-del]'); if (x) x.style.opacity = '0'; }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ant-text)' }}>{cm.author}</span>
-                            <span style={{ fontSize: 10.5, color: 'var(--ant-text-quaternary)' }}>{cm.date}</span>
+                            <span style={{ flex: 1, minWidth: 0, fontSize: 10.5, color: 'var(--ant-text-quaternary)' }}>{cm.date}</span>
+                            <span data-cm-del onClick={() => removeComment(i)} title="코멘트 삭제"
+                              style={{ flex: 'none', display: 'flex', alignItems: 'center', padding: 4, margin: -4, color: 'var(--ant-text-quaternary)', cursor: 'pointer', opacity: 0, transition: 'opacity .15s' }}>
+                              <Icon name="IconCloseOutlined" size={10} />
+                            </span>
                           </div>
                           <div style={{ marginTop: 4, fontSize: 12, lineHeight: 1.5, color: 'var(--ant-text-secondary)' }}>{cm.text}</div>
                         </div>
@@ -1209,7 +1263,9 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                       <input
                         value={commentDraft}
                         onChange={(e) => setCommentDraft(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') addComment(); }}
+                        // 한글 입력은 마지막 글자가 조합 중일 때도 Enter 가 먼저 들어온다.
+                        // 그대로 등록하면 조합이 뒤늦게 확정되며 끝 글자가 한 번 더 남는다.
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addComment(); }}
                         placeholder="코멘트 입력"
                         style={{ flex: 1, minWidth: 0, height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--ant-text)' }}
                       />
@@ -1261,7 +1317,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                     <Icon name="IconSwapRightOutlined" size={19} />
                   </div>
                 </div>
-                <button onClick={() => patch({ compareOpen: false })} style={{ position: 'absolute', top: 14, right: 14, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 13px', border: 'none', borderRadius: 8, background: 'rgba(15,20,28,0.85)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
+                <button onClick={closeCompare} style={{ position: 'absolute', top: 14, right: 14, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 13px', border: 'none', borderRadius: 8, background: 'rgba(15,20,28,0.85)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
                   <Icon name="IconCloseOutlined" size={13} />비교 닫기
                 </button>
                 <div style={{ position: 'absolute', top: 14, left: 14, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1380,6 +1436,8 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
           </div>
         </div>
       )}
+    
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
     </div>
   );
 }

@@ -23,7 +23,8 @@ export function statusChipHtml(status) {
 
 export function thumbHtml(it, catMap, gallery, compactH) {
   const c = catMap[it.cat];
-  if (it.cat === 'document') return '';
+  // 문서·이벤트는 보여줄 화면이 없다 — 의미 없는 자리표시 그림 대신 아예 비운다.
+  if (it.cat === 'document' || it.cat === 'event') return '';
   const realUrl = it.pointCloudUrl || it.meshUrl;
   if (realUrl) {
     const kind = it.meshUrl ? 'mesh' : 'points';

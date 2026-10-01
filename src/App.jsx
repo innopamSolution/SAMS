@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Explorer from './pages/Explorer';
 import DataManagement from './pages/DataManagement';
+import { loadSplogData } from './data/splog';
 
 export default function App() {
   // 두 화면 모두 mount를 유지한다. 관리에서 지도로 건너갔다 돌아와도 편집 중이던
@@ -13,6 +14,18 @@ export default function App() {
   const [focus, setFocus] = useState(null);
   const [manageFocus, setManageFocus] = useState(null);
 
+  // 데이터는 Spatial Log API 에서 받아온다. 받아오기 전에 화면을 그리면
+  // 지도·목록이 빈 상태로 자리를 잡아버려서, 다 받은 뒤에 띄운다.
+  const [load, setLoad] = useState({ state: 'loading', error: null });
+
+  useEffect(() => {
+    let alive = true;
+    loadSplogData()
+      .then(() => { if (alive) setLoad({ state: 'ready', error: null }); })
+      .catch((e) => { if (alive) setLoad({ state: 'error', error: String(e.message || e) }); });
+    return () => { alive = false; };
+  }, []);
+
   const navigate = (name, payload = null) => {
     if (name === 'manage') setManagedOnce(true);
     const req = payload && payload.focusItem ? { ...payload, at: Date.now() } : null;
@@ -20,6 +33,21 @@ export default function App() {
     setManageFocus(name === 'manage' ? req : null);
     setPage(name);
   };
+
+  if (load.state !== 'ready') {
+    return (
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--ant-bg-layout)', fontFamily: 'var(--ant-font-sans)' }}>
+        <div style={{ textAlign: 'center', maxWidth: 360, padding: 24 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ant-text)' }}>
+            {load.state === 'loading' ? '데이터를 불러오는 중' : '데이터를 불러오지 못했습니다'}
+          </div>
+          <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.6, color: 'var(--ant-text-secondary)' }}>
+            {load.state === 'loading' ? 'Spatial Log' : load.error}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

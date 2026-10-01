@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import Icon from '../components/Icon';
+import ConfirmDialog from '../components/ConfirmDialog';
 import { CATS, CAT_MAP, ITEMS, PROJECTS, COLLECTIONS, MEMBERSHIP, PROJECT_LOC, itemCollections, DERIVATIONS, originIdsOf, derivedIdsOf, footprintRing } from '../data/explorerData';
 import { buildMiniStyle } from '../lib/mapStyles';
 import { thumbHtml, startTurntablesIn, wireGallery } from '../lib/popupHelpers';
@@ -130,7 +131,10 @@ export default function DataManagement({ onNavigate, focus = null }) {
 
   const deleteColl = () => {
     if (draft.orig == null) { pick(collNames()[0] || null); return; }
-    if (!window.confirm(`"${draft.orig}" 컬렉션을 삭제할까요?\n담긴 아이템 자체는 삭제되지 않습니다.`)) return;
+    ask(`"${draft.orig}" 컬렉션을 삭제할까요?`, () => doDeleteColl(), { detail: '담긴 아이템 자체는 삭제되지 않습니다.' });
+  };
+
+  const doDeleteColl = () => {
     const i = PROJECTS.indexOf(draft.orig);
     if (i >= 0) PROJECTS.splice(i, 1);
     delete COLLECTIONS[draft.orig];
@@ -148,17 +152,40 @@ export default function DataManagement({ onNavigate, focus = null }) {
   const [linkQuery, setLinkQuery] = useState('');
   const [collItemQuery, setCollItemQuery] = useState('');
   const [collAdd, setCollAdd] = useState(false);
+  // 컬렉션의 담긴 아이템에서 상세로 건너왔을 때 돌아갈 컬렉션 이름
+  const [backToColl, setBackToColl] = useState(null);
   const [sideQuery, setSideQuery] = useState('');
+  // 앱 안에서 그리는 확인 창 (브라우저 기본 confirm 대신)
+  const [confirmState, setConfirmState] = useState(null);
+  const ask = (message, onOk, extra = {}) => setConfirmState({ message, onOk, ...extra });
   const pickItem = (id) => {
     if (itemDraft.orig == null && upFiles.length > 0) {
-      if (!window.confirm('업로드를 취소하시겠습니까?')) return;
-      clearInterval(window.__samsUpTimer);
+      ask('업로드를 취소하시겠습니까?', () => { clearInterval(window.__samsUpTimer); doPickItem(id); }, { confirmLabel: '업로드 취소' });
+      return;
     }
+    doPickItem(id);
+  };
+
+  const doPickItem = (id) => {
     setItemSel(id); setItemDraft(makeItemDraft(id)); setLinkAdd(null); setLinkQuery('');
     setItemEditMode(true);
   };
+  // 컬렉션의 담긴 아이템 → 그 아이템 편집기. 컬렉션 draft 는 손대지 않아
+  // 되돌아왔을 때 편집 중이던 제목·설명·담긴 목록이 그대로 남는다.
+  const openItemFromCollection = (id) => {
+    setBackToColl(draft.orig || draft.name.trim() || '컬렉션');
+    setTab('items');
+    pickItem(id);
+  };
+
+  const backToCollection = () => {
+    setBackToColl(null);
+    setTab('collections');
+  };
+
   const startUpload = () => {
     setItemSel(null); setItemDraft(makeItemDraft(null)); setLinkAdd(null); setLinkQuery('');
+    setBackToColl(null);
     setUpStep('type'); setUpFiles([]); setUpPct(0); setUpDone(0);
     clearInterval(window.__samsUpTimer);
   };
@@ -277,7 +304,10 @@ export default function DataManagement({ onNavigate, focus = null }) {
   const deleteItem = () => {
     if (itemDraft.orig == null) { pickItem(ITEMS[0]?.id || null); return; }
     const it = ITEMS.find((i) => i.id === itemDraft.orig);
-    if (!window.confirm(`"${it.title}" 아이템을 삭제할까요?`)) return;
+    ask(`"${it.title}" 아이템을 삭제할까요?`, () => doDeleteItem(it));
+  };
+
+  const doDeleteItem = (it) => {
     const idx = ITEMS.findIndex((i) => i.id === it.id);
     if (idx >= 0) ITEMS.splice(idx, 1);
     delete MEMBERSHIP[it.id];
@@ -374,6 +404,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
     if (!focus || !focus.focusItem || focus.at === focusAtRef.current) return;
     focusAtRef.current = focus.at;
     if (!ITEMS.some((i) => i.id === focus.focusItem)) return;
+    setBackToColl(null);
     setTab('items');
     pickItem(focus.focusItem);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -487,7 +518,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
                   const c = CAT_MAP[it.cat];
                   const on = itemSel === it.id && itemDraft.orig != null;
                   return (
-                    <div key={it.id} onClick={() => pickItem(it.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', background: on ? '#ECEEFC' : 'transparent', marginBottom: 4 }}>
+                    <div key={it.id} onClick={() => { setBackToColl(null); pickItem(it.id); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', background: on ? '#ECEEFC' : 'transparent', marginBottom: 4 }}>
                       <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c.color }}>
                         <Icon name={c.icon} size={14} />
                       </div>
@@ -538,7 +569,10 @@ export default function DataManagement({ onNavigate, focus = null }) {
                         {members.map((it) => {
                           const c = CAT_MAP[it.cat];
                           return (
-                            <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8 }}>
+                            <div key={it.id} onClick={() => openItemFromCollection(it.id)} title="아이템 상세보기"
+                              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, cursor: 'pointer' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ant-fill-quaternary)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
                               <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c.color }}>
                                 <Icon name={c.icon} size={14} />
                               </div>
@@ -546,7 +580,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
                                 <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</div>
                                 <div style={{ fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>{c.label} · {it.date} · {it.size}</div>
                               </div>
-                              <span onClick={() => setDraft({ ...draft, members: { ...draft.members, [it.id]: false } })} title="컬렉션에서 제외"
+                              <span onClick={(e) => { e.stopPropagation(); setDraft({ ...draft, members: { ...draft.members, [it.id]: false } }); }} title="컬렉션에서 제외"
                                 style={{ flex: 'none', display: 'flex', alignItems: 'center', padding: '4px', color: 'var(--ant-text-tertiary)', cursor: 'pointer' }}>
                                 <Icon name="IconCloseOutlined" size={12} />
                               </span>
@@ -617,6 +651,12 @@ export default function DataManagement({ onNavigate, focus = null }) {
 
           {tab === 'items' && itemDraft.orig != null && (
             <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 24px 40px' }}>
+              {backToColl && (
+                <button onClick={backToCollection} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 28, padding: '0 12px', marginBottom: 12, borderRadius: 14, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text-secondary)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <span style={{ display: 'flex', transform: 'rotate(90deg)' }}><Icon name="IconDownOutlined" size={10} /></span>
+                  {backToColl}
+                </button>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {ITEMS.find((i) => i.id === itemDraft.orig)?.title || '아이템'}
@@ -652,7 +692,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
 
               {editingItem && (() => {
                 const c = CAT_MAP[editingItem.cat];
-                const hasThumb = editingItem.cat !== 'document';
+                const hasThumb = editingItem.cat !== 'document' && editingItem.cat !== 'event';
                 const canDeep = !!(editingItem.meshUrl || editingItem.pointCloudUrl);
                 return (
                   <>
@@ -1017,6 +1057,8 @@ export default function DataManagement({ onNavigate, focus = null }) {
           {toast}
         </div>
       )}
+
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
     </div>
   );
 }
