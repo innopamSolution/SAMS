@@ -64,100 +64,98 @@ function firstLink(html) {
   return m ? m[1] : null;
 }
 
-// ── 로컬 3D 자료 연결 ───────────────────────────────────
-// 원본의 3D 자료는 Cesium 3D Tiles 라 SAMS 뷰어가 직접 읽지 못한다.
-// 다만 같은 대상·같은 회차를 담은 변환본이 이미 있어, 해당 칸에 이어 붙인다.
-// 키는 '회차 이름|공간' — 클러스터 전체 회차는 건물마다 따로 있으므로
-// 자료가 가리키는 그 건물에만 붙는다.
-const local = (path) => import.meta.env.BASE_URL + path.replace(/^\//, '');
-
-const LOCAL_ASSETS = {
-  // /models/2023/Region16_KP-E/emart_04 — 이마트 본관 실측
-  'HQ_1차|HQ(이마트)': { pointCloudUrl: local('/data/emart-pointcloud.bin'), extent: [90, 60, 20] },
-  // /models/3d-tiles-merged/2023 중 HQ 구간
-  '성수클러스터 1차|HQ(이마트)': { meshUrl: local('/data/hq-mesh.bin'), extent: [90, 60, 20] },
-  // /models/Manual/K-HQ — 설계(계획) 모델
-  'SD100%|HQ(이마트)': { meshUrl: local('/data/k-hq-model.bin'), extent: [90, 60, 20] },
-  // /models/2023/Region_20_Samyang — 삼양비즈니스폼 실측
-  'C03_1차|C03(삼양비지네스폼)': { meshUrl: local('/data/samyang-mesh.bin'), extent: [70, 50, -12] },
-};
-
 // ── 매핑 ────────────────────────────────────────────────
-// 노드(성수클러스터 1차 …)는 '시기', 메뉴 하위 항목(HQ·C01 …)은 '공간'이다.
-// 한 회차가 여러 건물을 덮으므로 (공간 × 시기) 한 칸을 아이템 한 건으로 만든다.
-// 전체보기 항목은 건물이 아니므로 제외한다 — 그 노드들은 건물 쪽에 이미 있다.
-function isOverviewEntry(entry) {
-  return entry.code === 'SV_SUNGSU_OVERVIEW' || /전체/.test(entry.label || '');
-}
-
 function buildFromMenus(menus) {
   const items = [];
   const collections = {};
   const membership = {};
   const derivations = {};
+  const spaceCoord = {};
+  const nodeSpaces = new Map(); // node.id → 그 노드를 품은 공간 이름들
+  const nodeById = new Map();
 
+  // 타임라인 메뉴만 아이템을 만든다. 쇼케이스·포인트클러스터 메뉴는
+  // 노드가 없어 SAMS 의 아이템 개념과 맞지 않는다.
   const timelineMenus = menus.filter((m) => (m.items || []).some((it) => (it.menuItemNodes || []).length));
 
   timelineMenus.forEach((menu) => {
-    collections[menu.label] = { desc: `${menu.label} · Spatial Log 에서 불러온 컬렉션입니다.` };
+    collections[menu.label] = {
+      desc: `${menu.label} · Spatial Log 에서 불러온 컬렉션입니다.`,
+    };
 
     (menu.items || []).forEach((entry) => {
-      if (isOverviewEntry(entry)) return;
-      const coord = viewpointTarget(entry.viewpoint) || {};
-      const nodeIds = new Set((entry.menuItemNodes || []).map((min) => min.node && min.node.id).filter(Boolean));
-      // 같은 건물 안에서만 전/후를 잇는다 — 그 건물 타임라인에 없는 회차는 가리키지 않는다.
-      const idIn = (nodeId) => (nodeIds.has(nodeId) ? `${entry.code}-n${nodeId}` : null);
+      const target = viewpointTarget(entry.viewpoint);
+      if (target) spaceCoord[entry.label] = target;
+      const isOverview = !(entry.menuItemNodes || []).length
+        || entry.code === 'SV_SUNGSU_OVERVIEW'
+        || /전체/.test(entry.label);
 
       (entry.menuItemNodes || []).forEach((min) => {
         const node = min.node;
         if (!node) return;
-        const t = tableOf(node);
-        const isEvent = node.type === 'EVENT';
-        const gb = t['용량(GB)'];
-        const hasSize = gb && !/^0+\.?0*$/.test(gb);
-        const count = t['수량(개수)'];
-
-        // 실제 값이 있는 것만 담는다. 없는 자리는 '—' 대신 비워 둔다.
-        const extra = [];
-        if (node.type === 'PLAN') extra.push('계획모델');
-        else if (node.type === 'REAL') extra.push('실측모델');
-        if (t['파일 형식']) extra.push(String(t['파일 형식']).toUpperCase());
-        if (count) extra.push(`${count}개`);
-
-        const item = {
-          id: `${entry.code}-n${node.id}`,
-          title: node.name,
-          cat: isEvent ? 'event' : 'model3d',
-          date: `${node.yyyy}-${node.mm}-${node.dd}`,
-          space: entry.label,
-          project: menu.label,
-          size: hasSize ? `${gb}GB` : '',
-          extra: extra.join(' · '),
-          status: 'published',
-          epsg: '—',
-          site: '성수동, 서울',
-          lng: coord.lng ?? null,
-          lat: coord.lat ?? null,
-          desc: stripTags(t['내용']) || '',
-          tilesetPath: node.tilesets?.[0]?.path || null,
-          downloadUrl: firstLink(t['다운로드 링크']),
-        };
-
-        const extraAsset = LOCAL_ASSETS[`${node.name}|${entry.label}`];
-        if (extraAsset) Object.assign(item, extraAsset);
-
-        if (isEvent && node.prevNode && node.nextNode) {
-          const before = idIn(node.prevNode.id);
-          const after = idIn(node.nextNode.id);
-          if (before && after) {
-            item.compare = { beforeId: before, afterId: after, beforeLabel: node.prevNode.name, afterLabel: node.nextNode.name };
-          }
-        }
-        items.push(item);
+        nodeById.set(node.id, node);
+        if (!nodeSpaces.has(node.id)) nodeSpaces.set(node.id, new Set());
+        if (!isOverview) nodeSpaces.get(node.id).add(entry.label);
       });
     });
   });
 
+  const menuOf = (nodeId) => {
+    const m = timelineMenus.find((menu) => (menu.items || []).some((entry) => (entry.menuItemNodes || []).some((min) => min.node && min.node.id === nodeId)));
+    return m ? m.label : timelineMenus[0]?.label;
+  };
+  const overviewCoord = () => spaceCoord['k-성수 전체'] || Object.values(spaceCoord)[0] || null;
+
+  nodeById.forEach((node, nodeId) => {
+    const t = tableOf(node);
+    const spaces = [...(nodeSpaces.get(nodeId) || [])];
+    // 여러 공간에 걸친 노드는 표의 '장소'를 쓰고, 그것도 없으면 전체로 둔다.
+    const space = spaces.length === 1 ? spaces[0] : (t['장소'] || '성수클러스터 전체');
+    const coord = spaceCoord[space] || overviewCoord() || {};
+    const isEvent = node.type === 'EVENT';
+    const gb = t['용량(GB)'];
+    const hasSize = gb && !/^0+\.?0*$/.test(gb);
+    const format = t['파일 형식'];
+    const count = t['수량(개수)'];
+    const download = firstLink(t['다운로드 링크']);
+
+    const extra = [];
+    if (node.type === 'PLAN') extra.push('계획모델');
+    else if (node.type === 'REAL') extra.push('실측모델');
+    if (format) extra.push(String(format).toUpperCase());
+    if (count) extra.push(`${count}개`);
+
+    items.push({
+      id: `n${nodeId}`,
+      title: node.name,
+      cat: isEvent ? 'event' : 'model3d',
+      date: `${node.yyyy}-${node.mm}-${node.dd}`,
+      space,
+      project: menuOf(nodeId),
+      size: hasSize ? `${gb}GB` : '—',
+      extra: extra.join(' · '),
+      status: 'published',
+      epsg: '—',
+      site: '성수동, 서울',
+      lng: coord.lng ?? null,
+      lat: coord.lat ?? null,
+      desc: stripTags(t['내용']) || (isEvent ? `${node.name} · 전후 자료를 비교해 변화를 확인합니다.` : node.name),
+      // Cesium 3D Tiles 경로 — SAMS 뷰어가 직접 읽지는 못하고 출처 표시용이다.
+      tilesetPath: node.tilesets?.[0]?.path || null,
+      downloadUrl: download,
+    });
+
+    if (isEvent && node.prevNode && node.nextNode) {
+      items[items.length - 1].compare = {
+        beforeId: `n${node.prevNode.id}`,
+        afterId: `n${node.nextNode.id}`,
+        beforeLabel: '이전',
+        afterLabel: '이후',
+      };
+    }
+  });
+
+  // 날짜 순으로 정리해 시기별 묶음이 자연스럽게 읽히도록 한다.
   items.sort((x, y) => (x.date < y.date ? -1 : x.date > y.date ? 1 : 0));
   items.forEach((it) => { membership[it.id] = [it.project]; });
 
