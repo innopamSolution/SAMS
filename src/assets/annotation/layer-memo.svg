@@ -1,0 +1,25 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Group 33546">
+<g id="Union" filter="url(#filter0_d_0_1050)">
+<path d="M26 0C28.2091 0 30 1.79086 30 4V17C30 19.2091 28.2091 21 26 21H19.7002L17.1475 26L14.5938 21H8C5.79086 21 4 19.2091 4 17V4C4 1.79086 5.79086 8.0532e-08 8 0H26Z" fill="#079CF8"/>
+</g>
+<g id="File_dock">
+<path id="Rectangle 1" d="M17.781 5H15C13.7429 5 13.1144 5 12.7239 5.39052C12.3333 5.78105 12.3333 6.40959 12.3333 7.66667V14.3333C12.3333 15.5904 12.3333 16.219 12.7239 16.6095C13.1144 17 13.7429 17 15 17H19C20.2571 17 20.8856 17 21.2761 16.6095C21.6667 16.219 21.6667 15.5904 21.6667 14.3333V8.88562C21.6667 8.61312 21.6667 8.47687 21.6159 8.35435C21.5652 8.23184 21.4688 8.1355 21.2761 7.94281L18.7239 5.39052C18.5312 5.19784 18.4348 5.10149 18.3123 5.05075C18.1898 5 18.0535 5 17.781 5Z" stroke="white" stroke-width="1.5"/>
+<path id="Vector 55" d="M15 11.6667L19 11.6667" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+<path id="Vector 58" d="M15 14.3333L17.6667 14.3333" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+<path id="Rectangle 2" d="M17.6667 5V7.66667C17.6667 8.29521 17.6667 8.60948 17.8619 8.80474C18.0572 9 18.3715 9 19 9H21.6667" stroke="white" stroke-width="1.5"/>
+</g>
+</g>
+<defs>
+<filter id="filter0_d_0_1050" x="0" y="0" width="34" height="34" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_1050"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_1050" result="shape"/>
+</filter>
+</defs>
+</svg>

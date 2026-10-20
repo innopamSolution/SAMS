@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl';
 import Icon from '../components/Icon';
+import Logo from '../components/Logo';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { useAnnotations, setAnnotationVisibility, deleteAnnotation, annotationType, ANNO_TYPES, ANNOTATION_ADMIN } from '../lib/annotations';
 import { CATS, CAT_MAP, ITEMS, PROJECTS, COLLECTIONS, MEMBERSHIP, PROJECT_LOC, itemCollections, DERIVATIONS, originIdsOf, derivedIdsOf, footprintRing } from '../data/explorerData';
 import { buildMiniStyle } from '../lib/mapStyles';
 import { thumbHtml, startTurntablesIn, wireGallery } from '../lib/popupHelpers';
@@ -130,7 +133,10 @@ export default function DataManagement({ onNavigate, focus = null }) {
 
   const deleteColl = () => {
     if (draft.orig == null) { pick(collNames()[0] || null); return; }
-    if (!window.confirm(`"${draft.orig}" 컬렉션을 삭제할까요?\n담긴 아이템 자체는 삭제되지 않습니다.`)) return;
+    ask(`"${draft.orig}" 컬렉션을 삭제할까요?`, () => doDeleteColl(), { detail: '담긴 아이템 자체는 삭제되지 않습니다.' });
+  };
+
+  const doDeleteColl = () => {
     const i = PROJECTS.indexOf(draft.orig);
     if (i >= 0) PROJECTS.splice(i, 1);
     delete COLLECTIONS[draft.orig];
@@ -148,17 +154,41 @@ export default function DataManagement({ onNavigate, focus = null }) {
   const [linkQuery, setLinkQuery] = useState('');
   const [collItemQuery, setCollItemQuery] = useState('');
   const [collAdd, setCollAdd] = useState(false);
+  // 컬렉션의 담긴 아이템에서 상세로 건너왔을 때 돌아갈 컬렉션 이름
+  const [backToColl, setBackToColl] = useState(null);
   const [sideQuery, setSideQuery] = useState('');
+  // 앱 안에서 그리는 확인 창 (브라우저 기본 confirm 대신)
+  const [confirmState, setConfirmState] = useState(null);
+  const ask = (message, onOk, extra = {}) => setConfirmState({ message, onOk, ...extra });
+  const annotations = useAnnotations();
   const pickItem = (id) => {
     if (itemDraft.orig == null && upFiles.length > 0) {
-      if (!window.confirm('업로드를 취소하시겠습니까?')) return;
-      clearInterval(window.__samsUpTimer);
+      ask('업로드를 취소하시겠습니까?', () => { clearInterval(window.__samsUpTimer); doPickItem(id); }, { confirmLabel: '업로드 취소' });
+      return;
     }
+    doPickItem(id);
+  };
+
+  const doPickItem = (id) => {
     setItemSel(id); setItemDraft(makeItemDraft(id)); setLinkAdd(null); setLinkQuery('');
     setItemEditMode(true);
   };
+  // 컬렉션의 담긴 아이템 → 그 아이템 편집기. 컬렉션 draft 는 손대지 않아
+  // 되돌아왔을 때 편집 중이던 제목·설명·담긴 목록이 그대로 남는다.
+  const openItemFromCollection = (id) => {
+    setBackToColl(draft.orig || draft.name.trim() || '컬렉션');
+    setTab('items');
+    pickItem(id);
+  };
+
+  const backToCollection = () => {
+    setBackToColl(null);
+    setTab('collections');
+  };
+
   const startUpload = () => {
     setItemSel(null); setItemDraft(makeItemDraft(null)); setLinkAdd(null); setLinkQuery('');
+    setBackToColl(null);
     setUpStep('type'); setUpFiles([]); setUpPct(0); setUpDone(0);
     clearInterval(window.__samsUpTimer);
   };
@@ -277,7 +307,10 @@ export default function DataManagement({ onNavigate, focus = null }) {
   const deleteItem = () => {
     if (itemDraft.orig == null) { pickItem(ITEMS[0]?.id || null); return; }
     const it = ITEMS.find((i) => i.id === itemDraft.orig);
-    if (!window.confirm(`"${it.title}" 아이템을 삭제할까요?`)) return;
+    ask(`"${it.title}" 아이템을 삭제할까요?`, () => doDeleteItem(it));
+  };
+
+  const doDeleteItem = (it) => {
     const idx = ITEMS.findIndex((i) => i.id === it.id);
     if (idx >= 0) ITEMS.splice(idx, 1);
     delete MEMBERSHIP[it.id];
@@ -374,6 +407,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
     if (!focus || !focus.focusItem || focus.at === focusAtRef.current) return;
     focusAtRef.current = focus.at;
     if (!ITEMS.some((i) => i.id === focus.focusItem)) return;
+    setBackToColl(null);
     setTab('items');
     pickItem(focus.focusItem);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -397,14 +431,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
       {/* Header */}
       <header style={{ height: 56, flex: 'none', display: 'flex', alignItems: 'center', gap: 44, padding: '0 20px', background: 'var(--ant-bg)', borderBottom: '1px solid var(--ant-border-secondary)', zIndex: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', flex: 'none' }}>
-          <svg height="25.2" width="107.1" viewBox="0 0 415 98" fill="none" aria-label="SAMS">
-            <path d="M48.997 93.3424C47.6729 94.0572 45.7649 94.2845 44.381 93.5407L6.26612 73.0328C4.88681 72.289 4.08681 71.0741 4.02704 69.8469C3.97187 68.7188 4.7121 67.1361 5.93508 66.475L18.6339 59.5908L6.19715 52.8719C5.05233 52.2521 4.16957 51.0165 4.06382 50.0538C3.9213 48.7893 4.40865 47.1364 5.65462 46.467L19.3373 39.0663L5.5029 31.3061C2.84544 29.8144 4.06842 26.1615 6.41324 24.893L43.7511 4.70731C45.535 3.74038 47.6775 3.7817 49.42 4.72797L87.4429 25.3599C89.3004 26.7896 89.7234 30.145 87.4521 31.3846L73.5257 38.9961L87.59 46.7521C90.0084 48.0868 88.9877 51.5951 86.8958 52.7314L74.4039 59.5206L86.5096 66.1196C87.8843 66.8676 88.8084 67.913 88.9372 69.3303C89.0429 70.4873 88.482 72.041 87.0889 72.7931L48.997 93.3382V93.3424ZM48.8361 65.1816L77.8659 49.5331L45.0568 31.9177C43.1442 30.8929 42.5741 28.9508 43.5764 27.2111C44.2568 26.0293 46.7212 24.6078 48.5649 25.5996L66.1556 35.0498L78.1142 28.4879L48.2568 12.3642C47.158 11.5874 45.981 11.6122 44.8131 12.2444L14.8776 28.459L47.8936 46.2687C50.0545 47.434 51.0154 49.1364 50.0085 51.1612C49.2177 52.7438 46.5373 53.8099 44.5649 52.7603L26.6063 43.1613L14.9649 49.4587L44.2246 65.1651C45.6269 66.2891 47.1488 66.0866 48.8315 65.1775L48.8361 65.1816ZM15.1489 69.5452L44.7396 85.578C45.8614 86.1524 47.0476 86.1896 48.1878 85.64L77.7878 69.6237L66.9188 63.5205L48.6936 73.2848C46.997 73.8385 45.2039 73.7848 43.6637 73.008L26.1097 63.5453L15.1397 69.5411L15.1489 69.5452Z" fill="var(--ant-text-heading)" />
-            <path d="M170.347 73.2403C167.758 73.9678 165.113 74.5579 162.533 74.563L136.884 74.6444C134.096 74.6545 131.277 74.1509 128.703 73.4082C122.731 71.6785 120.604 65.9401 121.179 59.8456L131.791 59.8965C131.578 62.8521 133.368 64.9684 136.156 65.1007C145.054 65.5229 153.906 65.4212 162.813 65.1007C166.232 64.9735 168.384 63.0251 168.414 59.8456C168.445 56.8594 166.247 54.7126 162.854 54.4887L136.502 52.7438C133.343 52.5352 130.291 51.9146 127.472 50.6987C120.981 47.8957 120.365 40.8956 121.403 33.9668C122.568 26.2138 129.629 23.3955 137.301 23.3955H162.935C165.459 23.3955 168.023 23.7974 170.363 24.4384C176.335 26.0765 178.243 31.998 177.841 37.9755L167.295 37.945C167.305 34.8062 165.489 32.8273 162.849 32.8273L136.675 32.8374C133.765 32.8374 131.969 34.7502 131.649 37.4109C131.298 40.3258 132.9 42.8339 136.075 43.073L158.662 44.7924C167.29 45.4487 176.986 45.9778 178.579 55.552C179.85 63.1879 178.106 71.0731 170.347 73.2454V73.2403Z" fill="var(--ant-text-heading)" />
-            <path d="M249.276 74.6447L224.928 34.2114L200.82 74.6295L188.956 74.5939L219.017 24.0063L231.018 24.0521L241.268 41.3894L261.19 74.604L249.276 74.6447Z" fill="var(--ant-text-heading)" />
-            <path d="M225.081 74.3344C229.144 74.3344 232.437 71.0409 232.437 66.9782C232.437 62.9155 229.144 59.6221 225.081 59.6221C221.018 59.6221 217.725 62.9155 217.725 66.9782C217.725 71.0409 221.018 74.3344 225.081 74.3344Z" fill="var(--ant-text-heading)" />
-            <path d="M332.308 74.6445L332.273 39.3187L311.705 64.7345L302.767 64.7244L281.904 39.3085L281.858 74.614L271.19 74.619L271.205 23.9399L282.855 23.9806L307.274 54.2548L331.235 23.9959L342.864 23.9603L342.88 74.614L332.308 74.6445Z" fill="var(--ant-text-heading)" />
-            <path d="M391.419 74.6293H369.824C366.731 74.6344 363.608 74.2172 360.713 73.4389C354.695 71.8211 352.629 66.3015 352.95 59.8H363.76C363.516 62.6946 365.256 64.9584 368.237 65.0805C377.506 65.4723 386.729 65.5129 395.927 64.9076C398.531 64.7346 400.083 62.8014 400.348 60.4868C400.719 57.2716 398.72 54.7229 395.306 54.4991L368.542 52.7287C361.227 52.2454 354.262 49.9104 353.199 42.4525C352.253 35.8289 353.174 28.3456 359.171 25.4713C362.041 24.0977 365.286 23.3702 368.557 23.3702L395.449 23.355C397.834 23.355 400.236 23.7772 402.459 24.408C408.228 26.036 410.09 31.6574 409.942 37.8994H399.198C399.478 35.0505 397.697 32.8071 394.894 32.802L368.695 32.7765C365.551 32.7765 363.648 35.0149 363.567 37.8638C363.491 40.6312 365.129 42.834 368.105 43.063L384.77 44.3398L400.577 45.9322C404.677 46.3442 408.324 49.071 409.769 52.9678C411.214 56.8646 411.244 61.5398 410.059 65.6452C407.867 73.2608 399.564 74.6445 391.409 74.6445L391.419 74.6293Z" fill="var(--ant-text-heading)" />
-          </svg>
+          <Logo />
         </div>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 4, height: '100%', flex: 'none' }}>
           <div onClick={() => onNavigate('explorer')} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>데이터 탐색</div>
@@ -435,7 +462,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
             </div>
           </div>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--ant-border-secondary)', display: 'flex', gap: 8 }}>
-            {[['collections', `컬렉션 ${collNames().length}`], ['items', `아이템 ${ITEMS.length}`]].map(([key, lbl]) => {
+            {[['collections', `컬렉션 ${collNames().length}`], ['items', `아이템 ${ITEMS.length}`], ['annotations', `어노테이션 ${annotations.length}`]].map(([key, lbl]) => {
               const on = tab === key;
               return (
                 <button key={key} onClick={() => setTab(key)} style={{ flex: 1, height: 32, borderRadius: 8, border: 'none', background: on ? '#ECEEFC' : 'transparent', color: on ? 'var(--ant-text-heading)' : 'var(--ant-text-secondary)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
@@ -445,6 +472,12 @@ export default function DataManagement({ onNavigate, focus = null }) {
             })}
           </div>
 
+          {tab === 'annotations' && (
+            <div style={{ padding: 16, fontSize: 12.5, lineHeight: 1.7, color: 'var(--ant-text-secondary)' }}>
+              어노테이션은 <b>데이터 탐색</b>의 3D 뷰어에서 모델 위에 점을 찍어 등록합니다.
+              <br />여기서는 전체 목록을 보고 공개 여부를 바꾸거나 삭제합니다.
+            </div>
+          )}
           {tab === 'collections' && (
             <>
               <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'flex-end' }}>
@@ -487,7 +520,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
                   const c = CAT_MAP[it.cat];
                   const on = itemSel === it.id && itemDraft.orig != null;
                   return (
-                    <div key={it.id} onClick={() => pickItem(it.id)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', background: on ? '#ECEEFC' : 'transparent', marginBottom: 4 }}>
+                    <div key={it.id} onClick={() => { setBackToColl(null); pickItem(it.id); }} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 8, cursor: 'pointer', background: on ? '#ECEEFC' : 'transparent', marginBottom: 4 }}>
                       <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c.color }}>
                         <Icon name={c.icon} size={14} />
                       </div>
@@ -516,6 +549,50 @@ export default function DataManagement({ onNavigate, focus = null }) {
 
         {/* 우측: 편집기 */}
         <div style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
+          {tab === 'annotations' && (
+            <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 24px 40px' }}>
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>어노테이션 관리</div>
+              <div style={{ fontSize: 12.5, color: 'var(--ant-text-tertiary)', marginBottom: 16 }}>비공개 어노테이션은 관리자에게만 보입니다.</div>
+              {annotations.length === 0 ? (
+                <div style={{ padding: '48px 0', textAlign: 'center', fontSize: 13, color: 'var(--ant-text-tertiary)' }}>등록된 어노테이션이 없습니다.</div>
+              ) : (
+                <div style={{ border: '1px solid var(--ant-border-secondary)', borderRadius: 12, overflow: 'hidden' }}>
+                  {annotations.map((a, i) => {
+                    const t = ANNO_TYPES[annotationType(a)];
+                    return (
+                      <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderTop: i ? '1px solid var(--ant-border-secondary)' : 'none' }}>
+                        <span style={{ flex: 'none', width: 64, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#fff', background: t.color, borderRadius: 999, padding: '3px 0' }}>{t.label}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</div>
+                          <div style={{ marginTop: 2, fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>
+                            {a.space ? `${a.space} · ` : ''}고도 {a.alt} m · {a.lat.toFixed(5)}, {a.lng.toFixed(5)}{a.photos.length ? ` · 사진 ${a.photos.length}` : ''}{a.panos.length ? ` · 파노라마 ${a.panos.length}` : ''}
+                          </div>
+                        </div>
+                        {ANNOTATION_ADMIN && (
+                          <>
+                            <button
+                              onClick={() => setAnnotationVisibility(a.id, a.visibility === 'public' ? 'private' : 'public')}
+                              title="누르면 공개 여부가 바뀝니다"
+                              style={{ flex: 'none', height: 30, padding: '0 12px', borderRadius: 15, border: `1px solid ${a.visibility === 'public' ? '#1677ff' : 'var(--ant-border)'}`, background: a.visibility === 'public' ? '#e6f4ff' : 'var(--ant-bg)', color: a.visibility === 'public' ? '#1677ff' : 'var(--ant-text-secondary)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}
+                            >
+                              {a.visibility === 'public' ? '공개' : '비공개'}
+                            </button>
+                            <button
+                              onClick={() => ask(`"${a.title}" 어노테이션을 삭제할까요?`, () => { deleteAnnotation(a.id); showToast('어노테이션을 삭제했습니다'); })}
+                              style={{ flex: 'none', height: 30, padding: '0 12px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-error)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}
+                            >
+                              삭제
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {tab === 'collections' && (
             <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 24px 40px' }}>
               <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>{draft.orig == null ? '새 컬렉션 만들기' : draft.orig}</div>
@@ -538,7 +615,10 @@ export default function DataManagement({ onNavigate, focus = null }) {
                         {members.map((it) => {
                           const c = CAT_MAP[it.cat];
                           return (
-                            <div key={it.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8 }}>
+                            <div key={it.id} onClick={() => openItemFromCollection(it.id)} title="아이템 상세보기"
+                              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px', borderRadius: 8, cursor: 'pointer' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ant-fill-quaternary)'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
                               <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c.color }}>
                                 <Icon name={c.icon} size={14} />
                               </div>
@@ -546,7 +626,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
                                 <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</div>
                                 <div style={{ fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>{c.label} · {it.date} · {it.size}</div>
                               </div>
-                              <span onClick={() => setDraft({ ...draft, members: { ...draft.members, [it.id]: false } })} title="컬렉션에서 제외"
+                              <span onClick={(e) => { e.stopPropagation(); setDraft({ ...draft, members: { ...draft.members, [it.id]: false } }); }} title="컬렉션에서 제외"
                                 style={{ flex: 'none', display: 'flex', alignItems: 'center', padding: '4px', color: 'var(--ant-text-tertiary)', cursor: 'pointer' }}>
                                 <Icon name="IconCloseOutlined" size={12} />
                               </span>
@@ -617,6 +697,12 @@ export default function DataManagement({ onNavigate, focus = null }) {
 
           {tab === 'items' && itemDraft.orig != null && (
             <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 24px 40px' }}>
+              {backToColl && (
+                <button onClick={backToCollection} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 28, padding: '0 12px', marginBottom: 12, borderRadius: 14, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text-secondary)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  <span style={{ display: 'flex', transform: 'rotate(90deg)' }}><Icon name="IconDownOutlined" size={10} /></span>
+                  {backToColl}
+                </button>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {ITEMS.find((i) => i.id === itemDraft.orig)?.title || '아이템'}
@@ -652,7 +738,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
 
               {editingItem && (() => {
                 const c = CAT_MAP[editingItem.cat];
-                const hasThumb = editingItem.cat !== 'document';
+                const hasThumb = editingItem.cat !== 'document' && editingItem.cat !== 'event';
                 const canDeep = !!(editingItem.meshUrl || editingItem.pointCloudUrl);
                 return (
                   <>
@@ -1017,6 +1103,8 @@ export default function DataManagement({ onNavigate, focus = null }) {
           {toast}
         </div>
       )}
+
+      <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
     </div>
   );
 }

@@ -4,7 +4,17 @@
 // (x 동, y 위, z 남 — three3d.js 의 모델 프레임과 같음)으로 옮겨 그리므로 지도 위 좌표·어노테이션·
 // 표면 찍기(pick3d.js)를 기존 메시와 똑같이 쓸 수 있다. y=0 이 지면이고 지형 고도 위에 얹힌다.
 import * as THREE from 'three';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { TilesRenderer } from '3d-tiles-renderer/three';
+import { LRUCache } from '3d-tiles-renderer/core';
+import { GLTFExtensionsPlugin } from '3d-tiles-renderer/plugins';
+
+// 원본 타일은 Draco 로 압축돼 있다(디코더는 공식 CDN 에서 받는다).
+let draco = null;
+const dracoLoader = () => {
+  if (!draco) { draco = new DRACOLoader(); draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/'); }
+  return draco;
+};
 
 const A = 6378137.0;
 const F = 1 / 298.257223563;
@@ -15,6 +25,14 @@ function geodeticToEcef(lngDeg, latDeg, h) {
   const sl = Math.sin(lat); const cl = Math.cos(lat);
   const n = A / Math.sqrt(1 - E2 * sl * sl);
   return new THREE.Vector3((n + h) * cl * Math.cos(lng), (n + h) * cl * Math.sin(lng), (n * (1 - E2) + h) * sl);
+}
+
+// ECEF → 위경도(타원체)
+function ecefToLngLat(x, y, z) {
+  const p = Math.hypot(x, y);
+  let lat = Math.atan2(z, p * (1 - E2));
+  for (let i = 0; i < 6; i++) { const n = A / Math.sqrt(1 - E2 * Math.sin(lat) ** 2); lat = Math.atan2(z + E2 * n * Math.sin(lat), p); }
+  return { lng: (Math.atan2(y, x) * 180) / Math.PI, lat: (lat * 180) / Math.PI };
 }
 
 // ECEF → 로컬(x 동, y 위, z 남) 행렬. 기준점 O 의 동·북·상 축으로 회전하고 O 만큼 평행이동한다.
@@ -55,25 +73,39 @@ function flatten(scene) {
  * @param {object} maplibregl
  * @param {object} map
  * @param {{ url: string, lngLat: [number, number], groundH?: number, onError?: (e: any) => void, onReady?: () => void }} opts
- *   groundH: 타일셋 좌표계(타원체 높이)에서 지면의 높이(m). 이 높이가 로컬 y=0, 곧 지형 위 지면이 된다.
+ *   groundH: 타일셋 좌표계(타원체 높이)에서 지면(길)의 높이(m). 성수동 일대는 약 37m 로, 이 높이가 로컬 y=0 — 곧 지형 위 지면이 된다.
  */
-export function addTilesLayer(maplibregl, map, { url, lngLat, groundH = 2.6, onError, onReady }) {
+export function addTilesLayer(maplibregl, map, { url, lngLat, groundH = 37, cacheMB = 384, onError, onReady }) {
   if (map.getLayer('sams-3d')) map.removeLayer('sams-3d');
 
   const merc = maplibregl.MercatorCoordinate.fromLngLat(lngLat, 0);
   const transform = { x: merc.x, y: merc.y, z: 0, scale: merc.meterInMercatorCoordinateUnits() };
   const tiles = new TilesRenderer(url);
+  tiles.registerPlugin(new GLTFExtensionsPlugin({ dracoLoader: dracoLoader() }));
   const group = tiles.group;
   group.matrixAutoUpdate = false;
   group.matrix.copy(ecefToLocalMatrix(lngLat[0], lngLat[1], groundH));
   group.matrixWorldNeedsUpdate = true;
 
   tiles.errorTarget = 8;
-  tiles.lruCache.maxBytesSize = 768 * 1024 * 1024;
+  // 타일 캐시는 렌더러마다 따로 둔다. 기본 캐시는 모든 렌더러가 공유해서, 앞서 열었던 타일셋(미리보기·비교·다른 항목)이
+  // 한도를 채워 두면 새 타일셋의 타일이 전부 거절돼 아무것도 그려지지 않는다.
+  const shared = tiles.lruCache;
+  tiles.lruCache = new LRUCache();
+  tiles.lruCache.unloadPriorityCallback = shared.unloadPriorityCallback; // 기본 캐시의 우선순위 함수(없으면 update 가 매 프레임 실패한다)
+  tiles.lruCache.minBytesSize = Math.round(cacheMB * 0.75) * 1024 * 1024;
+  tiles.lruCache.maxBytesSize = cacheMB * 1024 * 1024;
   tiles.addEventListener('load-model', ({ scene }) => { flatten(scene); map.triggerRepaint(); });
   tiles.addEventListener('needs-update', () => map.triggerRepaint());
   tiles.addEventListener('load-error', (ev) => { if (!ev.tile && onError) onError(ev.error); else console.warn('[tiles3d]', ev.error); });
-  tiles.addEventListener('load-root-tileset', () => { if (onReady) onReady(); });
+  // 타일셋이 실제로 놓인 곳(경계 구의 중심)과 크기. 항목 좌표는 카메라 시점에서 뽑은 값이라 건물에서 어긋날 수 있어
+  // 호출하는 쪽이 작은 타일셋이면 이 중심으로 시점을 맞춘다.
+  tiles.addEventListener('load-root-tileset', () => {
+    if (!onReady) return;
+    const sp = new THREE.Sphere();
+    if (!tiles.getBoundingSphere(sp)) { onReady(null); return; }
+    onReady({ ...ecefToLngLat(sp.center.x, sp.center.y, sp.center.z), radius: sp.radius });
+  });
 
   const scene = new THREE.Scene();
   scene.add(group);
@@ -84,7 +116,7 @@ export function addTilesLayer(maplibregl, map, { url, lngLat, groundH = 2.6, onE
 
   const raycaster = new THREE.Raycaster();
   const model = {
-    transform, kind: 'tiles', matrix: null, positions: null, indices: null,
+    transform, kind: 'tiles', matrix: null, positions: null, indices: null, tiles,
     // 로컬 프레임 광선(o, d)이 처음 닿는 표면까지의 거리(없으면 Infinity)
     cast(o, d, maxT = Infinity) {
       raycaster.set(new THREE.Vector3(o[0], o[1], o[2]), new THREE.Vector3(d[0], d[1], d[2]));
@@ -120,7 +152,7 @@ export function addTilesLayer(maplibregl, map, { url, lngLat, groundH = 2.6, onE
       model.matrix = Array.from(mat);
 
       // 모델의 지면(y=0)을 지도 지형 위에 둔다. 지형 타일이 늦게 들어오므로 값이 생길 때마다 갱신한다.
-      if (map.queryTerrainElevation) {
+      if (map.getTerrain && map.getTerrain() && map.queryTerrainElevation) {
         const el = map.queryTerrainElevation(lngLat);
         if (typeof el === 'number' && isFinite(el)) transform.z = el * transform.scale;
       }

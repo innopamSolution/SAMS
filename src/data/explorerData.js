@@ -12,6 +12,7 @@ export const CATS = [
   { key: 'pano', label: '파노라마', color: '#fba33b', icon: 'IconCatPano' },
   { key: 'video', label: '영상', color: '#ed5ba6', icon: 'IconCatVideo' },
   { key: 'document', label: '문서', color: '#a0a0a0', icon: 'IconCatDocument' },
+  { key: 'event', label: '이벤트', color: '#fa8c16', icon: 'IconCatEvent' },
 ];
 
 export const CAT_MAP = Object.fromEntries(CATS.map((c) => [c.key, c]));
@@ -31,6 +32,8 @@ export const ITEMS = [
   { id: 'e5', extent: [90, 60, 20], space: 'HQ(이마트)', title: 'HQ 매뉴얼', cat: 'model3d', date: '2024-09-06', size: '18.5MB', extra: '734.9K vertex', status: 'published', epsg: '—', site: '성수동, 서울', project: 'K-Seongsu Project', lng: PROJECT_LOC.lng, lat: PROJECT_LOC.lat, desc: 'Rhinoceros 8 · COLLADA 설계 모델 · 정점 컬러(텍스처 없음)', meshUrl: asset('/data/k-hq-model.bin') },
   { id: 'e6', extent: [70, 50, -12], space: '삼양비즈니스폼', title: '삼양비즈니스폼 3D', cat: 'model3d', date: '2026-07-14', size: '14.9MB', extra: '568.7K vertex', status: 'published', epsg: '—', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.0574941, lat: 37.5397025, desc: 'Cesium 3D Tiles · 텍스처 베이크 정점 컬러', meshUrl: asset('/data/samyang-mesh.bin') },
   { id: 'e7', extent: [160, 110, 8], space: '현대테라스타워', collections: ['K-Seongsu Project', 'hanil-drone-2024'], title: '현대테라스타워 드론 영상', cat: 'video', date: '2025-03-18', size: '28.1MB', extra: '0:24', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.053644, lat: 37.543983, desc: 'DJI 드론 촬영 · H.264 MP4 · 3840x2160 → 1920x1080 웹 최적화', videoUrl: asset('/uploads/video/hyundai-terrace-drone.mp4') },
+  // 이벤트 — 특정 시점에 현장에서 일어난 일. 전/후 자료를 묶어 비교해서 보여준다.
+  { id: 'v1', extent: [90, 60, 20], space: 'HQ(이마트)', title: '이마트 철거', cat: 'event', date: '2023-08-22', size: '—', extra: '전후 비교', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.0537, lat: 37.54028, desc: '이마트 본관 철거 · 철거 전후 실측 자료를 비교해 변화를 확인합니다.', compare: { beforeId: 'e1', afterId: 'e2', beforeLabel: '철거 전', afterLabel: '철거 후' } },
   { id: 'e8', extent: [120, 80, -5], space: '메가박스', collections: ['K-Seongsu Project', 'hanil-drone-2024'], title: '메가박스 촬영', cat: 'image', date: '2025-03-19', size: '2.3MB', extra: '3장', status: 'published', epsg: '5186', site: '성수동, 서울', project: 'K-Seongsu Project', lng: 127.045252, lat: 37.541770, desc: 'DJI 드론 촬영 · JPEG 3매 · 1920px 웹 최적화', images: [asset('/uploads/image/megabox-01.jpg'), asset('/uploads/image/megabox-02.jpg'), asset('/uploads/image/megabox-03.jpg')] },
 ];
 

@@ -9,10 +9,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "3d-tiles-renderer": "^0.5.3",
     "maplibre-gl": "^4.7.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "three": "^0.128.0"
+    "three": "^0.180.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.17",

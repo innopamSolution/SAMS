@@ -1,8 +1,14 @@
 import { buildTowerPositions } from './popupHelpers';
 
-function makeCustomLayer(THREE, targetMap, lngLat, maplibregl, buildScene) {
+// `pick` ({ kind: 'mesh' | 'points', positions, indices? }) is published on the map as
+// map.__sams3d together with the layer's anchor transform and the latest projection
+// matrix, so lib/pick3d.js can project lng/lat/altitude to the screen and ray-pick the
+// real model surface (annotations are anchored in this same model frame).
+function makeCustomLayer(THREE, targetMap, lngLat, maplibregl, buildScene, pick) {
   const merc = maplibregl.MercatorCoordinate.fromLngLat(lngLat, 0);
   const transform = { x: merc.x, y: merc.y, z: merc.z, scale: merc.meterInMercatorCoordinateUnits() };
+  const model = { transform, kind: pick.kind, positions: pick.positions, indices: pick.indices || null, matrix: null };
+  targetMap.__sams3d = model;
   return {
     id: 'sams-3d',
     type: 'custom',
@@ -16,7 +22,14 @@ function makeCustomLayer(THREE, targetMap, lngLat, maplibregl, buildScene) {
     },
     render(gl, args) {
       if (!this.points) return;
+      // 지표면에 맞춘 모델(pick.followTerrain)은 기준점 아래 지형 고도에 모델의 지면(y=0)을 올려 둔다.
+      // 지형 타일이 늦게 들어오므로 값이 생길 때마다 갱신한다.
+      if (pick.followTerrain && targetMap.queryTerrainElevation) {
+        const el = targetMap.queryTerrainElevation(lngLat);
+        if (typeof el === 'number' && isFinite(el)) transform.z = el * transform.scale;
+      }
       const matrix = (args && args.defaultProjectionData && args.defaultProjectionData.mainMatrix) || args;
+      model.matrix = Array.from(matrix);
       const rotationX = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(1, 0, 0), Math.PI / 2);
       const m = new THREE.Matrix4().fromArray(matrix);
       const l = new THREE.Matrix4()
@@ -47,7 +60,7 @@ export function add3DLayer(maplibregl, targetMap, color, lngLat, count, H) {
     const points = new T.Points(geo, mat);
     scene.add(points);
     return points;
-  });
+  }, { kind: 'points', positions });
   targetMap.addLayer(layer);
 }
 
@@ -67,14 +80,14 @@ export function addRealPointCloudLayer(maplibregl, targetMap, lngLat, positions,
     const points = new T.Points(geo, mat);
     scene.add(points);
     return points;
-  });
+  }, { kind: 'points', positions });
   targetMap.addLayer(layer);
 }
 
 // Real, vertex-colored triangle mesh (e.g. a photogrammetry model exported
 // from an OBJ) — same anchoring as addRealPointCloudLayer, but rendered as
 // a solid surface instead of points.
-export function addRealMeshLayer(maplibregl, targetMap, lngLat, positions, colors, indices) {
+export function addRealMeshLayer(maplibregl, targetMap, lngLat, positions, colors, indices, { followTerrain = false } = {}) {
   const THREE = window.THREE;
   if (!THREE) return;
   if (targetMap.getLayer('sams-3d')) targetMap.removeLayer('sams-3d');
@@ -88,6 +101,6 @@ export function addRealMeshLayer(maplibregl, targetMap, lngLat, positions, color
     const mesh = new T.Mesh(geo, mat);
     scene.add(mesh);
     return mesh;
-  });
+  }, { kind: 'mesh', positions, indices, followTerrain });
   targetMap.addLayer(layer);
 }

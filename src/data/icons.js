@@ -125,4 +125,10 @@ export const ICONS = {
     stroke: true,
     body: '<path d="M7 3 H14 L18 7 V21 H7 Z"/><path d="M14 3 V7 H18 M9.5 12 H15.5 M9.5 15 H15.5 M9.5 18 H13"/>',
   },
+  // 이벤트 — 현장에 꽂는 깃발. 특정 시점에 일어난 일을 가리킨다.
+  IconCatEvent: {
+    viewBox: '0 0 24 24',
+    stroke: true,
+    body: '<path d="M6.5 21 V3.5"/><path d="M6.5 4.5 H17 L14.5 8.5 L17 12.5 H6.5 Z"/>',
+  },
 };
