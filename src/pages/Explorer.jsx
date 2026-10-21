@@ -140,6 +140,18 @@ const annoDate = (a) => { const d = new Date(a.createdAt || Date.now()); return 
 // '성수클러스터 4차'처럼 회차 이름만 있으면 어느 공간인지 알 수 없어, 공간 이름을 앞에 붙여 보여준다.
 const itemName = (it) => (it.space && !it.title.includes(it.space) ? `${it.space} · ${it.title}` : it.title);
 
+// 어노테이션은 3D 데이터가 취득된 시기(회차)마다 따로 붙는다: 붙은 3D 자료(itemId)가 그 어노테이션의 시기·공간이다.
+// 예전 기록(itemId 없음)은 그 공간에서 열 수 있는 대표 3D 자료에 붙은 것으로 본다.
+function threeDItemForSpace(space) {
+  const list = ITEMS.filter((i) => i.space === space && i.lat != null);
+  const d3 = list.filter((i) => i.cat === 'pointcloud' || i.cat === 'model3d');
+  // 어노테이션은 실제 모델 표면에 걸리므로, 렌더할 실데이터가 있는 실측 자료를 먼저 고른다(그다음 최신순).
+  const rank = (i) => ((i.meshUrl || i.pointCloudUrl || i.tilesetUrl) ? 2 : 0) + (/계획/.test(i.extra || '') ? 0 : 1);
+  d3.sort((a, b) => rank(b) - rank(a) || b.date.localeCompare(a.date));
+  return d3[0] || list[0] || null;
+}
+const annoItemOf = (a) => (a.itemId && itemById(a.itemId)) || (a.space ? threeDItemForSpace(a.space) : null);
+
 function computeAnnotationRows(s, annotations) {
   const keys = Object.keys(s.activeCats).filter((k) => s.activeCats[k]);
   const types = keys.filter((k) => k.startsWith('a:')).map((k) => k.slice(2));
@@ -149,16 +161,18 @@ function computeAnnotationRows(s, annotations) {
   return annotations.filter((a) => {
     if (!(ANNOTATION_ADMIN || a.visibility === 'public')) return false;
     if (types.length && !types.includes(annotationType(a))) return false;
-    if (ys.length && !ys.some((y) => annoDate(a).startsWith(y))) return false;
-    if (s.project !== '전체 프로젝트' && !(a.space && ITEMS.some((i) => i.space === a.space && itemCollections(i).includes(s.project)))) return false;
+    const it = annoItemOf(a);
+    const date = it ? it.date : annoDate(a);
+    if (ys.length && !ys.some((y) => date.startsWith(y))) return false;
+    if (s.project !== '전체 프로젝트' && !(it && itemCollections(it).includes(s.project))) return false;
     if (s.epsg !== '좌표계 전체') return false;
-    if (kw && !(a.title + ' ' + a.desc + ' ' + a.tags.join(' ') + ' ' + (a.space || '')).toLowerCase().includes(kw)) return false;
+    if (kw && !(a.title + ' ' + a.desc + ' ' + a.tags.join(' ') + ' ' + (a.space || '') + ' ' + (it ? it.title : '')).toLowerCase().includes(kw)) return false;
     if (s.boundsFilter && s.mapBounds) {
       const b2 = s.mapBounds;
       if (!(a.lng >= b2.w && a.lng <= b2.e && a.lat >= b2.s && a.lat <= b2.n)) return false;
     }
     return true;
-  }).map((a) => ({ isAnno: true, id: 'a-' + a.id, date: annoDate(a), space: a.space || '(공간 미지정)', a }));
+  }).map((a) => { const it = annoItemOf(a); return { isAnno: true, id: 'a-' + a.id, date: it ? it.date : annoDate(a), epoch: it ? it.title : '', space: (it && it.space) || a.space || '(공간 미지정)', a }; });
 }
 
 function computeFiltered(s) {
@@ -606,6 +620,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     if (!lngLat) { showToast('위치 정보가 없어 지도에 3D를 표시할 수 없습니다'); return; }
     popupReopenRef.current = reopenPopup ? it : null;
     setAnnoSpace(it.space || null);
+    setAnnoItemId(it.id);
     if (detailPopupRef.current) { detailPopupRef.current.remove(); detailPopupRef.current = null; }
     if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
     if (it.tilesetUrl && it.lat != null && (await renderTilesAt(it))) return;
@@ -649,7 +664,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     const btnCompareHtml = canCompare ? `<button data-act="event-compare" style="flex:1;height:32px;border-radius:7px;border:1px solid var(--ant-primary);background:var(--ant-primary-bg);color:var(--ant-primary);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;">${EXPAND_SVG}전후 비교</button>` : '';
     // 이벤트는 내려받을 파일이 없다.
     const btnDlHtml = it.cat === 'event' ? '' : `<button data-act="download" data-tip="다운로드" aria-label="다운로드" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-border);background:var(--ant-bg);color:var(--ant-text);cursor:pointer;display:flex;align-items:center;justify-content:center;">${DL_SVG}</button>`;
-    const annoCount = it.space ? annotations.filter((a) => (ANNOTATION_ADMIN || a.visibility === 'public') && a.space === it.space).length : 0;
+    const annoCount = annotations.filter((a) => (ANNOTATION_ADMIN || a.visibility === 'public') && annoItemOf(a) && annoItemOf(a).id === it.id).length;
     const annoChipHtml = annoCount > 0 ? `<div style="display:flex;align-items:center;gap:4px;margin:-2px 0 12px;color:var(--ant-primary);font-size:11.5px;font-weight:600;">${PIN_SVG}어노테이션 ${annoCount}건</div>` : '';
     const html = `<div style="width:236px;font-family:var(--ant-font-sans);">
       ${isTileItem(it) ? tilePreviewHtml(it, 150, true) : thumbHtml(it, CAT_MAP, true)}
@@ -960,6 +975,10 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
   const [annoSpace, setAnnoSpace] = useState(null);
   const annoSpaceRef = useRef(null);
   annoSpaceRef.current = annoSpace;
+  // 지금 3D 로 보고 있는 자료(= 어노테이션이 붙는 시기)
+  const [annoItemId, setAnnoItemId] = useState(null);
+  const annoItemIdRef = useRef(null);
+  annoItemIdRef.current = annoItemId;
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return undefined;
@@ -991,7 +1010,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
       const p = surface(e.point.x, e.point.y, e.lngLat);
       overlay.setGhost(null);
       setAnnoViewId(null);
-      setAnnoDraft((d) => (d ? { ...d, lng: p.lng, lat: p.lat, alt: clampAlt(p.alt) } : blankAnnotation(p.lng, p.lat, clampAlt(p.alt), annoSpaceRef.current)));
+      setAnnoDraft((d) => (d ? { ...d, lng: p.lng, lat: p.lat, alt: clampAlt(p.alt) } : blankAnnotation(p.lng, p.lat, clampAlt(p.alt), annoSpaceRef.current, annoItemIdRef.current)));
       setAnnoAdd(false); // 한 번 찍으면 끝 — 이후엔 핀을 끌거나 'X,Y좌표 수정'
     };
     // 오른쪽 클릭 메뉴: 위치 지정 모드를 따로 켜지 않아도 그 자리에 바로 등록.
@@ -1019,13 +1038,13 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
   }, []);
 
   // 공간이 같은 어노테이션만(공간 정보가 없는 예전 기록은 어디서나) — 같은 공간의 어느 시기 모델을 열어도 따라온다.
-  const annoUserList = annotations.filter((a) => (ANNOTATION_ADMIN || a.visibility === 'public') && (!a.space || a.space === annoSpace));
+  const annoUserList = annotations.filter((a) => (ANNOTATION_ADMIN || a.visibility === 'public') && ((!a.space && !a.itemId) || (annoItemOf(a) && annoItemOf(a).id === annoItemId)));
   useEffect(() => {
     const layer = annoLayerRef.current;
     if (!layer) return;
     layer.setData(state.three3DActive ? annoUserList.filter((a) => annoVisible[annotationType(a)] && !(annoDraft && annoDraft.id === a.id)) : []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [annotations, annoVisible, annoSpace, state.three3DActive, annoDraft && annoDraft.id]);
+  }, [annotations, annoVisible, annoSpace, annoItemId, state.three3DActive, annoDraft && annoDraft.id]);
   useEffect(() => {
     const layer = annoLayerRef.current;
     if (layer) layer.setDraft(state.three3DActive ? annoDraft : null);
@@ -1056,9 +1075,10 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     showToast('3D 모델 표면을 눌러 위치를 정하세요 · 높이는 자동으로 입력됩니다');
   };
   const cancelAnno = () => { setAnnoDraft(null); setAnnoAdd(false); };
-  const addAnnoAt = (p) => { setAnnoMenu(null); setAnnoViewId(null); setAnnoAdd(false); setAnnoDraft(blankAnnotation(p.lng, p.lat, p.alt, annoSpace)); };
+  const addAnnoAt = (p) => { setAnnoMenu(null); setAnnoViewId(null); setAnnoAdd(false); setAnnoDraft(blankAnnotation(p.lng, p.lat, p.alt, annoSpace, annoItemId)); };
   const saveAnno = (a) => {
     const { isNew, ...rec } = a;
+    if (!rec.itemId) { const own = annoItemOf(rec); if (own) rec.itemId = own.id; }
     if (!saveAnnotation(rec)) { showToast('저장 공간이 부족합니다 · 사진 수를 줄여 주세요'); return; }
     setAnnoDraft(null); setAnnoAdd(false); setAnnoViewId(rec.id);
     showToast(isNew ? '어노테이션을 등록했습니다' : '어노테이션을 수정했습니다');
@@ -1083,27 +1103,21 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
 
   // ── 2D 지도·목록·검색에서 어노테이션으로 들어가는 길 ───────────────────
   // 어노테이션은 3D에서만 그린다. 2D에서는 "있다"는 신호(배지·칩·검색 결과)만 보여 주고, 누르면 그 공간의 3D로 연다.
-  const threeDItemForSpace = (space) => {
-    const list = ITEMS.filter((i) => i.space === space && i.lat != null);
-    const d3 = list.filter((i) => i.cat === 'pointcloud' || i.cat === 'model3d');
-    // 어노테이션은 실제 모델 표면에 걸리므로, 렌더할 실데이터가 있는 실측 자료를 먼저 고른다(그다음 최신순).
-    const rank = (i) => ((i.meshUrl || i.pointCloudUrl) ? 2 : 0) + (/계획/.test(i.extra || '') ? 0 : 1);
-    d3.sort((a, b) => rank(b) - rank(a) || b.date.localeCompare(a.date));
-    return d3[0] || list[0] || null;
-  };
   const openSpace3D = async (space) => {
-    const it = threeDItemForSpace(space);
+    // 그 공간에서 어노테이션이 가장 많이 붙은 시기의 3D 로 연다(없으면 대표 3D 자료).
+    const counts = {};
+    annotations.filter((a) => (ANNOTATION_ADMIN || a.visibility === 'public') && a.space === space).forEach((a) => { const o = annoItemOf(a); if (o) counts[o.id] = (counts[o.id] || 0) + 1; });
+    const bestId = Object.keys(counts).sort((x, y) => counts[y] - counts[x])[0];
+    const it = (bestId && itemById(bestId)) || threeDItemForSpace(space);
     if (!it) { showToast('이 공간은 3D로 열 수 있는 자료가 없습니다'); return; }
     await show3DOnMap(it);
   };
   const openAnnotationIn3D = async (a) => {
     const map = mapRef.current;
     if (!map) return;
-    if (!(stateRef.current.three3DActive && annoSpaceRef.current === a.space)) {
-      const it = threeDItemForSpace(a.space);
-      if (!it) { showToast('이 공간은 3D로 열 수 있는 자료가 없습니다'); return; }
-      await show3DOnMap(it);
-    }
+    const target = annoItemOf(a);
+    if (!target) { showToast('이 어노테이션이 붙은 3D 자료를 찾을 수 없습니다'); return; }
+    if (!(stateRef.current.three3DActive && annoItemIdRef.current === target.id)) await show3DOnMap(target);
     setAnnoDraft(null); setAnnoAdd(false); setAnnoMenu(null); setAnnoViewId(a.id);
     map.easeTo({ center: [a.lng, a.lat], zoom: Math.max(map.getZoom(), 18), duration: 700 });
   };
@@ -1294,7 +1308,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
       m.get(key).push(it);
     }
     for (const r of annoRows) {
-      const key = `${r.date}|어노테이션`;
+      const key = `${r.date}|${r.epoch || '어노테이션'}`;
       if (!m.has(key)) m.set(key, []);
       m.get(key).push(r);
     }
@@ -1302,8 +1316,8 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
       .sort((a, b) => b[0].localeCompare(a[0]))
       .map(([key, items]) => ({
         key,
-        icon: items[0].isAnno ? 'IconEnvironmentOutlined' : 'IconCalendarOutlined',
-        label: items[0].isAnno ? '어노테이션' : items[0].title,
+        icon: 'IconCalendarOutlined',
+        label: (items.find((x) => !x.isAnno) || {}).title || items[0].epoch || '어노테이션',
         meta: items[0].date,
         items,
       }));
@@ -1506,7 +1520,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                               <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 600, padding: '0 6px', borderRadius: 20, lineHeight: '16px', color: '#fff', background: t.color }}>{t.label}</span>
                             </div>
                             <div style={{ fontSize: 11.5, color: 'var(--ant-text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {[s.groupBy === 'space' ? it.date : it.space, `고도 ${a.alt}m`, a.tags.join(' ')].filter(Boolean).join(' · ')}
+                              {[s.groupBy === 'space' ? (it.epoch || it.date) : it.space, `고도 ${a.alt}m`, a.tags.join(' ')].filter(Boolean).join(' · ')}
                             </div>
                           </div>
                           <span style={{ flex: 'none', display: 'flex', alignItems: 'center', color: t.color + '88' }}><Icon name="IconEnvironmentOutlined" size={13} /></span>

@@ -565,7 +565,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</div>
                           <div style={{ marginTop: 2, fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>
-                            {a.space ? `${a.space} · ` : ''}고도 {a.alt} m · {a.lat.toFixed(5)}, {a.lng.toFixed(5)}{a.photos.length ? ` · 사진 ${a.photos.length}` : ''}{a.panos.length ? ` · 파노라마 ${a.panos.length}` : ''}
+                            {a.space ? `${a.space} · ` : ''}{(() => { const it = ITEMS.find((x) => x.id === a.itemId); return it ? `${it.title} · ` : ''; })()}고도 {a.alt} m · {a.lat.toFixed(5)}, {a.lng.toFixed(5)}{a.photos.length ? ` · 사진 ${a.photos.length}` : ''}{a.panos.length ? ` · 파노라마 ${a.panos.length}` : ''}
                           </div>
                         </div>
                         {ANNOTATION_ADMIN && (
