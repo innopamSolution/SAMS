@@ -12,7 +12,7 @@ export const CATS = [
   { key: 'pano', label: '파노라마', color: '#fba33b', icon: 'IconCatPano' },
   { key: 'video', label: '영상', color: '#ed5ba6', icon: 'IconCatVideo' },
   { key: 'document', label: '문서', color: '#a0a0a0', icon: 'IconCatDocument' },
-  { key: 'event', label: '이벤트', color: '#fa8c16', icon: 'IconCatEvent' },
+  { key: 'event', label: '이벤트', color: '#13a85e', icon: 'IconCatEvent' },
 ];
 
 export const CAT_MAP = Object.fromEntries(CATS.map((c) => [c.key, c]));
@@ -89,10 +89,10 @@ export function derivedIdsOf(id) {
 // Collection metadata shown in the results-panel header when one is selected.
 export const COLLECTIONS = {
   'K-Seongsu Project': {
-    desc: '성수동 일대 디지털트윈 구축 컬렉션. 실측 포인트클라우드·3D 모델·드론 영상·현장 문서를 시기별로 통합 관리합니다.',
+    desc: '성수동 일대 디지털트윈 구축 Project. 실측 포인트클라우드·3D 모델·드론 영상·현장 문서를 시기별로 통합 관리합니다.',
   },
   'hanil-drone-2024': {
-    desc: '한일엔지니어링 드론 촬영 컬렉션. 2024-2025년 정기 드론 취득 영상·이미지를 모았습니다.',
+    desc: '한일엔지니어링 드론 촬영 Project. 2024-2025년 정기 드론 취득 영상·이미지를 모았습니다.',
   },
 };
 
@@ -107,12 +107,16 @@ export function itemCollections(it) {
 }
 export const EPSGS = ['좌표계 전체', 'EPSG:5186', 'EPSG:5187'];
 
+// Spatial Log 엑셀에서 불러오는 사이트(폴리곤 포함)와 시기(성수 클러스터 1~4차). data/spatiallog.js 가 채운다.
+export const SITES = [];
+export const PERIODS = [];
+
 export const TIMELINE = [];
 
 export const TL_CATS = {
   actual: { label: '실측모델', color: '#1677ff' },
   plan: { label: '계획모델', color: '#722ed1' },
-  event: { label: '이벤트', color: '#fa8c16' },
+  event: { label: '이벤트', color: '#13a85e' },
 };
 
 export const STRUCT_LNGLAT = {};

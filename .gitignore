@@ -3,3 +3,6 @@ dist
 dist-ssr
 *.local
 .DS_Store
+
+# Spatial Log 외장하드 데이터 캐시(압축 해제한 3D 타일)와 그걸 가리키는 링크
+.data-cache

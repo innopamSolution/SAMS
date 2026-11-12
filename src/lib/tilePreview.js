@@ -8,7 +8,9 @@ import { addTilesLayer } from './tiles3d';
 export const isTileItem = (it) => !!(it && it.tilesetUrl && it.lat != null && (it.cat === 'model3d' || it.cat === 'pointcloud'));
 
 // ── 스냅샷 저장(메모리 + localStorage) ───────────────────────
-const KEY = 'sams.tilepreview.v5'; // 시점 중심이 바뀌면 올린다(이전 스냅샷 폐기)
+const KEY = 'sams.tilepreview.v7';
+// 예전 자료(옛 3D 자료)의 스냅샷이 브라우저에 남지 않게, 이전 버전 키는 모두 지운다.
+(() => { try { ['v1', 'v2', 'v3', 'v4', 'v5', 'v6'].forEach((v) => localStorage.removeItem('sams.tilepreview.' + v)); } catch { /* noop */ } })(); // 시점 중심이 바뀌면 올린다(이전 스냅샷 폐기)
 const MAX_ENTRIES = 40;
 let stills = null;
 const load = () => {
@@ -74,12 +76,12 @@ function snapshot(map) {
 }
 
 // 클릭 팝업: 천천히 돌아가는 작은 3D 지도. 돌려받는 함수로 정리한다.
-export function mountLivePreview(popupEl, it) {
+export function mountLivePreview(popupEl, it, { compact = false } = {}) {
   const box = popupEl && popupEl.querySelector(`.sams-tilepv[data-id="${it.id}"]`);
   if (!box) return () => {};
   const host = box.querySelector('.sams-tilepv-map');
   const note = box.querySelector('.sams-tilepv-note');
-  const handle = makePreviewMap(host, it);
+  const handle = makePreviewMap(host, it, compact ? { zoom: 15.7, pitch: 45 } : undefined); // 호버 카드는 한 단계 더 멀리
   const { map } = handle;
   let alive = true;
   let raf = 0;

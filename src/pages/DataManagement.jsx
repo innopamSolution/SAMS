@@ -3,12 +3,13 @@ import maplibregl from 'maplibre-gl';
 import Icon from '../components/Icon';
 import Logo from '../components/Logo';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { useAnnotations, setAnnotationVisibility, deleteAnnotation, annotationType, ANNO_TYPES, ANNOTATION_ADMIN } from '../lib/annotations';
+import { saveItemStatus } from '../lib/itemStatus';
+import { useAnnotations, saveAnnotation, setAnnotationVisibility, deleteAnnotation, annotationType, ANNO_TYPES, ANNOTATION_ADMIN, DESC_MAX } from '../lib/annotations';
 import { CATS, CAT_MAP, ITEMS, PROJECTS, COLLECTIONS, MEMBERSHIP, PROJECT_LOC, itemCollections, DERIVATIONS, originIdsOf, derivedIdsOf, footprintRing } from '../data/explorerData';
 import { buildMiniStyle } from '../lib/mapStyles';
 import { thumbHtml, startTurntablesIn, wireGallery } from '../lib/popupHelpers';
 
-// 데이터 관리: 컬렉션(생성·수정·삭제)과 데이터 아이템(등록·컬렉션 연결·삭제)
+// 데이터 관리: Project(생성·수정·삭제)과 데이터 아이템(등록·Project 연결·삭제)
 // 관리. Explorer가 읽는 동일한 라이브 모듈 데이터(ITEMS / PROJECTS /
 // COLLECTIONS / MEMBERSHIP)를 편집하므로 탐색 화면에 즉시 반영된다.
 
@@ -30,7 +31,7 @@ const PIPE = [
   { id: 'bundle', label: '파일을 아이템으로 묶는 중' },
   { id: 'detect', label: '선택한 유형 확인 중' },
   { id: 'extract', label: '파일에서 메타데이터 읽는 중' },
-  { id: 'inherit', label: '컬렉션 기본값 채우는 중' },
+  { id: 'inherit', label: 'Project 기본값 채우는 중' },
   { id: 'suggest', label: '연관 아이템 찾는 중' },
   { id: 'thumbnail', label: '미리보기 만드는 중' },
 ];
@@ -99,7 +100,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
     showToast._t = setTimeout(() => setToast(null), 2200);
   };
 
-  // ── 컬렉션 ──────────────────────────────────────────────
+  // ── Project ──────────────────────────────────────────────
   const pick = (name) => { setSelected(name); setDraft(makeCollDraft(name)); setCollAdd(false); setCollItemQuery(''); };
   const startNew = () => { setSelected(null); setDraft(makeCollDraft(null)); setCollAdd(false); setCollItemQuery(''); };
   const memberCount = (name) => ITEMS.filter((i) => itemCollections(i).includes(name)).length;
@@ -107,8 +108,8 @@ export default function DataManagement({ onNavigate, focus = null }) {
 
   const saveColl = () => {
     const name = draft.name.trim();
-    if (!name) { showToast('컬렉션 이름을 입력하세요'); return; }
-    if (name !== draft.orig && PROJECTS.includes(name)) { showToast('같은 이름의 컬렉션이 이미 있습니다'); return; }
+    if (!name) { showToast('Project 이름을 입력하세요'); return; }
+    if (name !== draft.orig && PROJECTS.includes(name)) { showToast('같은 이름의 Project가 이미 있습니다'); return; }
     if (draft.orig == null) {
       PROJECTS.push(name);
       COLLECTIONS[name] = { desc: draft.desc };
@@ -133,7 +134,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
 
   const deleteColl = () => {
     if (draft.orig == null) { pick(collNames()[0] || null); return; }
-    ask(`"${draft.orig}" 컬렉션을 삭제할까요?`, () => doDeleteColl(), { detail: '담긴 아이템 자체는 삭제되지 않습니다.' });
+    ask(`"${draft.orig}" Project를 삭제할까요?`, () => doDeleteColl(), { detail: '담긴 아이템 자체는 삭제되지 않습니다.' });
   };
 
   const doDeleteColl = () => {
@@ -145,7 +146,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
     setSelected(next);
     setDraft(makeCollDraft(next));
     bump();
-    showToast('컬렉션이 삭제되었습니다');
+    showToast('Project가 삭제되었습니다');
   };
 
   // ── 데이터 아이템 ────────────────────────────────────────
@@ -154,13 +155,15 @@ export default function DataManagement({ onNavigate, focus = null }) {
   const [linkQuery, setLinkQuery] = useState('');
   const [collItemQuery, setCollItemQuery] = useState('');
   const [collAdd, setCollAdd] = useState(false);
-  // 컬렉션의 담긴 아이템에서 상세로 건너왔을 때 돌아갈 컬렉션 이름
+  // Project의 담긴 아이템에서 상세로 건너왔을 때 돌아갈 Project 이름
   const [backToColl, setBackToColl] = useState(null);
   const [sideQuery, setSideQuery] = useState('');
   // 앱 안에서 그리는 확인 창 (브라우저 기본 confirm 대신)
   const [confirmState, setConfirmState] = useState(null);
   const ask = (message, onOk, extra = {}) => setConfirmState({ message, onOk, ...extra });
   const annotations = useAnnotations();
+  const [annoSel, setAnnoSel] = useState(null); // 메모 탭에서 오른쪽에 상세를 보이는 메모
+  const [annoEdit, setAnnoEdit] = useState(null); // 수정 중인 메모 초안
   const pickItem = (id) => {
     if (itemDraft.orig == null && upFiles.length > 0) {
       ask('업로드를 취소하시겠습니까?', () => { clearInterval(window.__samsUpTimer); doPickItem(id); }, { confirmLabel: '업로드 취소' });
@@ -173,10 +176,10 @@ export default function DataManagement({ onNavigate, focus = null }) {
     setItemSel(id); setItemDraft(makeItemDraft(id)); setLinkAdd(null); setLinkQuery('');
     setItemEditMode(true);
   };
-  // 컬렉션의 담긴 아이템 → 그 아이템 편집기. 컬렉션 draft 는 손대지 않아
+  // Project의 담긴 아이템 → 그 아이템 편집기. Project draft 는 손대지 않아
   // 되돌아왔을 때 편집 중이던 제목·설명·담긴 목록이 그대로 남는다.
   const openItemFromCollection = (id) => {
-    setBackToColl(draft.orig || draft.name.trim() || '컬렉션');
+    setBackToColl(draft.orig || draft.name.trim() || 'Project');
     setTab('items');
     pickItem(id);
   };
@@ -431,7 +434,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
       {/* Header */}
       <header style={{ height: 56, flex: 'none', display: 'flex', alignItems: 'center', gap: 44, padding: '0 20px', background: 'var(--ant-bg)', borderBottom: '1px solid var(--ant-border-secondary)', zIndex: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', flex: 'none' }}>
-          <Logo />
+          <Logo onClick={() => onNavigate('explorer')} />
         </div>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 4, height: '100%', flex: 'none' }}>
           <div onClick={() => onNavigate('explorer')} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>데이터 탐색</div>
@@ -452,7 +455,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
               <span style={{ position: 'absolute', left: 8, display: 'flex', color: 'var(--ant-text-tertiary)', pointerEvents: 'none' }}>
                 <Icon name="IconSearchOutlined" size={14} />
               </span>
-              <input value={sideQuery} onChange={(e) => setSideQuery(e.target.value)} placeholder="컬렉션 · 아이템 검색"
+              <input value={sideQuery} onChange={(e) => setSideQuery(e.target.value)} placeholder="Project · 아이템 검색"
                 style={{ width: '100%', height: 32, padding: '0 28px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--ant-text)' }} />
               {!!sideQuery && (
                 <span onClick={() => setSideQuery('')} style={{ position: 'absolute', right: 8, color: 'var(--ant-text-tertiary)', display: 'flex', cursor: 'pointer' }}>
@@ -462,7 +465,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
             </div>
           </div>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--ant-border-secondary)', display: 'flex', gap: 8 }}>
-            {[['collections', `컬렉션 ${collNames().length}`], ['items', `아이템 ${ITEMS.length}`], ['annotations', `어노테이션 ${annotations.length}`]].map(([key, lbl]) => {
+            {[['collections', `Project ${collNames().length}`], ['items', `아이템 ${ITEMS.length}`], ['annotations', `메모 ${annotations.length}`]].map(([key, lbl]) => {
               const on = tab === key;
               return (
                 <button key={key} onClick={() => setTab(key)} style={{ flex: 1, height: 32, borderRadius: 8, border: 'none', background: on ? '#ECEEFC' : 'transparent', color: on ? 'var(--ant-text-heading)' : 'var(--ant-text-secondary)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
@@ -472,17 +475,49 @@ export default function DataManagement({ onNavigate, focus = null }) {
             })}
           </div>
 
-          {tab === 'annotations' && (
-            <div style={{ padding: 16, fontSize: 12.5, lineHeight: 1.7, color: 'var(--ant-text-secondary)' }}>
-              어노테이션은 <b>데이터 탐색</b>의 3D 뷰어에서 모델 위에 점을 찍어 등록합니다.
-              <br />여기서는 전체 목록을 보고 공개 여부를 바꾸거나 삭제합니다.
-            </div>
-          )}
+          {tab === 'annotations' && (() => {
+            // 메모가 어느 데이터에 들어 있는지: 데이터(아이템)별로 묶어 보여 준다.
+            const byItem = new Map();
+            annotations.forEach((a) => { const k = ITEMS.some((x) => x.id === a.itemId) ? a.itemId : '__none'; if (!byItem.has(k)) byItem.set(k, []); byItem.get(k).push(a); });
+            const groups = [...byItem.entries()].map(([k, list]) => ({ k, it: ITEMS.find((x) => x.id === k) || null, list }));
+            return (
+              <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 12px' }}>
+                {groups.length === 0 && <div style={{ padding: '24px 12px', fontSize: 12.5, color: 'var(--ant-text-tertiary)' }}>등록된 메모가 없습니다.</div>}
+                {groups.map(({ k, it, list }) => {
+                  const c = it ? CAT_MAP[it.cat] : null;
+                  return (
+                    <div key={k} style={{ marginBottom: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
+                        <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c ? c.color : '#bfbfbf' }}>
+                          {c && <Icon name={c.icon} size={14} />}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it ? it.title : '자료 미지정'}</div>
+                          <div style={{ marginTop: 2, fontSize: 11, color: 'var(--ant-text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it ? [it.space, c.label, it.date].filter(Boolean).join(' · ') : '연결된 데이터가 없는 메모'}</div>
+                        </div>
+                        <span style={{ flex: 'none', fontSize: 11, fontWeight: 600, color: 'var(--ant-primary)' }}>{list.length}건</span>
+                      </div>
+                      {list.map((a) => {
+                        const t = ANNO_TYPES[annotationType(a)];
+                        return (
+                          <div key={a.id} onClick={() => { setAnnoSel(a.id); setAnnoEdit(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 12px 0 48px', padding: '6px 8px', borderRadius: 8, cursor: 'pointer', background: annoSel === a.id ? '#ECEEFC' : 'var(--ant-fill-quaternary)', marginBottom: 4 }}>
+                            <span style={{ flex: 'none', width: 8, height: 8, borderRadius: '50%', background: t.color }} />
+                            <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</span>
+                            <span style={{ flex: 'none', fontSize: 11, color: 'var(--ant-text-tertiary)' }}>{a.visibility === 'public' ? '공개' : '비공개'}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
           {tab === 'collections' && (
             <>
               <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'flex-end' }}>
                 <button onClick={startNew} style={{ height: 28, padding: '0 12px', borderRadius: 14, border: '1px solid var(--ant-primary)', background: 'var(--ant-bg)', color: 'var(--ant-primary)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
-                  + 새 컬렉션
+                  + 새 Project
                 </button>
               </div>
               <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 8px' }}>
@@ -500,7 +535,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
                 })}
                 {draft.orig == null && (
                   <div style={{ padding: '12px', borderRadius: 8, background: '#ECEEFC' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ant-primary)' }}>{draft.name.trim() || '새 컬렉션'}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ant-primary)' }}>{draft.name.trim() || '새 Project'}</div>
                     <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>작성 중 · 아이템 {draftCount}건</div>
                   </div>
                 )}
@@ -510,11 +545,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
 
           {tab === 'items' && (
             <>
-              <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'flex-end' }}>
-                <button onClick={startUpload} style={{ height: 28, padding: '0 12px', borderRadius: 14, border: '1px solid var(--ant-primary)', background: 'var(--ant-bg)', color: 'var(--ant-primary)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
-                  + 업로드
-                </button>
-              </div>
+              {/* 업로드는 SAMS(관리 제품)에서 한다 — 여기서는 올리는 입구를 두지 않는다. */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 8px' }}>
                 {ITEMS.filter((it) => itemMatches(it, sideQuery)).map((it) => {
                   const c = CAT_MAP[it.cat];
@@ -528,9 +559,14 @@ export default function DataManagement({ onNavigate, focus = null }) {
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</span>
                           {statusChip(it.status)}
+                          {annotations.some((a) => a.itemId === it.id) && (
+                            <span title="이 데이터에 들어간 메모" style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: 'var(--ant-primary)' }}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v12H9l-5 4z" /><path d="M8 9h8M8 12.5h5" /></svg>{annotations.filter((a) => a.itemId === it.id).length}
+                            </span>
+                          )}
                         </div>
                         <div style={{ marginTop: 2, fontSize: 11, color: 'var(--ant-text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {c.label} · {it.date} · {it.size}
+                          {c.label} · {it.date}{it.size ? ` · ${it.size}` : ''}
                         </div>
                       </div>
                     </div>
@@ -549,36 +585,125 @@ export default function DataManagement({ onNavigate, focus = null }) {
 
         {/* 우측: 편집기 */}
         <div style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>
-          {tab === 'annotations' && (
+          {tab === 'annotations' && annotations.some((x) => x.id === annoSel) && (() => {
+            const a = annotations.find((x) => x.id === annoSel);
+            const t = ANNO_TYPES[annotationType(a)];
+            const it = ITEMS.find((x) => x.id === a.itemId);
+            const ed = annoEdit && annoEdit.id === a.id ? annoEdit : null;
+            const act = { height: 32, padding: '0 16px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' };
+            const setE = (patchObj) => setAnnoEdit((d) => ({ ...d, ...patchObj }));
+            const saveEdit = () => {
+              if (!ed.title.trim()) { showToast('제목을 입력하세요'); return; }
+              const rec = { ...a, title: ed.title.trim(), desc: ed.desc, tags: ed.tagText.split(/\s+/).filter(Boolean).map((x) => (x.startsWith('#') ? x : '#' + x)).slice(0, 5), urls: ed.urls.map((u) => u.trim()).filter(Boolean), photos: ed.photos, panos: ed.panos };
+              if (!saveAnnotation(rec)) { showToast('저장 공간이 부족합니다'); return; }
+              setAnnoEdit(null); showToast('메모를 수정했습니다');
+            };
+            return (
+              <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 24px 40px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 16, borderBottom: '1px solid var(--ant-border-secondary)' }}>
+                  <span style={{ flex: 'none', fontSize: 12, fontWeight: 700, color: '#fff', background: t.color, borderRadius: 999, padding: '3px 12px' }}>{t.label}</span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</span>
+                  {ANNOTATION_ADMIN && !ed && (
+                    <>
+                      <button onClick={() => setAnnotationVisibility(a.id, a.visibility === 'public' ? 'private' : 'public')} title="누르면 공개 여부가 바뀝니다"
+                        style={{ ...act, border: `1px solid ${a.visibility === 'public' ? '#1677ff' : 'var(--ant-border)'}`, background: a.visibility === 'public' ? '#e6f4ff' : 'var(--ant-bg)', color: a.visibility === 'public' ? '#1677ff' : 'var(--ant-text-secondary)' }}>
+                        {a.visibility === 'public' ? '공개' : '비공개'}
+                      </button>
+                      <button onClick={() => setAnnoEdit({ id: a.id, title: a.title, desc: a.desc || '', tagText: (a.tags || []).join(' '), urls: a.urls && a.urls.length ? [...a.urls] : [''], photos: [...(a.photos || [])], panos: [...(a.panos || [])] })}
+                        style={{ ...act, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)' }}>수정</button>
+                      <button onClick={() => ask(`"${a.title}" 메모를 삭제할까요?`, () => { deleteAnnotation(a.id); setAnnoSel(null); showToast('메모를 삭제했습니다'); })}
+                        style={{ ...act, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-error)' }}>삭제</button>
+                    </>
+                  )}
+                  {ed && (
+                    <>
+                      <button onClick={() => setAnnoEdit(null)} style={{ ...act, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)' }}>취소</button>
+                      <button onClick={saveEdit} style={{ ...act, border: 'none', background: 'var(--ant-primary)', color: '#fff' }}>저장</button>
+                    </>
+                  )}
+                </div>
+
+                <div style={{ ...label, marginTop: 20 }}>들어간 데이터</div>
+                <div style={{ fontSize: 13 }}>{it ? `${it.title} · ${[it.space, CAT_MAP[it.cat].label, it.date].filter(Boolean).join(' · ')}` : '연결된 데이터 없음'}</div>
+
+                <div style={{ ...label, marginTop: 20 }}>제목</div>
+                {ed ? <input value={ed.title} maxLength={40} onChange={(e) => setE({ title: e.target.value })} style={{ ...field, height: 36, padding: '0 12px' }} /> : <div style={{ fontSize: 13 }}>{a.title}</div>}
+
+                <div style={{ ...label, marginTop: 20 }}>설명</div>
+                {ed ? <textarea value={ed.desc} onChange={(e) => setE({ desc: e.target.value.slice(0, DESC_MAX) })} style={{ ...field, height: 96, padding: 12, resize: 'none', lineHeight: 1.5 }} />
+                  : <div style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap', color: a.desc ? 'var(--ant-text)' : 'var(--ant-text-quaternary)' }}>{a.desc || '설명 없음'}</div>}
+
+                <div style={{ ...label, marginTop: 20 }}>태그</div>
+                {ed ? <input value={ed.tagText} onChange={(e) => setE({ tagText: e.target.value })} placeholder="#태그 (최대 5개)" style={{ ...field, height: 36, padding: '0 12px' }} />
+                  : <div style={{ fontSize: 13, fontWeight: 600 }}>{a.tags && a.tags.length ? a.tags.join(' ') : <span style={{ fontWeight: 400, color: 'var(--ant-text-quaternary)' }}>태그 없음</span>}</div>}
+
+                <div style={{ ...label, marginTop: 20 }}>URL</div>
+                {ed ? ed.urls.map((u, i) => (
+                  <input key={i} value={u} onChange={(e) => setE({ urls: ed.urls.map((x, j) => (j === i ? e.target.value : x)) })} placeholder="https://" style={{ ...field, height: 36, padding: '0 12px', marginBottom: 8 }} />
+                )) : (a.urls && a.urls.length ? a.urls.map((u) => <div key={u}><a href={u} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: 'var(--ant-primary)', wordBreak: 'break-all' }}>{u}</a></div>) : <div style={{ fontSize: 13, color: 'var(--ant-text-quaternary)' }}>URL 없음</div>)}
+
+                {(() => {
+                  // 수정 중에는 초안의 이미지 목록을 보여 주고, 각 이미지의 ✕로 지울 수 있다(저장해야 반영).
+                  const imgs = [...(ed ? ed.photos : a.photos || []).map((src, i) => ({ src, kind: 'photos', i })), ...(ed ? ed.panos : a.panos || []).map((src, i) => ({ src, kind: 'panos', i }))];
+                  if (!imgs.length) return null;
+                  return (
+                    <>
+                      <div style={{ ...label, marginTop: 20 }}>첨부 이미지 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {imgs.length}장</span></div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {imgs.map((m) => (
+                          <div key={m.kind + m.i} style={{ position: 'relative', width: 120, height: 120 }}>
+                            <img src={m.src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8, border: '1px solid var(--ant-border-secondary)', display: 'block' }} />
+                            {ed && (
+                              <button onClick={() => setE({ [m.kind]: ed[m.kind].filter((_, j) => j !== m.i) })} aria-label="이미지 삭제" title="이미지 삭제"
+                                style={{ position: 'absolute', top: 4, right: 4, width: 24, height: 24, borderRadius: '50%', border: 'none', background: 'rgba(38,38,38,0.8)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M2 2l8 8M10 2L2 10" /></svg>
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+
+                <div style={{ ...label, marginTop: 20 }}>등록 정보</div>
+                <div style={{ fontSize: 12.5, color: 'var(--ant-text-secondary)', lineHeight: 1.7 }}>
+                  {a.createdAt ? `등록 ${new Date(a.createdAt).toLocaleDateString('ko-KR')}` : ''}
+                  {a.lat != null ? ` · 고도 ${a.alt} m · ${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}` : ' · 위치 없음(3D 위치 지정 없이 작성)'}
+                </div>
+              </div>
+            );
+          })()}
+          {tab === 'annotations' && !annotations.some((x) => x.id === annoSel) && (
             <div style={{ maxWidth: 960, margin: '0 auto', padding: '24px 24px 40px' }}>
-              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>어노테이션 관리</div>
-              <div style={{ fontSize: 12.5, color: 'var(--ant-text-tertiary)', marginBottom: 16 }}>비공개 어노테이션은 관리자에게만 보입니다.</div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>메모 관리</div>
+              <div style={{ fontSize: 12.5, color: 'var(--ant-text-tertiary)', marginBottom: 16 }}>비공개 메모는 관리자에게만 보입니다.</div>
               {annotations.length === 0 ? (
-                <div style={{ padding: '48px 0', textAlign: 'center', fontSize: 13, color: 'var(--ant-text-tertiary)' }}>등록된 어노테이션이 없습니다.</div>
+                <div style={{ padding: '48px 0', textAlign: 'center', fontSize: 13, color: 'var(--ant-text-tertiary)' }}>등록된 메모가 없습니다.</div>
               ) : (
                 <div style={{ border: '1px solid var(--ant-border-secondary)', borderRadius: 12, overflow: 'hidden' }}>
                   {annotations.map((a, i) => {
                     const t = ANNO_TYPES[annotationType(a)];
                     return (
-                      <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderTop: i ? '1px solid var(--ant-border-secondary)' : 'none' }}>
+                      <div key={a.id} onClick={() => { setAnnoSel(a.id); setAnnoEdit(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', cursor: 'pointer', borderTop: i ? '1px solid var(--ant-border-secondary)' : 'none' }}>
                         <span style={{ flex: 'none', width: 64, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#fff', background: t.color, borderRadius: 999, padding: '3px 0' }}>{t.label}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</div>
                           <div style={{ marginTop: 2, fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>
-                            {a.space ? `${a.space} · ` : ''}{(() => { const it = ITEMS.find((x) => x.id === a.itemId); return it ? `${it.title} · ` : ''; })()}고도 {a.alt} m · {a.lat.toFixed(5)}, {a.lng.toFixed(5)}{a.photos.length ? ` · 사진 ${a.photos.length}` : ''}{a.panos.length ? ` · 파노라마 ${a.panos.length}` : ''}
+                            {a.space ? `${a.space} · ` : ''}{(() => { const it = ITEMS.find((x) => x.id === a.itemId); return it ? `${it.title} · ` : ''; })()}{a.lat != null ? `고도 ${a.alt} m · ${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}` : '위치 없음'}{a.photos.length ? ` · 사진 ${a.photos.length}` : ''}{a.panos.length ? ` · 파노라마 ${a.panos.length}` : ''}
                           </div>
                         </div>
                         {ANNOTATION_ADMIN && (
                           <>
                             <button
-                              onClick={() => setAnnotationVisibility(a.id, a.visibility === 'public' ? 'private' : 'public')}
+                              onClick={(e) => { e.stopPropagation(); setAnnotationVisibility(a.id, a.visibility === 'public' ? 'private' : 'public'); }}
                               title="누르면 공개 여부가 바뀝니다"
                               style={{ flex: 'none', height: 30, padding: '0 12px', borderRadius: 15, border: `1px solid ${a.visibility === 'public' ? '#1677ff' : 'var(--ant-border)'}`, background: a.visibility === 'public' ? '#e6f4ff' : 'var(--ant-bg)', color: a.visibility === 'public' ? '#1677ff' : 'var(--ant-text-secondary)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}
                             >
                               {a.visibility === 'public' ? '공개' : '비공개'}
                             </button>
                             <button
-                              onClick={() => ask(`"${a.title}" 어노테이션을 삭제할까요?`, () => { deleteAnnotation(a.id); showToast('어노테이션을 삭제했습니다'); })}
+                              onClick={(e) => { e.stopPropagation(); ask(`"${a.title}" 메모를 삭제할까요?`, () => { deleteAnnotation(a.id); showToast('메모를 삭제했습니다'); }); }}
                               style={{ flex: 'none', height: 30, padding: '0 12px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-error)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}
                             >
                               삭제
@@ -595,14 +720,14 @@ export default function DataManagement({ onNavigate, focus = null }) {
 
           {tab === 'collections' && (
             <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 24px 40px' }}>
-              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>{draft.orig == null ? '새 컬렉션 만들기' : draft.orig}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>{draft.orig == null ? '새 Project 만들기' : draft.orig}</div>
 
               <div style={label}>제목</div>
-              <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="컬렉션 이름"
+              <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Project 이름"
                 style={{ ...field, height: 36, padding: '0 12px' }} />
 
               <div style={{ ...label, marginTop: 20 }}>설명</div>
-              <textarea value={draft.desc} onChange={(e) => setDraft({ ...draft, desc: e.target.value })} placeholder="컬렉션 설명" rows={3}
+              <textarea value={draft.desc} onChange={(e) => setDraft({ ...draft, desc: e.target.value })} placeholder="Project 설명" rows={3}
                 style={{ ...field, padding: '8px 12px', resize: 'vertical', lineHeight: 1.6 }} />
 
               <div style={{ ...label, marginTop: 20 }}>담긴 아이템 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {draftCount}건</span></div>
@@ -626,7 +751,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
                                 <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it.title}</div>
                                 <div style={{ fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>{c.label} · {it.date} · {it.size}</div>
                               </div>
-                              <span onClick={(e) => { e.stopPropagation(); setDraft({ ...draft, members: { ...draft.members, [it.id]: false } }); }} title="컬렉션에서 제외"
+                              <span onClick={(e) => { e.stopPropagation(); setDraft({ ...draft, members: { ...draft.members, [it.id]: false } }); }} title="Project에서 제외"
                                 style={{ flex: 'none', display: 'flex', alignItems: 'center', padding: '4px', color: 'var(--ant-text-tertiary)', cursor: 'pointer' }}>
                                 <Icon name="IconCloseOutlined" size={12} />
                               </span>
@@ -647,7 +772,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
                       return (
                         <div style={{ background: 'var(--ant-bg)', border: '1px solid var(--ant-border)', borderRadius: 12, padding: 8 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                            <span style={{ flex: 1, fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)' }}>이 컬렉션에 담을 아이템을 선택하세요</span>
+                            <span style={{ flex: 1, fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)' }}>이 Project에 담을 아이템을 선택하세요</span>
                             <button onClick={() => { setCollAdd(false); setCollItemQuery(''); }} style={{ height: 24, padding: '0 8px', border: 'none', background: 'transparent', color: 'var(--ant-text-tertiary)', fontSize: 12, fontFamily: 'inherit', cursor: 'pointer' }}>닫기</button>
                           </div>
                           <input autoFocus value={collItemQuery} onChange={(e) => setCollItemQuery(e.target.value)} placeholder="제목 · 공간 · 유형 검색"
@@ -671,7 +796,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
                             })}
                             {matched.length === 0 && (
                               <div style={{ padding: '12px 8px', fontSize: 12, color: 'var(--ant-text-tertiary)' }}>
-                                {candidates.length === 0 ? '모든 아이템이 이미 이 컬렉션에 담겨 있습니다.' : '검색 결과가 없습니다.'}
+                                {candidates.length === 0 ? '모든 아이템이 이미 이 Project에 담겨 있습니다.' : '검색 결과가 없습니다.'}
                               </div>
                             )}
                           </div>
@@ -716,6 +841,26 @@ export default function DataManagement({ onNavigate, focus = null }) {
                   </button>
                 )}
               </div>
+
+              {editingItem && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={label}>데이터 공개 여부</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ display: 'inline-flex', height: 32, padding: 2, borderRadius: 16, boxSizing: 'border-box', background: 'var(--ant-fill-quaternary)', border: '1px solid var(--ant-border-secondary)' }}>
+                      {[['published', '공개'], ['draft', '비공개']].map(([val, lbl]) => {
+                        const on = (editingItem.status === 'published') === (val === 'published');
+                        return (
+                          <button key={val} onClick={() => { if (!on) { saveItemStatus(editingItem, val); bump(); showToast(val === 'published' ? '공개로 바꿨습니다' : '비공개로 바꿨습니다'); } }}
+                            style={{ height: 26, padding: '0 16px', border: on ? '1px solid var(--ant-border)' : '1px solid transparent', borderRadius: 13, boxSizing: 'border-box', background: on ? 'var(--ant-bg)' : 'transparent', boxShadow: on ? '0 1px 2px rgba(0,0,0,0.06)' : 'none', color: on ? (val === 'published' ? 'var(--ant-primary)' : 'var(--ant-text)') : 'var(--ant-text-tertiary)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                            {lbl}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <span style={{ fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>비공개 데이터는 데이터 탐색에 보이지 않습니다.</span>
+                  </div>
+                </div>
+              )}
 
               {itemEditMode ? (
                 <>
@@ -799,10 +944,10 @@ export default function DataManagement({ onNavigate, focus = null }) {
                 if (colls.length === 0) return null;
                 return (
                   <>
-                    <div style={{ ...label, marginTop: 20 }}>연결된 컬렉션 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {colls.length}개 · 컬렉션 탭에서 편집</span></div>
+                    <div style={{ ...label, marginTop: 20 }}>연결된 Project <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {colls.length}개 · Project 탭에서 편집</span></div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {colls.map((n) => (
-                        <span key={n} onClick={() => { setTab('collections'); pick(n); }} title="컬렉션 탭에서 열기"
+                        <span key={n} onClick={() => { setTab('collections'); pick(n); }} title="Project 탭에서 열기"
                           style={{ display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 12px', borderRadius: 14, border: '1px solid var(--ant-border)', background: 'var(--ant-fill-quaternary)', color: 'var(--ant-text-secondary)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
                           {n}
                         </span>
@@ -1059,7 +1204,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
                         </div>
                         <div style={{ display: 'flex', gap: 12, marginTop: 8, fontSize: 11, color: 'var(--ant-text-tertiary)' }}>
                           <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: 'var(--ant-success)', marginRight: 4 }} />파일에서 {fromFiles}</span>
-                          {fromColl > 0 && <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: 'var(--ant-primary)', marginRight: 4 }} />컬렉션에서 {fromColl}</span>}
+                          {fromColl > 0 && <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: 'var(--ant-primary)', marginRight: 4 }} />Project에서 {fromColl}</span>}
                           {needs > 0 && <span><span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 2, background: 'var(--ant-warning)', marginRight: 4 }} />직접 입력 {needs}</span>}
                         </div>
                       </div>
@@ -1072,7 +1217,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
                       <textarea value={itemDraft.desc} onChange={(e) => setItemDraft({ ...itemDraft, desc: e.target.value })} placeholder="6개월 뒤에 못 알아볼 것 같으면 한 줄 남겨두세요" rows={2}
                         style={{ ...field, padding: '8px 12px', resize: 'vertical', lineHeight: 1.6 }} />
 
-                      <div style={{ ...label, marginTop: 20 }}>컬렉션 연결 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {linkedCnt}개 · 없어도 등록됩니다</span></div>
+                      <div style={{ ...label, marginTop: 20 }}>Project 연결 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {linkedCnt}개 · 없어도 등록됩니다</span></div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                         {collNames().map((n) => {
                           const on = !!itemDraft.colls[n];

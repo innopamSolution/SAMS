@@ -1,7 +1,7 @@
 // Spatial Log API 에서 실제 데이터를 받아 SAMS 구조로 옮긴다.
 //
 // 대응 관계
-//   메뉴(성수클러스터)        → 컬렉션
+//   메뉴(성수클러스터)        → Project
 //   메뉴 하위 item(HQ, C01 …) → 공간
 //   item 의 node             → 아이템(데이터) 한 건
 //   node.type REAL·PLAN      → 3D 모델,  EVENT → 이벤트
@@ -110,7 +110,7 @@ function buildFromMenus(menus) {
   const timelineMenus = menus.filter((m) => (m.items || []).some((it) => (it.menuItemNodes || []).length));
 
   timelineMenus.forEach((menu) => {
-    collections[menu.label] = { desc: `${menu.label} · Spatial Log 에서 불러온 컬렉션입니다.` };
+    collections[menu.label] = { desc: `${menu.label} · Spatial Log 에서 불러온 Project입니다.` };
 
     (menu.items || []).forEach((entry) => {
       if (isOverviewEntry(entry)) return;
@@ -197,7 +197,7 @@ export async function loadSplogData() {
   const { items, collections, membership, derivations, projects } = buildFromMenus(menus);
   if (!items.length) throw new Error('불러온 아이템이 없습니다');
 
-  // 샘플은 첫 컬렉션(성수클러스터)에 담는다.
+  // 샘플은 첫 Project(성수클러스터)에 담는다.
   const home = projects[0];
   const samples = SAMPLES.map((s) => ({ ...s, project: home, collections: undefined }));
   samples.forEach((s) => { membership[s.id] = [home]; });

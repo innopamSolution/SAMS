@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Explorer from './pages/Explorer';
 import DataManagement from './pages/DataManagement';
-import { loadSplogData } from './data/splog';
+import { loadSpatialLogData } from './data/spatiallog';
 
 export default function App() {
   // 두 화면 모두 mount를 유지한다. 관리에서 지도로 건너갔다 돌아와도 편집 중이던
@@ -20,7 +20,7 @@ export default function App() {
 
   useEffect(() => {
     let alive = true;
-    loadSplogData()
+    loadSpatialLogData()
       .then(() => { if (alive) setLoad({ state: 'ready', error: null }); })
       .catch((e) => { if (alive) setLoad({ state: 'error', error: String(e.message || e) }); });
     return () => { alive = false; };

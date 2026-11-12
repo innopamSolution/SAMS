@@ -254,3 +254,6 @@ body {
 }
 
 .sams-anno-picking .sams-poi { pointer-events: none !important; }
+
+/* 지도 호버 툴팁(미리보기 화면이 없는 자료): 글자 크기에 맞추고 팝업 기본 안쪽 여백을 없앤다. */
+.sams-tip .maplibregl-popup-content { padding: 0; width: max-content; }

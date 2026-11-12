@@ -1,0 +1,1401 @@
+{
+ "project": {
+  "name": "K 성수 아카이브 프로젝트",
+  "start": "2023-03-01"
+ },
+ "sites": [
+  {
+   "key": "성수클러스터",
+   "name": "성수 클러스터",
+   "nameEn": "Seongsu Cluster",
+   "polygon": [
+    [
+     127.029632,
+     37.542838
+    ],
+    [
+     127.059373,
+     37.533616
+    ],
+    [
+     127.067312,
+     37.548205
+    ],
+    [
+     127.048373,
+     37.551885
+    ],
+    [
+     127.040272,
+     37.550993
+    ],
+    [
+     127.029632,
+     37.542838
+    ]
+   ],
+   "center": [
+    127.0489924,
+    37.545507400000005
+   ]
+  },
+  {
+   "key": "HQ",
+   "name": "HQ",
+   "nameEn": "HQ",
+   "polygon": [
+    [
+     127.051867,
+     37.539749
+    ],
+    [
+     127.053663,
+     37.539236
+    ],
+    [
+     127.053962,
+     37.53933
+    ],
+    [
+     127.053878,
+     37.539582
+    ],
+    [
+     127.054226,
+     37.539718
+    ],
+    [
+     127.053707,
+     37.540767
+    ],
+    [
+     127.053339,
+     37.54095
+    ],
+    [
+     127.051867,
+     37.539749
+    ]
+   ],
+   "center": [
+    127.05352028571428,
+    37.53990457142857
+   ]
+  },
+  {
+   "key": "C1",
+   "name": "C1",
+   "nameEn": "C1",
+   "polygon": [
+    [
+     127.044439,
+     37.542213
+    ],
+    [
+     127.044308,
+     37.541856
+    ],
+    [
+     127.045403,
+     37.541498
+    ],
+    [
+     127.0456,
+     37.541856
+    ],
+    [
+     127.044439,
+     37.542213
+    ]
+   ],
+   "center": [
+    127.04493749999999,
+    37.541855749999996
+   ]
+  },
+  {
+   "key": "C2",
+   "name": "C2",
+   "nameEn": "C2",
+   "polygon": [
+    [
+     127.056622,
+     37.541228
+    ],
+    [
+     127.056529,
+     37.541015
+    ],
+    [
+     127.056819,
+     37.540936
+    ],
+    [
+     127.056915,
+     37.541134
+    ],
+    [
+     127.056622,
+     37.541228
+    ]
+   ],
+   "center": [
+    127.05672125000001,
+    37.54107825
+   ]
+  },
+  {
+   "key": "C3",
+   "name": "C3",
+   "nameEn": "C3",
+   "polygon": [
+    [
+     127.057379,
+     37.540953
+    ],
+    [
+     127.05725,
+     37.540664
+    ],
+    [
+     127.057547,
+     37.540253
+    ],
+    [
+     127.057601,
+     37.540271
+    ],
+    [
+     127.057533,
+     37.54066
+    ],
+    [
+     127.057642,
+     37.540867
+    ],
+    [
+     127.057379,
+     37.540953
+    ]
+   ],
+   "center": [
+    127.05749200000001,
+    37.54061133333333
+   ]
+  },
+  {
+   "key": "C4",
+   "name": "C4",
+   "nameEn": "C4",
+   "polygon": [
+    [
+     127.062126,
+     37.542666
+    ],
+    [
+     127.061891,
+     37.542172
+    ],
+    [
+     127.0627,
+     37.54192
+    ],
+    [
+     127.062944,
+     37.542424
+    ],
+    [
+     127.062126,
+     37.542666
+    ]
+   ],
+   "center": [
+    127.06241525000002,
+    37.542295499999994
+   ]
+  },
+  {
+   "key": "C5",
+   "name": "C5",
+   "nameEn": "C5",
+   "polygon": [
+    [
+     127.059733,
+     37.537669
+    ],
+    [
+     127.060961,
+     37.537348
+    ],
+    [
+     127.06075,
+     37.537882
+    ],
+    [
+     127.059977,
+     37.538088
+    ],
+    [
+     127.059765,
+     37.538009
+    ],
+    [
+     127.059733,
+     37.537669
+    ]
+   ],
+   "center": [
+    127.0602372,
+    37.537799199999995
+   ]
+  },
+  {
+   "key": "C6",
+   "name": "C6",
+   "nameEn": "C6",
+   "polygon": [
+    [
+     127.063537,
+     37.546321
+    ],
+    [
+     127.063337,
+     37.545919
+    ],
+    [
+     127.063728,
+     37.545793
+    ],
+    [
+     127.063932,
+     37.546202
+    ],
+    [
+     127.063537,
+     37.546321
+    ]
+   ],
+   "center": [
+    127.06363350000001,
+    37.54605875
+   ]
+  },
+  {
+   "key": "펍지성수",
+   "name": "펍지 성수",
+   "nameEn": "PUBG Seongsu",
+   "polygon": [
+    [
+     127.045357,
+     37.546051
+    ],
+    [
+     127.045315,
+     37.545624
+    ],
+    [
+     127.04569,
+     37.545532
+    ],
+    [
+     127.045746,
+     37.54556
+    ],
+    [
+     127.045918,
+     37.545904
+    ],
+    [
+     127.045357,
+     37.546051
+    ]
+   ],
+   "center": [
+    127.0456052,
+    37.5457342
+   ]
+  },
+  {
+   "key": "본기숙사",
+   "name": "본기숙사",
+   "nameEn": "Dormitory",
+   "polygon": [
+    [
+     127.061731,
+     37.541342
+    ],
+    [
+     127.061547,
+     37.540952
+    ],
+    [
+     127.061905,
+     37.540841
+    ],
+    [
+     127.062104,
+     37.541233
+    ],
+    [
+     127.061731,
+     37.541342
+    ]
+   ],
+   "center": [
+    127.06182175000001,
+    37.541092
+   ]
+  },
+  {
+   "key": "역삼오피스",
+   "name": "역삼 오피스",
+   "nameEn": "Yeoksam Office",
+   "polygon": [
+    [
+     127.0050755,
+     37.4904429
+    ],
+    [
+     127.005375,
+     37.4907871
+    ],
+    [
+     127.005555,
+     37.4906697
+    ],
+    [
+     127.0059813,
+     37.4908313
+    ],
+    [
+     127.0061162,
+     37.4905863
+    ],
+    [
+     127.0055713,
+     37.4904183
+    ],
+    [
+     127.0054215,
+     37.4902544
+    ],
+    [
+     127.0050755,
+     37.4904429
+    ]
+   ],
+   "center": [
+    127.00558511428572,
+    37.49057
+   ]
+  },
+  {
+   "key": "서초PUBG",
+   "name": "서초 PUBG",
+   "nameEn": "",
+   "polygon": null,
+   "center": null
+  },
+  {
+   "key": "판교오피스",
+   "name": "판교 오피스",
+   "nameEn": "Pangyo Office",
+   "polygon": [
+    [
+     127.1117871,
+     37.3945283
+    ],
+    [
+     127.1115945,
+     37.3939817
+    ],
+    [
+     127.1127228,
+     37.3937805
+    ],
+    [
+     127.1127118,
+     37.394537
+    ],
+    [
+     127.1117871,
+     37.3945283
+    ]
+   ],
+   "center": [
+    127.11220404999999,
+    37.394206874999995
+   ]
+  }
+ ],
+ "periods": [
+  {
+   "name": "성수 클러스터 1차",
+   "start": "2023-09-01",
+   "end": "2024-02-29"
+  },
+  {
+   "name": "성수 클러스터 2차",
+   "start": "2024-03-01",
+   "end": "2025-02-28"
+  },
+  {
+   "name": "성수 클러스터 3차",
+   "start": "2025-03-01",
+   "end": "2026-02-28"
+  },
+  {
+   "name": "성수 클러스터 4차",
+   "start": "2026-03-01",
+   "end": "2027-02-28"
+  }
+ ],
+ "events": [
+  {
+   "site": "HQ",
+   "title": "이마트 퇴거",
+   "date": "2023-03-01",
+   "end": null,
+   "desc": "",
+   "keyword": ""
+  },
+  {
+   "site": "HQ",
+   "title": "이마트 철거",
+   "date": "2023-08-01",
+   "end": null,
+   "desc": "",
+   "keyword": "시공"
+  },
+  {
+   "site": "HQ",
+   "title": "HQ 착공식",
+   "date": "2024-04-29",
+   "end": null,
+   "desc": "",
+   "keyword": "시공"
+  },
+  {
+   "site": "HQ",
+   "title": "건축 설계 DCA 당선",
+   "date": "2022-07-01",
+   "end": null,
+   "desc": "",
+   "keyword": "설계"
+  },
+  {
+   "site": "HQ",
+   "title": "인테리어 KINZO 선정",
+   "date": "2025-03-01",
+   "end": null,
+   "desc": "",
+   "keyword": "인테리어"
+  },
+  {
+   "site": "C1",
+   "title": "리모델링 착공",
+   "date": "2026-03-05",
+   "end": null,
+   "desc": "",
+   "keyword": "시공"
+  },
+  {
+   "site": "C3",
+   "title": "착공",
+   "date": "2026-07-01",
+   "end": null,
+   "desc": "",
+   "keyword": "시공"
+  },
+  {
+   "site": "C4",
+   "title": "건축 설계 F+P 선정",
+   "date": "2025-06-30",
+   "end": null,
+   "desc": "",
+   "keyword": "설계"
+  },
+  {
+   "site": "C4",
+   "title": "인테리어 F+P 워크플레이스",
+   "date": "2026-05-01",
+   "end": null,
+   "desc": "",
+   "keyword": "인테리어"
+  },
+  {
+   "site": "C6",
+   "title": "기숙사 파일럿 대상 건물 선정",
+   "date": "2024-08-01",
+   "end": null,
+   "desc": "",
+   "keyword": ""
+  },
+  {
+   "site": "C6",
+   "title": "기숙사 파일럿 시공",
+   "date": "2025-01-01",
+   "end": "2025-06-01",
+   "desc": "",
+   "keyword": "시공"
+  },
+  {
+   "site": "C6",
+   "title": "기숙사 파일럿 입주",
+   "date": "2025-06-01",
+   "end": null,
+   "desc": "",
+   "keyword": ""
+  },
+  {
+   "site": "C6",
+   "title": "기숙사 파일럿 성과 보고",
+   "date": "2025-07-01",
+   "end": "2026-07-01",
+   "desc": "",
+   "keyword": ""
+  },
+  {
+   "site": "펍지성수",
+   "title": "펍지 성수 팝업",
+   "date": "2024-08-01",
+   "end": null,
+   "desc": "",
+   "keyword": ""
+  },
+  {
+   "site": "본기숙사",
+   "title": "건축 설계 정림 & EMA 선정",
+   "date": "2025-07-01",
+   "end": null,
+   "desc": "",
+   "keyword": "설계"
+  },
+  {
+   "site": "역삼오피스",
+   "title": "입주",
+   "date": "2021-06-01",
+   "end": null,
+   "desc": "",
+   "keyword": ""
+  },
+  {
+   "site": "역삼오피스",
+   "title": "리뉴얼 인테리어 엔알디자인 선정",
+   "date": "2022-11-09",
+   "end": null,
+   "desc": "",
+   "keyword": ""
+  },
+  {
+   "site": "역삼오피스",
+   "title": "리뉴얼 시공",
+   "date": "2023-09-01",
+   "end": "2023-12-01",
+   "desc": "",
+   "keyword": ""
+  },
+  {
+   "site": "역삼오피스",
+   "title": "WEST동 추가 임차",
+   "date": "2024-11-01",
+   "end": null,
+   "desc": "",
+   "keyword": ""
+  },
+  {
+   "site": "역삼오피스",
+   "title": "WEST동 인테리어 다인에스앤디 선정",
+   "date": "2025-01-24",
+   "end": null,
+   "desc": "",
+   "keyword": ""
+  },
+  {
+   "site": "역삼오피스",
+   "title": "WEST동 입주",
+   "date": "2025-05-01",
+   "end": null,
+   "desc": "",
+   "keyword": ""
+  },
+  {
+   "site": "서초PUBG",
+   "title": "리뉴얼 아이지엠 디자인 선정",
+   "date": "2025-03-01",
+   "end": null,
+   "desc": "",
+   "keyword": ""
+  },
+  {
+   "site": "서초PUBG",
+   "title": "리뉴얼 시공",
+   "date": "2025-03-01",
+   "end": "2025-05-01",
+   "desc": "",
+   "keyword": ""
+  },
+  {
+   "site": "서초PUBG",
+   "title": "리뉴얼 후 입주",
+   "date": "2025-06-01",
+   "end": null,
+   "desc": "",
+   "keyword": ""
+  }
+ ],
+ "annotations": [
+  {
+   "placeTo": "사이트",
+   "site": "HQ",
+   "title": "유연한 소프트웨어를 위한 기준",
+   "type": "URL",
+   "content": "https://k-project-web-4chyrgtuya-an.a.run.app/topic/67",
+   "tags": [
+    "Topic",
+    "HQ디자인프로세스"
+   ]
+  }
+ ],
+ "items": [
+  {
+   "id": "sl-1",
+   "site": "펍지성수",
+   "siteName": "펍지 성수",
+   "title": "펍지성수 준공 기록",
+   "date": "2024-09-11",
+   "start": null,
+   "end": null,
+   "cat": "image",
+   "assets": [
+    {
+     "detail": "대상지 기록 사진",
+     "method": "드론, DSLR",
+     "format": "사진",
+     "fileType": "png",
+     "path": "02_Photo/240911_KP_펍지성수 준공기록 사진",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    }
+   ],
+   "delivery": "확인필요"
+  },
+  {
+   "id": "sl-2",
+   "site": "HQ",
+   "siteName": "HQ",
+   "title": "HQ 옥상 풍경 시뮬레이션",
+   "date": "2025-01-15",
+   "start": null,
+   "end": null,
+   "cat": "pano",
+   "assets": [
+    {
+     "detail": "옥상뷰 파노라마 사진",
+     "method": "드론",
+     "format": "360 파노라마 사진",
+     "fileType": "jpg",
+     "path": "02_Photo/250115_HQ 옥상뷰 파노라마 사진",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    }
+   ],
+   "delivery": "확인필요"
+  },
+  {
+   "id": "sl-3",
+   "site": "HQ",
+   "siteName": "HQ",
+   "title": "SD 100% 계획 모델",
+   "date": null,
+   "start": null,
+   "end": null,
+   "cat": "model3d",
+   "assets": [
+    {
+     "detail": " DCA SD 100% 모델",
+     "method": "모델링",
+     "format": "메시",
+     "fileType": "obj, glb",
+     "path": "",
+     "kind": "파일",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "현재 구현 버전에 SD100% 계획모델로 업로드 되어있는 파일",
+     "extra": "",
+     "available": false
+    }
+   ],
+   "delivery": "확인필요"
+  },
+  {
+   "id": "sl-4",
+   "site": "C4",
+   "siteName": "C4",
+   "title": "C4 공모 대상지 기록",
+   "date": "2025-03-21",
+   "start": null,
+   "end": null,
+   "cat": "pano",
+   "assets": [
+    {
+     "detail": "대상지 파노라마 사진",
+     "method": "드론",
+     "format": "360 파노라마 사진",
+     "fileType": "jpg",
+     "path": "02_Photo/250321_C4_파노라마 사진",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    }
+   ],
+   "delivery": "확인필요"
+  },
+  {
+   "id": "sl-5",
+   "site": "본기숙사",
+   "siteName": "본기숙사",
+   "title": "청용-선도금속 철거 전 현황",
+   "date": "2026-05-23",
+   "start": null,
+   "end": null,
+   "cat": "pointcloud",
+   "assets": [
+    {
+     "detail": "지상 포인트 클라우드 모델",
+     "method": "LiDAR",
+     "format": "포인트클라우드",
+     "fileType": "las",
+     "path": "",
+     "kind": "파일",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    }
+   ],
+   "delivery": "추후 전달"
+  },
+  {
+   "id": "sl-6",
+   "site": "본기숙사",
+   "siteName": "본기숙사",
+   "title": "기숙사 부지 현황",
+   "date": "2025-09-15",
+   "start": null,
+   "end": null,
+   "cat": "pano",
+   "assets": [
+    {
+     "detail": "대상지 파노라마 사진",
+     "method": "드론",
+     "format": "360 파노라마 사진",
+     "fileType": "jpg",
+     "path": "",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    }
+   ],
+   "delivery": "추후 전달"
+  },
+  {
+   "id": "sl-7",
+   "site": "C1",
+   "siteName": "C1",
+   "title": "메가박스 리모델링 전 현황",
+   "date": "2025-12-24",
+   "start": null,
+   "end": null,
+   "cat": "image",
+   "assets": [
+    {
+     "detail": "대상지 기록 사진",
+     "method": "DSLR",
+     "format": "사진",
+     "fileType": "jpg",
+     "path": "",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    }
+   ],
+   "delivery": "추후 전달"
+  },
+  {
+   "id": "sl-8",
+   "site": "C2",
+   "siteName": "C2",
+   "title": "고물상 철거 전 현황",
+   "date": "2025-12-04",
+   "start": null,
+   "end": null,
+   "cat": "pointcloud",
+   "assets": [
+    {
+     "detail": "지상 포인트 클라우드 모델",
+     "method": "LiDAR",
+     "format": "포인트클라우드",
+     "fileType": "las",
+     "path": "",
+     "kind": "파일",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    }
+   ],
+   "delivery": "추후 전달"
+  },
+  {
+   "id": "sl-9",
+   "site": "C4",
+   "siteName": "C4",
+   "title": "대륭-덕성 철거 전 부지",
+   "date": "2026-06-23",
+   "start": null,
+   "end": null,
+   "cat": "pointcloud",
+   "assets": [
+    {
+     "detail": "지상 포인트 클라우드 모델",
+     "method": "LiDAR",
+     "format": "포인트클라우드",
+     "fileType": "las",
+     "path": "",
+     "kind": "파일",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    }
+   ],
+   "delivery": "추후 전달"
+  },
+  {
+   "id": "sl-10",
+   "site": "C4",
+   "siteName": "C4",
+   "title": "대륭-덕성 현황",
+   "date": "2025-12-24",
+   "start": null,
+   "end": null,
+   "cat": "pano",
+   "assets": [
+    {
+     "detail": "대상지 파노라마 사진",
+     "method": "드론",
+     "format": "360 파노라마 사진",
+     "fileType": "jpg",
+     "path": "",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    }
+   ],
+   "delivery": "추후 전달"
+  },
+  {
+   "id": "sl-11",
+   "site": "C6",
+   "siteName": "C6",
+   "title": "동흥빌딩 리모델링 전 현황",
+   "date": "2025-07-11",
+   "start": null,
+   "end": null,
+   "cat": "image",
+   "assets": [
+    {
+     "detail": "대상지 기록 사진",
+     "method": "DSLR",
+     "format": "사진",
+     "fileType": "png",
+     "path": "",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    }
+   ],
+   "delivery": "추후 전달"
+  },
+  {
+   "id": "sl-12",
+   "site": "C6",
+   "siteName": "C6",
+   "title": "기숙사 테스트베드 입주 전 현황",
+   "date": "2025-06-29",
+   "start": null,
+   "end": null,
+   "cat": "document",
+   "assets": [
+    {
+     "detail": "웹 VR",
+     "method": "MatterPort",
+     "format": "WebVR",
+     "fileType": "<link>",
+     "path": "https://my.matterport.com/show/?m=42aQXAwEpni",
+     "kind": "링크",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    }
+   ],
+   "delivery": "추후 전달"
+  },
+  {
+   "id": "sl-13",
+   "site": "성수클러스터",
+   "siteName": "성수 클러스터",
+   "title": "2026 성수 일대",
+   "date": "2026-04-07",
+   "start": "2026-04-07",
+   "end": "2026-04-16",
+   "cat": "model3d",
+   "assets": [
+    {
+     "detail": "드론 취득 데이터",
+     "method": "드론",
+     "format": "사진",
+     "fileType": "jpg",
+     "path": "01_Seongsu/2026_Seongsu_Drone/01_Rawdata",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    },
+    {
+     "detail": "드론 포인트 클라우드 모델",
+     "method": "드론",
+     "format": "포인트클라우드",
+     "fileType": "las",
+     "path": "01_Seongsu/2026_Seongsu_Drone/02_Pointcloud",
+     "kind": "파일",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    },
+    {
+     "detail": "드론 타일드 메시 모델",
+     "method": "드론",
+     "format": "메시",
+     "fileType": "zip",
+     "path": "01_Seongsu/2026_Seongsu_Drone/03_Tiled3DMesh",
+     "kind": "파일",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false,
+     "sourceExists": false
+    }
+   ],
+   "delivery": "이노팸"
+  },
+  {
+   "id": "sl-14",
+   "site": "성수클러스터",
+   "siteName": "성수 클러스터",
+   "title": "2025 성수 일대",
+   "date": "2025-03-18",
+   "start": "2025-03-18",
+   "end": "2025-03-20",
+   "cat": "model3d",
+   "assets": [
+    {
+     "detail": "드론 취득 데이터",
+     "method": "드론",
+     "format": "사진",
+     "fileType": "jpg",
+     "path": "01_Seongsu/2025_Seongsu_Drone/01_Rawdata",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    },
+    {
+     "detail": "드론 포인트 클라우드 모델",
+     "method": "드론",
+     "format": "포인트클라우드",
+     "fileType": "las",
+     "path": "01_Seongsu/2025_Seongsu_Drone/02_Pointcloud",
+     "kind": "파일",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    },
+    {
+     "detail": "드론 타일드 메시 모델",
+     "method": "드론",
+     "format": "메시",
+     "fileType": "zip",
+     "path": "01_Seongsu/2025_Seongsu_Drone/03_Tiled3DMesh",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false,
+     "sourceExists": false
+    }
+   ],
+   "delivery": "이노팸"
+  },
+  {
+   "id": "sl-15",
+   "site": "성수클러스터",
+   "siteName": "성수 클러스터",
+   "title": "2024 성수 일대",
+   "date": "2024-04-22",
+   "start": "2024-04-22",
+   "end": "2024-04-24",
+   "cat": "model3d",
+   "assets": [
+    {
+     "detail": "드론 취득 데이터",
+     "method": "드론",
+     "format": "사진",
+     "fileType": "jpg",
+     "path": "01_Seongsu/2024_Seongsu_Drone/01_Rawdata",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    },
+    {
+     "detail": "드론 포인트 클라우드 모델",
+     "method": "드론",
+     "format": "포인트클라우드",
+     "fileType": "las",
+     "path": "01_Seongsu/2024_Seongsu_Drone/02_Pointcloud",
+     "kind": "파일",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": true
+    },
+    {
+     "detail": "드론 타일드 메시 모델",
+     "method": "드론",
+     "format": "메시",
+     "fileType": "zip",
+     "path": "01_Seongsu/2024_Seongsu_Drone/03_Tiled3DMesh",
+     "kind": "폴더",
+     "name": "2024_KP_Seongsu",
+     "gb": 7.7,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": true,
+     "sourceExists": true,
+     "tileset": "spatiallog/2024_KP_Seongsu/tileset.json",
+     "groundH": null
+    }
+   ],
+   "delivery": "이노팸"
+  },
+  {
+   "id": "sl-16",
+   "site": "성수클러스터",
+   "siteName": "성수 클러스터",
+   "title": "2023 성수 일대",
+   "date": "2023-09-20",
+   "start": "2023-09-20",
+   "end": "2023-10-07",
+   "cat": "model3d",
+   "assets": [
+    {
+     "detail": "드론 취득 데이터",
+     "method": "드론",
+     "format": "사진",
+     "fileType": "jpg",
+     "path": "01_Seongsu/2023_Seongsu_Drone/01_Rawdata",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": false
+    },
+    {
+     "detail": "드론 포인트 클라우드 모델",
+     "method": "드론",
+     "format": "포인트클라우드",
+     "fileType": "las",
+     "path": "01_Seongsu/2023_Seongsu_Drone/02_Pointcloud",
+     "kind": "파일",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": true
+    },
+    {
+     "detail": "드론 타일드 메시 모델",
+     "method": "드론",
+     "format": "메시",
+     "fileType": "zip",
+     "path": "01_Seongsu/2023_Seongsu_Drone/03_Tiled3DMesh",
+     "kind": "폴더",
+     "name": "2023_KP_Seongsu",
+     "gb": 4.35,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": true,
+     "sourceExists": true,
+     "tileset": "spatiallog/2023_KP_Seongsu/tileset.json",
+     "groundH": -171.2
+    }
+   ],
+   "delivery": "이노팸"
+  },
+  {
+   "id": "sl-17",
+   "site": "펍지성수",
+   "siteName": "펍지 성수",
+   "title": "한일피복 리모델링 전 현황",
+   "date": "2024-05-09",
+   "start": null,
+   "end": null,
+   "cat": "model3d",
+   "assets": [
+    {
+     "detail": "지상 포인트 클라우드 모델",
+     "method": "LiDAR",
+     "format": "포인트클라우드",
+     "fileType": "las, e57",
+     "path": "04_Hanil/2024_Hanil_LiDAR/02_Pointcloud",
+     "kind": "파일",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": true
+    },
+    {
+     "detail": "드론 취득 데이터",
+     "method": "드론",
+     "format": "사진",
+     "fileType": "jpg",
+     "path": "04_Hanil/2024_Hanil_Drone/01_Rawdata",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": true
+    },
+    {
+     "detail": "드론 타일드 메시 모델",
+     "method": "드론",
+     "format": "메시",
+     "fileType": "zip",
+     "path": "04_Hanil/2024_Hanil_Drone/03_Tiled3DMesh",
+     "kind": "폴더",
+     "name": "2024_KP_Hanil",
+     "gb": 1.85,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": true,
+     "sourceExists": true,
+     "tileset": "spatiallog/2024_KP_Hanil/tileset.json",
+     "groundH": 24.4
+    }
+   ],
+   "delivery": "외장하드"
+  },
+  {
+   "id": "sl-18",
+   "site": "C3",
+   "siteName": "C3",
+   "title": "삼양비즈네스폼 철거 전 현황",
+   "date": "2023-11-15",
+   "start": "2023-11-15",
+   "end": "2023-11-22",
+   "cat": "model3d",
+   "assets": [
+    {
+     "detail": "드론 취득 데이터",
+     "method": "드론",
+     "format": "사진",
+     "fileType": "jpg",
+     "path": "03_Samyang/2023_Samyang_Drone/01_Rawdata",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": true
+    },
+    {
+     "detail": "드론 타일드 메시 모델",
+     "method": "드론",
+     "format": "메시",
+     "fileType": "zip",
+     "path": "03_Samyang/2023_Samyang_Drone/03_Tiled3DMesh",
+     "kind": "폴더",
+     "name": "2023_KP_Samyang",
+     "gb": 0.09,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": true,
+     "sourceExists": true,
+     "tileset": "spatiallog/2023_KP_Samyang/tileset.json",
+     "groundH": 34.5
+    },
+    {
+     "detail": "지상 포인트 클라우드 모델",
+     "method": "LiDAR",
+     "format": "포인트클라우드",
+     "fileType": "e57",
+     "path": "03_Samyang/2023_Samyang_LiDAR/02_Pointcloud",
+     "kind": "파일",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": true
+    }
+   ],
+   "delivery": "외장하드"
+  },
+  {
+   "id": "sl-19",
+   "site": "HQ",
+   "siteName": "HQ",
+   "title": "이마트 철거 전 부지",
+   "date": "2023-04-09",
+   "start": null,
+   "end": null,
+   "cat": "pointcloud",
+   "assets": [
+    {
+     "detail": "지상 포인트 클라우드 모델",
+     "method": "LiDAR",
+     "format": "포인트클라우드",
+     "fileType": "las, e57",
+     "path": "02_HQ/2023_HQ_LiDAR/02_Pointcloud",
+     "kind": "파일",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": true
+    }
+   ],
+   "delivery": "외장하드"
+  },
+  {
+   "id": "sl-20",
+   "site": "HQ",
+   "siteName": "HQ",
+   "title": "이마트 철거 전 현황",
+   "date": "2023-04-12",
+   "start": "2023-04-12",
+   "end": "2023-04-13",
+   "cat": "model3d",
+   "assets": [
+    {
+     "detail": "드론 취득 데이터",
+     "method": "드론",
+     "format": "사진",
+     "fileType": "jpg",
+     "path": "02_HQ/2023_HQ_Drone/01_Rawdata",
+     "kind": "폴더",
+     "name": "",
+     "gb": null,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": true
+    },
+    {
+     "detail": "드론 타일드 메시 모델",
+     "method": "드론",
+     "format": "메시",
+     "fileType": "zip",
+     "path": "02_HQ/2023_HQ_Drone/03_Tiled3DMesh",
+     "kind": "폴더",
+     "name": "2023_KP_HQ",
+     "gb": 1.39,
+     "count": null,
+     "note": "",
+     "extra": "",
+     "available": true,
+     "sourceExists": true,
+     "tileset": "spatiallog/2023_KP_HQ/tileset.json",
+     "groundH": 20.0
+    }
+   ],
+   "delivery": "외장하드"
+  }
+ ]
+}

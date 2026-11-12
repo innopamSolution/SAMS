@@ -73,9 +73,10 @@ function flatten(scene) {
  * @param {object} maplibregl
  * @param {object} map
  * @param {{ url: string, lngLat: [number, number], groundH?: number, onError?: (e: any) => void, onReady?: () => void }} opts
- *   groundH: 타일셋 좌표계(타원체 높이)에서 지면(길)의 높이(m). 성수동 일대는 약 37m 로, 이 높이가 로컬 y=0 — 곧 지형 위 지면이 된다.
+ *   groundH: 타일셋 좌표계(타원체 높이)에서 지면(길)의 높이(m). 이 높이가 로컬 y=0 — 곧 지형 위 지면이 된다.
+ *   probe:   [lng, lat] 목록(보통 사이트 폴리곤). 타일이 다 들어오면 이 둘레의 표면 높이(하위 25%)를 지면으로 삼아 groundH 를 맞춘다.
  */
-export function addTilesLayer(maplibregl, map, { url, lngLat, groundH = 37, cacheMB = 384, onError, onReady }) {
+export function addTilesLayer(maplibregl, map, { url, lngLat, groundH = 37, probe = null, cacheMB = 384, onError, onReady }) {
   if (map.getLayer('sams-3d')) map.removeLayer('sams-3d');
 
   const merc = maplibregl.MercatorCoordinate.fromLngLat(lngLat, 0);
@@ -106,6 +107,30 @@ export function addTilesLayer(maplibregl, map, { url, lngLat, groundH = 37, cach
     if (!tiles.getBoundingSphere(sp)) { onReady(null); return; }
     onReady({ ...ecefToLngLat(sp.center.x, sp.center.y, sp.center.z), radius: sp.radius });
   });
+
+  // 지면 보정: 데이터마다 지면의 타원체 높이가 달라(성수 37m, 한일 24m …) 사이트 폴리곤 둘레를 위에서 아래로 쏴
+  // 낮은 쪽(하위 25%) 표면을 지면으로 본다. 타일이 한 번 다 들어온 뒤 한 번만 한다.
+  let calibrated = !probe || probe.length < 3;
+  let curGround = groundH;
+  const calibrate = () => {
+    if (calibrated || !probe) return;
+    const ys = [];
+    probe.forEach(([lng, lat]) => {
+      const mc = maplibregl.MercatorCoordinate.fromLngLat([lng, lat], 0);
+      const o = [(mc.x - transform.x) / transform.scale, 3000, (mc.y - transform.y) / transform.scale];
+      const t = model.cast(o, [0, -1, 0], Infinity);
+      if (isFinite(t)) ys.push(3000 - t);
+    });
+    if (ys.length < 3) return; // 아직 이 둘레의 타일이 안 들어왔다 — 다음 로드 완료 때 다시
+    ys.sort((a, b) => a - b);
+    const low = ys[Math.floor(ys.length * 0.25)];
+    curGround = curGround + low;
+    group.matrix.copy(ecefToLocalMatrix(lngLat[0], lngLat[1], curGround));
+    group.matrixWorldNeedsUpdate = true;
+    calibrated = true;
+    map.triggerRepaint();
+  };
+  tiles.addEventListener('tiles-load-end', () => { try { calibrate(); } catch (e) { console.warn('[tiles3d] 지면 보정 실패', e); } });
 
   const scene = new THREE.Scene();
   scene.add(group);

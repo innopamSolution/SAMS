@@ -83,6 +83,22 @@ export function buildCompareStyle() {
 // coverage rectangle on the ground.
 export const FOOTPRINT_MINZOOM = 16;
 
+// 이벤트(공간 데이터가 없는 항목)는 원 안의 아이콘이 아니라 깃발 하나로 그린다 — 데이터 마커와 한눈에 구분되게.
+function flagImage(color) {
+  const W = 48; const H = 60; // 24x30 @2x
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  const pole = () => { g.beginPath(); g.moveTo(14, 56); g.lineTo(14, 6); };
+  const flag = () => { g.beginPath(); g.moveTo(14, 6); g.lineTo(42, 6); g.lineTo(34, 17); g.lineTo(42, 28); g.lineTo(14, 28); g.closePath(); };
+  // 흰 테두리(위성 영상 위에서도 보이게) → 본체
+  g.strokeStyle = '#ffffff'; g.lineWidth = 8; pole(); g.stroke(); flag(); g.stroke();
+  g.strokeStyle = color; g.lineWidth = 4; pole(); g.stroke();
+  g.fillStyle = color; flag(); g.fill();
+  return { width: W, height: H, data: g.getImageData(0, 0, W, H).data };
+}
+
 export function addAssetLayers(map) {
   map.addSource('footprints', {
     type: 'geojson',
@@ -156,16 +172,30 @@ export function addAssetLayers(map) {
       'circle-radius': ['case', ['boolean', ['feature-state', 'hover'], false], 24, ['boolean', ['feature-state', 'active'], false], 22, 0],
     },
   });
+  map.addImage('event-flag', flagImage('#13a85e'), { pixelRatio: 2 });
   map.addLayer({
     id: 'unclustered',
     type: 'circle',
     source: 'assets',
-    filter: ['!', ['has', 'point_count']],
+    filter: ['all', ['!', ['has', 'point_count']], ['!=', ['get', 'cat'], 'event']],
     paint: {
       'circle-color': ['get', 'color'],
       'circle-radius': ['case', ['boolean', ['feature-state', 'hover'], false], 11, ['boolean', ['feature-state', 'active'], false], 11, 8],
       'circle-stroke-width': ['case', ['boolean', ['feature-state', 'active'], false], 3, 2],
       'circle-stroke-color': '#ffffff',
+    },
+  });
+  map.addLayer({
+    id: 'event-flags',
+    type: 'symbol',
+    source: 'assets',
+    filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'cat'], 'event']],
+    layout: {
+      'icon-image': 'event-flag',
+      'icon-anchor': 'bottom',
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
+      'icon-size': 1,
     },
   });
 }

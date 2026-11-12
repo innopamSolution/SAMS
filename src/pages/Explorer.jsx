@@ -8,12 +8,13 @@ import { createAnnotationOverlay } from '../lib/annotationOverlay';
 import { pickSurface, pickGround } from '../lib/pick3d';
 import { useAnnotations, saveAnnotation, deleteAnnotation, blankAnnotation, annotationType, ANNOTATION_ADMIN, ALT_MAX, ANNO_TYPES, ANNO_TYPE_KEYS } from '../lib/annotations';
 import {
-  CATS, CAT_MAP, ITEMS, PROJECTS, EPSGS, PROJECT_LOC, structLngLat, footprintRing, COLLECTIONS, SEED_COMMENTS, itemCollections, originIdsOf, derivedIdsOf,
+  CATS, CAT_MAP, ITEMS, PERIODS, SITES, PROJECTS, EPSGS, PROJECT_LOC, structLngLat, footprintRing, COLLECTIONS, SEED_COMMENTS, itemCollections, originIdsOf, derivedIdsOf,
 } from '../data/explorerData';
 import { buildMainStyle, buildCompareStyle, addAssetLayers } from '../lib/mapStyles';
 import { add3DLayer, addRealPointCloudLayer, addRealMeshLayer } from '../lib/three3d';
 import { addTilesLayer } from '../lib/tiles3d';
-import { isTileItem, tilePreviewHtml, mountLivePreview, requestStill } from '../lib/tilePreview';
+import { isTileItem, tilePreviewHtml, mountLivePreview } from '../lib/tilePreview';
+import { buildSpaceSites } from '../lib/spaceSites';
 import { loadPointCloud } from '../lib/pointCloudAsset';
 import { loadMeshAsset } from '../lib/meshAsset';
 import {
@@ -101,7 +102,7 @@ const PIN_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentCo
 const PANEL_WIDTH = 372;
 const SHOW_LEGEND = true;
 
-const YEARS = ['2024', '2023', '2022', '2021'];
+const YEARS = ['2026', '2025', '2024', '2023'];
 
 const initialState = {
   keyword: '',
@@ -110,10 +111,12 @@ const initialState = {
   compareA: 't1',
   compareB: 't5',
   swipeX: 50,
-  groupBy: 'time',
+  groupBy: 'space', // 목록은 사이트별로 묶는다(엑셀 사이트 표 순서)
   advOpen: false,
   drawerId: null,
   yearSel: {},
+  periodSel: {}, // 시기(성수 클러스터 1~4차) 다중 선택
+  siteSel: {}, // 사이트 다중 선택
   project: '전체 프로젝트',
   epsg: '좌표계 전체',
   boundsFilter: false,
@@ -123,68 +126,61 @@ const initialState = {
   activeId: null,
   three3DActive: false,
   three3DTitle: '',
-  basemap: 'light',
+  basemap: '3d', // 기본 지도는 3D(위성+지형, 기울인 시점). 일반지도·위성은 우측 상단에서 바꾼다.
   toast: null,
 };
 
-// 이미지·파노라마는 어노테이션(사진·파노라마) 형태로 다룬다. 자료 유형 필터에서는 메모·사진·파노라마 칩으로 나누고,
-// 사진·파노라마 칩은 어노테이션 기록과 기존 이미지/파노라마 자료를 함께 거른다(메모는 어노테이션만).
-const ANNO_CHIP_KEYS = { 'a:memo': null, 'a:photo': 'image', 'a:pano': 'pano' };
-const ANNO_FOLDED_CATS = ['image', 'pano'];
-const ANNO_CHIPS = ANNO_TYPE_KEYS.map((k) => ({ key: 'a:' + k, label: ANNO_TYPES[k].label, color: ANNO_TYPES[k].color }));
-const FILTER_CHIPS = CATS.flatMap((c) => (c.key === 'image' ? ANNO_CHIPS : ANNO_FOLDED_CATS.includes(c.key) ? [] : [c]));
-const pad2 = (n) => String(n).padStart(2, '0');
-const annoDate = (a) => { const d = new Date(a.createdAt || Date.now()); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; };
-
-// 어노테이션도 목록(시기·공간)에 항목으로 들어간다. 자료와 같은 필터(유형·상태·연도·프로젝트·검색어·지도 범위)를 따른다.
+const FILTER_CHIPS = CATS;
 // '성수클러스터 4차'처럼 회차 이름만 있으면 어느 공간인지 알 수 없어, 공간 이름을 앞에 붙여 보여준다.
 const itemName = (it) => (it.space && !it.title.includes(it.space) ? `${it.space} · ${it.title}` : it.title);
 
-// 어노테이션은 3D 데이터가 취득된 시기(회차)마다 따로 붙는다: 붙은 3D 자료(itemId)가 그 어노테이션의 시기·공간이다.
+// 메모는 3D 데이터가 취득된 시기(회차)마다 따로 붙는다: 붙은 3D 자료(itemId)가 그 메모의 시기·공간이다.
 // 예전 기록(itemId 없음)은 그 공간에서 열 수 있는 대표 3D 자료에 붙은 것으로 본다.
+// 이벤트(공간 데이터가 없는 항목)는 원형 아이콘 대신 깃발만 쓴다.
+// 지도의 깃발과 같은 모양·색(흰 테두리 + 단색). size 는 높이(px).
+const MEMO_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H9l-5 4z"/><path d="M8 9h8M8 12.5h5"/></svg>';
+const COMPARE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="16" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/></svg>';
+
+const FlagGlyph = ({ color, size = 28 }) => (
+  <svg width={Math.round(size * 0.8)} height={size} viewBox="0 0 48 60" style={{ flex: 'none', display: 'block' }}>
+    <g strokeLinejoin="round" strokeLinecap="round">
+      <path d="M14 56V6M14 6H42L34 17L42 28H14" fill="none" stroke="#fff" strokeWidth="8" />
+      <path d="M14 56V6" stroke={color} strokeWidth="4" fill="none" />
+      <path d="M14 6H42L34 17L42 28H14Z" fill={color} />
+    </g>
+  </svg>
+);
+
+// 아이템이 속한 사이트의 폴리곤 경계(없으면 null). 선택하면 이 영역이 화면에 잡히도록 맞춘다.
+function siteBoundsOf(it) {
+  const site = SITES.find((x) => x.name === it.space);
+  if (!site || !site.polygon) return null;
+  return site.polygon.reduce((bb, q) => bb.extend(q), new maplibregl.LngLatBounds(site.polygon[0], site.polygon[0]));
+}
+
 function threeDItemForSpace(space) {
   const list = ITEMS.filter((i) => i.space === space && i.lat != null);
   const d3 = list.filter((i) => i.cat === 'pointcloud' || i.cat === 'model3d');
-  // 어노테이션은 실제 모델 표면에 걸리므로, 렌더할 실데이터가 있는 실측 자료를 먼저 고른다(그다음 최신순).
+  // 메모는 실제 모델 표면에 걸리므로, 렌더할 실데이터가 있는 실측 자료를 먼저 고른다(그다음 최신순).
   const rank = (i) => ((i.meshUrl || i.pointCloudUrl || i.tilesetUrl) ? 2 : 0) + (/계획/.test(i.extra || '') ? 0 : 1);
   d3.sort((a, b) => rank(b) - rank(a) || b.date.localeCompare(a.date));
   return d3[0] || list[0] || null;
 }
 const annoItemOf = (a) => (a.itemId && itemById(a.itemId)) || (a.space ? threeDItemForSpace(a.space) : null);
 
-function computeAnnotationRows(s, annotations) {
-  const keys = Object.keys(s.activeCats).filter((k) => s.activeCats[k]);
-  const types = keys.filter((k) => k.startsWith('a:')).map((k) => k.slice(2));
-  if (keys.length && !types.length) return []; // 어노테이션이 아닌 유형만 골라 둔 상태
-  const ys = Object.keys(s.yearSel).filter((k) => s.yearSel[k]);
-  const kw = s.keyword.trim().toLowerCase();
-  return annotations.filter((a) => {
-    if (!(ANNOTATION_ADMIN || a.visibility === 'public')) return false;
-    if (types.length && !types.includes(annotationType(a))) return false;
-    const it = annoItemOf(a);
-    const date = it ? it.date : annoDate(a);
-    if (ys.length && !ys.some((y) => date.startsWith(y))) return false;
-    if (s.project !== '전체 프로젝트' && !(it && itemCollections(it).includes(s.project))) return false;
-    if (s.epsg !== '좌표계 전체') return false;
-    if (kw && !(a.title + ' ' + a.desc + ' ' + a.tags.join(' ') + ' ' + (a.space || '') + ' ' + (it ? it.title : '')).toLowerCase().includes(kw)) return false;
-    if (s.boundsFilter && s.mapBounds) {
-      const b2 = s.mapBounds;
-      if (!(a.lng >= b2.w && a.lng <= b2.e && a.lat >= b2.s && a.lat <= b2.n)) return false;
-    }
-    return true;
-  }).map((a) => { const it = annoItemOf(a); return { isAnno: true, id: 'a-' + a.id, date: it ? it.date : annoDate(a), epoch: it ? it.title : '', space: (it && it.space) || a.space || '(공간 미지정)', a }; });
-}
-
 function computeFiltered(s) {
   const kw = s.keyword.trim().toLowerCase();
   const cats = Object.keys(s.activeCats).filter((k) => s.activeCats[k]);
   const ys = Object.keys(s.yearSel).filter((k) => s.yearSel[k]);
+  const ps = Object.keys(s.periodSel).filter((k) => s.periodSel[k]);
+  const sites = Object.keys(s.siteSel).filter((k) => s.siteSel[k]);
   const catSet = new Set(cats);
-  Object.entries(ANNO_CHIP_KEYS).forEach(([k, cat]) => { if (cat && catSet.has(k)) catSet.add(cat); });
   let list = ITEMS.filter((i) => {
     if (cats.length && !catSet.has(i.cat)) return false;
     if (i.status !== 'published') return false; // 엔드유저에게는 공개된 자료만 보인다
     if (ys.length && !ys.some((y) => i.date.startsWith(y))) return false;
+    if (ps.length && !ps.includes(i.period)) return false;
+    if (sites.length && !sites.includes(i.space)) return false;
     if (s.project !== '전체 프로젝트' && !itemCollections(i).includes(s.project)) return false;
     if (s.epsg !== '좌표계 전체' && 'EPSG:' + i.epsg !== s.epsg) return false;
     if (kw) {
@@ -204,19 +200,20 @@ function computeFiltered(s) {
 // category selection itself — so a chip shows how many items it would add.
 function computeCatCounts(s) {
   const ys = Object.keys(s.yearSel).filter((k) => s.yearSel[k]);
+  const ps = Object.keys(s.periodSel).filter((k) => s.periodSel[k]);
+  const sites = Object.keys(s.siteSel).filter((k) => s.siteSel[k]);
   const kw = s.keyword.trim().toLowerCase();
   const counts = {};
   CATS.forEach((c) => { counts[c.key] = 0; });
   ITEMS.forEach((i) => {
     if (i.status !== 'published') return;
     if (ys.length && !ys.some((y) => i.date.startsWith(y))) return;
+    if (ps.length && !ps.includes(i.period)) return;
+    if (sites.length && !sites.includes(i.space)) return;
     if (s.project !== '전체 프로젝트' && !itemCollections(i).includes(s.project)) return;
     if (kw && !(i.title + ' ' + i.site + ' ' + i.project + ' ' + i.desc).toLowerCase().includes(kw)) return;
     if (counts[i.cat] != null) counts[i.cat]++;
   });
-  counts['a:photo'] = counts.image || 0;
-  counts['a:pano'] = counts.pano || 0;
-  counts['a:memo'] = 0;
   return counts;
 }
 
@@ -239,7 +236,7 @@ function itemToTimelineNode(it) {
 // 시점 비교는 3D 데이터(포인트클라우드·3D 모델)만 대상으로 한다. 사진·영상·문서·이벤트 등은 제외.
 function comparableNodes() {
   return ITEMS
-    .filter((i) => (i.cat === 'pointcloud' || i.cat === 'model3d') && i.lat != null && (i.pointCloudUrl || i.meshUrl || i.tilesetPath))
+    .filter((i) => (i.cat === 'pointcloud' || i.cat === 'model3d') && i.lat != null && (i.pointCloudUrl || i.meshUrl || i.tilesetUrl))
     .slice()
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
     .map(itemToTimelineNode);
@@ -280,9 +277,9 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
   const [confirmState, setConfirmState] = useState(null);
   const ask = (message, onOk, extra = {}) => setConfirmState({ message, onOk, ...extra });
 
-  // ── 어노테이션 (3D 뷰어 위 메모·사진·파노라마) ─────────────────
+  // ── 메모 (3D 뷰어 위 메모·사진·파노라마) ─────────────────
   // 등록은 3D 모델이 떠 있는 이 화면에서만 한다 — 지도에서 점을 찍고 고도를 넣어 위치를 정하기 때문.
-  // (목록·공개 설정·삭제는 데이터 관리 > 어노테이션 탭에서도 다룬다.)
+  // (목록·공개 설정·삭제는 데이터 관리 > 메모 탭에서도 다룬다.)
   const annotations = useAnnotations();
   const [annoAdd, setAnnoAdd] = useState(false);
   const [annoDraft, setAnnoDraft] = useState(null);
@@ -353,6 +350,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
   const lastSigRef = useRef('');
   const toastTimerRef = useRef(null);
   const navTopRef = useRef(null);
+  const spaceSitesRef = useRef(null);
   const nav3DRef = useRef(null);
   const viewCtlRef = useRef(null);
   const prev3DRef = useRef(null);
@@ -413,7 +411,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
         features.push({
           type: 'Feature', id: i.id,
           geometry: { type: 'Point', coordinates: [lng, lat] },
-          properties: { id: i.id, color: CAT_MAP[i.cat].color },
+          properties: { id: i.id, color: CAT_MAP[i.cat].color, cat: i.cat },
         });
       });
     });
@@ -449,29 +447,28 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     if (hoverPopupRef.current) hoverPopupRef.current.remove();
     // Deliberately minimal — thumbnail + title only — so hover previews read
     // as a quick glance, clearly smaller/lighter than the click-through detail popup.
-    const html = `<div style="width:150px;font-family:var(--ant-font-sans);">
-      ${isTileItem(it) ? tilePreviewHtml(it, 95, false) : thumbHtml(it, CAT_MAP, false, 95)}
-      <div style="padding:6px 8px;">
+    // 미리보기 화면이 있는 자료(3D·사진·영상 등)는 썸네일 카드, 없는 것(이벤트·문서 등)은 글자 크기에 맞춘 툴팁으로 보여준다.
+    const thumb = isTileItem(it) ? tilePreviewHtml(it, 124, true) : thumbHtml(it, CAT_MAP, false, 124);
+    const html = thumb
+      ? `<div style="width:200px;font-family:var(--ant-font-sans);">
+      ${thumb}
+      <div style="padding:8px 12px;">
         <div style="font-size:12px;font-weight:700;color:var(--ant-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${itemName(it)}</div>
-      </div></div>`;
-    const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 16, maxWidth: '170px', anchor: 'bottom' })
+      </div></div>`
+      : `<div style="display:inline-block;padding:6px 10px;font-family:var(--ant-font-sans);font-size:13px;font-weight:700;line-height:20px;color:var(--ant-text);white-space:nowrap;">${itemName(it)}</div>`;
+    const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: thumb ? 16 : 20, maxWidth: thumb ? '220px' : 'none', anchor: 'bottom', className: thumb ? '' : 'sams-tip' })
       .setLngLat(markerLngLat(it)).setHTML(html).addTo(map);
     hoverPopupRef.current = popup;
     startTurntables(popup);
-    // 3D 타일 항목은 정지 이미지를 보여준다. 아직 없으면 잠깐 머문 뒤 뒤에서 한 장 만들어 채운다.
-    if (isTileItem(it) && !popup.getElement().querySelector('.sams-tilepv-still')) {
+    // 3D 타일 항목은 호버 카드에서도 천천히 도는 작은 3D 로 보여준다. 마우스가 스치고 지나갈 때는 만들지 않도록
+    // 잠깐(0.35초) 머문 뒤에 시작하고, 카드가 닫히면 바로 정리한다. 이전에 저장한 정지 이미지가 있으면 로드되는 동안 먼저 보인다.
+    if (isTileItem(it)) {
+      let dispose = null;
       const hoverTimer = setTimeout(() => {
-        requestStill(it, (src) => {
-          const box = popup.getElement() && popup.getElement().querySelector('.sams-tilepv');
-          if (!box || box.querySelector('.sams-tilepv-still')) return;
-          const img = document.createElement('img');
-          img.className = 'sams-tilepv-still';
-          img.src = src;
-          img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;';
-          box.insertBefore(img, box.firstChild);
-        }, () => hoverPopupRef.current === popup);
-      }, 500);
-      popup.on('close', () => clearTimeout(hoverTimer));
+        if (hoverPopupRef.current !== popup) return;
+        dispose = mountLivePreview(popup.getElement(), it, { compact: true });
+      }, 350);
+      popup.on('close', () => { clearTimeout(hoverTimer); if (dispose) dispose(); });
     }
   };
 
@@ -480,10 +477,10 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     const map = mapRef.current;
     if (map) {
       if (map.getLayer('sams-3d')) map.removeLayer('sams-3d');
-      map.easeTo({ pitch: 0, bearing: 0, zoom: 16, duration: 900 });
+      map.easeTo({ pitch: 55, bearing: 0, zoom: 16, duration: 900 });
     }
     patch({ three3DActive: false, three3DTitle: '' });
-    setBasemap('light');
+    setBasemap('3d');
     // If this 3D render was opened from a detail popup's "3D 보기" button,
     // bring that same popup back up in the state it was left in.
     if (popupReopenRef.current) {
@@ -536,13 +533,16 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     addTilesLayer(maplibregl, map, {
       url: it.tilesetUrl,
       lngLat: [it.lng, it.lat],
+      probe: it.probe,
       onError: (err) => {
         failed = true;
         console.warn('[tiles3d] 불러오기 실패', err);
         showToast('3D 타일을 불러오지 못했습니다');
       },
     });
-    map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), pitch: 55, duration: 900 });
+    const sb3 = siteBoundsOf(it);
+    if (sb3) map.fitBounds(sb3, { padding: 48, maxZoom: 17.5, pitch: 55, duration: 900 });
+    else map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), pitch: 55, duration: 900 });
     patch({ three3DActive: true, three3DTitle: itemName(it) + ' · 3D 타일' });
     return !failed;
   };
@@ -573,13 +573,23 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
   };
 
+  // 클릭하면 팝업을 거치지 않고 바로 오른쪽 상세 패널이 열린다. 마커·목록의 선택 표시도 여기서 건다.
   const openDrawer = (it) => {
     clearRelatedPreview();
-    patch({ drawerId: it.id });
+    if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
+    if (detailPopupRef.current) { detailPopupRef.current.remove(); detailPopupRef.current = null; }
+    const prev = stateRef.current.activeId;
+    if (prev && prev !== it.id) setFS(prev, 'active', false);
+    if (it.lat != null) setFS(it.id, 'active', true);
+    patch({ drawerId: it.id, activeId: it.id });
     const map = mapRef.current;
-    if (!map || it.lat == null) return;
+    if (!map) return;
+    const ll = it.lat != null ? markerLngLat(it) : it.projectLat != null ? [it.projectLng, it.projectLat] : null;
+    if (!ll) return;
     map.setPadding({ top: 0, bottom: 0, left: 0, right: 384 });
-    map.flyTo({ center: [it.lng, it.lat], zoom: Math.max(map.getZoom(), 17), duration: 900 });
+    const sb = siteBoundsOf(it);
+    if (sb) map.fitBounds(sb, { padding: 56, maxZoom: 18, pitch: map.getPitch(), bearing: map.getBearing(), duration: 900 });
+    else map.flyTo({ center: ll, zoom: Math.max(map.getZoom(), it.lat != null ? 17 : 16.4), duration: 900 });
   };
 
   // 실데이터 보기 button in the drawer header: mesh/point cloud renders in 3D
@@ -598,7 +608,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
 
   const viewRealData = (it) => {
     if (it.cat === 'event') { openEventCompare(it, { returnToDrawer: true }); return; }
-    if (it.meshUrl || it.pointCloudUrl) { closeDrawer(); drawerReturnRef.current = it.id; show3DOnMap(it); return; }
+    if (it.meshUrl || it.pointCloudUrl || it.tilesetUrl) { closeDrawer(); drawerReturnRef.current = it.id; show3DOnMap(it); return; }
     if (it.cat === 'pano' && it.panoImages && it.panoImages.length) { openPanoViewer(it.panoImages, 0); return; }
     if (it.images && it.images.length) { openPanoViewer(it.images, 0, '이미지'); return; }
     if (it.videoUrl) { openVideoViewer(it); return; }
@@ -608,7 +618,8 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
   const closeDrawer = () => {
     clearRelatedPreview();
     drawerReturnRef.current = null;
-    patch({ drawerId: null });
+    if (stateRef.current.activeId) setFS(stateRef.current.activeId, 'active', false);
+    patch({ drawerId: null, activeId: null });
     const map = mapRef.current;
     if (map) map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
   };
@@ -623,6 +634,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     setAnnoItemId(it.id);
     if (detailPopupRef.current) { detailPopupRef.current.remove(); detailPopupRef.current = null; }
     if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
+    if (!(it.tilesetUrl || it.meshUrl || it.pointCloudUrl)) { showToast('이 자료는 3D로 볼 수 있는 파일이 아직 없습니다'); return; } // 가짜 3D 를 만들어 보이지 않는다
     if (it.tilesetUrl && it.lat != null && (await renderTilesAt(it))) return;
     if (it.meshUrl && it.lat != null) { await renderRealMeshAt(it); return; }
     if (it.pointCloudUrl && it.lat != null) { await renderRealPointCloudAt(it); return; }
@@ -665,7 +677,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     // 이벤트는 내려받을 파일이 없다.
     const btnDlHtml = it.cat === 'event' ? '' : `<button data-act="download" data-tip="다운로드" aria-label="다운로드" style="flex:none;width:34px;height:32px;border-radius:7px;border:1px solid var(--ant-border);background:var(--ant-bg);color:var(--ant-text);cursor:pointer;display:flex;align-items:center;justify-content:center;">${DL_SVG}</button>`;
     const annoCount = annotations.filter((a) => (ANNOTATION_ADMIN || a.visibility === 'public') && annoItemOf(a) && annoItemOf(a).id === it.id).length;
-    const annoChipHtml = annoCount > 0 ? `<div style="display:flex;align-items:center;gap:4px;margin:-2px 0 12px;color:var(--ant-primary);font-size:11.5px;font-weight:600;">${PIN_SVG}어노테이션 ${annoCount}건</div>` : '';
+    const annoChipHtml = annoCount > 0 ? `<div style="display:flex;align-items:center;gap:4px;margin:-2px 0 12px;color:var(--ant-primary);font-size:11.5px;font-weight:600;">${PIN_SVG}메모 ${annoCount}건</div>` : '';
     const html = `<div style="width:236px;font-family:var(--ant-font-sans);">
       ${isTileItem(it) ? tilePreviewHtml(it, 150, true) : thumbHtml(it, CAT_MAP, true)}
       <div style="padding:10px 12px 12px;">
@@ -743,16 +755,20 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     // Skip the hover preview for the item whose detail popup is already open
     // — otherwise both cards show at once.
     if (it.id === stateRef.current.activeId) { patch(p); return; }
-    // 선택(클릭)된 항목이 없을 때만 호버로 지도가 그 항목으로 이동한다. 선택된 상태(상세 팝업·드로어가 열려 있음)에서는
-    // 목록에서 지도로 마우스를 옮기는 동안 지나는 행마다 지도가 튀지 않도록 이동하지 않는다.
-    // 이때 지도 화면 안의 항목은 마커 위 미리보기만, 화면 밖의 항목은 아무것도 띄우지 않는다.
+    // 목록에서 오버한 항목이 지도 화면 밖(또는 미리보기 카드가 잘릴 가장자리·오른쪽 패널 뒤)에 있으면 지도를 움직여 보이게 한다.
+    // 카드는 마커 위에 뜨므로 마커를 화면 중앙보다 조금 아래에 두고, 이미 충분히 안쪽에 있으면 움직이지 않는다.
     const map0 = mapRef.current;
     if (it.lat != null) {
-      const selected = !!(stateRef.current.activeId || stateRef.current.drawerId);
       const ll = markerLngLat(it);
-      const inView = !!map0 && map0.getBounds().contains(ll);
-      if (!selected && map0 && !inView) map0.flyTo({ center: ll, duration: 600 });
-      if (!selected || inView) showHoverCard(it);
+      if (map0) {
+        const c = map0.getCanvas();
+        const pad = map0.getPadding();
+        const pt = map0.project(ll);
+        const w = c.clientWidth; const h = c.clientHeight;
+        const inView = pt.x > pad.left + 120 && pt.x < w - pad.right - 120 && pt.y > pad.top + 240 && pt.y < h - pad.bottom - 60;
+        if (!inView) map0.easeTo({ center: ll, offset: [0, 80], duration: 600 });
+      }
+      showHoverCard(it);
       p.docHover = null;
     } else {
       // 좌표가 없는 문서류는 목록 옆 카드로 보여준다.
@@ -786,16 +802,57 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
 
   const onItemClick = (it) => {
     const map = mapRef.current;
-    if (it.lat != null) {
-      map && map.flyTo({ center: markerLngLat(it), zoom: Math.max(map.getZoom(), 17.2), duration: 650 });
-      openDetail(it);
-    } else if (it.projectLat != null) {
-      map && map.flyTo({ center: [it.projectLng, it.projectLat], zoom: Math.max(map.getZoom(), 16.4), duration: 650 });
-      openDetail(it, true);
+    if (it.lat != null || it.projectLat != null) {
+      openDrawer(it);
     } else {
       showToast('위치 정보 없음 — Detail 화면으로 이동합니다');
     }
   };
+
+  // ── 기본 3D 지도의 공간 표시(라벨 + 사이트 폴리곤) ─────────────────────
+  // 아무것도 선택되지 않은 기본 3D 지도에서만 보인다. 항목을 고르거나 3D 렌더링·비교에 들어가면 숨긴다.
+  function initSpaceSites(map) {
+    const sites = buildSpaceSites();
+    // 안쪽 흰 선(line-offset)이 항상 폴리곤 안쪽으로 가도록 바깥 고리를 시계 반대 방향으로 맞춘다.
+    const ccw = (ring) => { let a = 0; for (let i = 0; i < ring.length - 1; i++) a += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1]; return a > 0 ? ring : [...ring].reverse(); };
+    const features = sites.filter((s) => s.ring).map((s) => ({ type: 'Feature', properties: { name: s.name, wide: s.name === '성수 클러스터' }, geometry: { type: 'Polygon', coordinates: [ccw(s.ring)] } }));
+    map.addSource('space-sites', { type: 'geojson', data: { type: 'FeatureCollection', features } });
+    map.addLayer({ id: 'space-sites-fill', type: 'fill', source: 'space-sites', paint: { 'fill-color': '#2f6bff', 'fill-opacity': ['case', ['get', 'wide'], 0.03, 0.1] } }, 'footprint-fill');
+    map.addLayer({ id: 'space-sites-line', type: 'line', source: 'space-sites', paint: { 'line-color': '#2f6bff', 'line-opacity': 0.95, 'line-width': 3 } }, 'footprint-fill');
+    // 위성·3D 지도 위에서 파란 선이 묻히지 않도록, 파란 선 안쪽에 딱 붙여(간격 0) 반투명 흰 선을 한 줄 더 긋는다. (+ 오프셋이 폴리곤 안쪽)
+    map.addLayer({ id: 'space-sites-inner', type: 'line', source: 'space-sites', paint: { 'line-color': '#ffffff', 'line-opacity': 0.6, 'line-width': 2, 'line-offset': 2.5 } }, 'footprint-fill');
+    const labels = sites.map((s) => {
+      const el = document.createElement('div');
+      el.textContent = s.name;
+      el.style.cssText = 'color:#1d4ed8;font:700 12px/16px var(--ant-font-sans, sans-serif);white-space:nowrap;pointer-events:none;text-shadow:-1px -1px 0 #fff,1px -1px 0 #fff,-1px 1px 0 #fff,1px 1px 0 #fff,0 0 4px #fff;';
+      const marker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat([s.lng, s.lat]).addTo(map);
+      return { el, marker, name: s.name };
+    });
+    spaceSitesRef.current = { labels };
+    syncSpaceSites();
+    map.on('zoom', syncSpaceSites);
+  }
+  function syncSpaceSites() {
+    const map = mapRef.current; const ref = spaceSitesRef.current;
+    if (!map || !ref) return;
+    const st = stateRef.current;
+    // 아무것도 선택되지 않았으면 모든 사이트를, 항목을 골라 상세를 보는 중이면 그 사이트만(영역이 잡히게) 보여준다.
+    const sel = st.drawerId ? itemById(st.drawerId) : null;
+    const browsing = st.basemap === '3d' && !st.three3DActive && !st.compareOpen && map.getZoom() >= 13;
+    const onAll = browsing && !st.drawerId && !st.activeId;
+    const onOne = browsing && !!sel;
+    const vis = onAll || onOne ? 'visible' : 'none';
+    const filter = onOne ? ['==', ['get', 'name'], sel.space] : null;
+    ['space-sites-fill', 'space-sites-line', 'space-sites-inner'].forEach((id) => {
+      if (!map.getLayer(id)) return;
+      map.setLayoutProperty(id, 'visibility', vis);
+      map.setFilter(id, filter);
+    });
+    // 위의 점선 취득 범위(footprint)와 겹쳐 보이지 않게, 공간 표시가 켜져 있을 때는 숨긴다.
+    ['footprint-fill', 'footprint-line'].forEach((id) => { if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', onAll || onOne ? 'none' : 'visible'); });
+    ref.labels.forEach((l) => { l.el.style.display = onAll || (onOne && l.name === sel.space) ? 'block' : 'none'; });
+  }
+  useEffect(() => { syncSpaceSites(); }, [state.basemap, state.three3DActive, state.compareOpen, state.drawerId, state.activeId]);
 
   function updateMapControls(v) {
     const map = mapRef.current;
@@ -840,9 +897,19 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
 
   const toggleCat = (k) => patch((s) => ({ activeCats: { ...s.activeCats, [k]: !s.activeCats[k] } }));
   const toggleYearSel = (k) => patch((s) => ({ yearSel: { ...s.yearSel, [k]: !s.yearSel[k] } }));
-  const resetFilters = () => patch({ keyword: '', activeCats: {}, yearSel: {}, project: '전체 프로젝트', epsg: '좌표계 전체', boundsFilter: false });
+  const togglePeriodSel = (k) => patch((s) => ({ periodSel: { ...s.periodSel, [k]: !s.periodSel[k] } }));
+  const toggleSiteSel = (k) => patch((s) => ({ siteSel: { ...s.siteSel, [k]: !s.siteSel[k] } }));
+  const resetFilters = () => patch({ keyword: '', activeCats: {}, yearSel: {}, periodSel: {}, siteSel: {}, project: '전체 프로젝트', epsg: '좌표계 전체', boundsFilter: false });
 
-  const toggleCompare = () => patch((s) => ({ compareOpen: !s.compareOpen }));
+  const toggleCompare = () => {
+    // 비교를 열 때는 열려 있던 오른쪽 상세 패널과 지도 팝업을 닫는다.
+    if (!stateRef.current.compareOpen) {
+      if (stateRef.current.drawerId) closeDrawer();
+      if (detailPopupRef.current) { detailPopupRef.current.remove(); detailPopupRef.current = null; }
+      if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
+    }
+    patch((s) => ({ compareOpen: !s.compareOpen }));
+  };
 
   // 이벤트의 '전후 비교'로 열린 경우, 닫으면 그 이벤트 드로어로 되돌아간다.
   const closeCompare = () => {
@@ -917,11 +984,25 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
       const geo = computeFiltered(stateRef.current).filter((i) => i.lat != null);
       lastSigRef.current = geo.map((i) => i.id).join(',');
       pushMapData(geo);
+      // 첫 화면부터 3D 지도(위성+지형, 기울인 시점)로 연다.
+      if (stateRef.current.basemap === '3d') setBasemap('3d');
+      initSpaceSites(map);
+      // 처음 화면은 프로젝트 영역(모든 사이트의 폴리곤)이 한눈에 들어오게 맞춘다.
+      // 멀리 떨어진 사이트(역삼·판교 등)까지 넣으면 성수가 점으로 보이므로, 첫 사이트(성수 클러스터)에서 5km 안의 사이트로 맞춘다.
+      const base = SITES.find((x) => x.center);
+      const near = (x) => !!x.center && !!base && Math.hypot((x.center[0] - base.center[0]) * 88.7, (x.center[1] - base.center[1]) * 111) < 5;
+      const pts = SITES.filter((x) => x.polygon && near(x)).flatMap((x) => x.polygon);
+      if (pts.length) {
+        const b = pts.reduce((bb, q) => bb.extend(q), new maplibregl.LngLatBounds(pts[0], pts[0]));
+        map.fitBounds(b, { padding: 48, pitch: 55, maxZoom: 16, duration: 0 });
+      }
     });
 
-    map.on('mouseenter', 'unclustered', (e) => { map.getCanvas().style.cursor = 'pointer'; onMarkerEnter(e.features[0].id); });
-    map.on('mouseleave', 'unclustered', () => { map.getCanvas().style.cursor = ''; onMarkerLeave(); });
-    map.on('click', 'unclustered', (e) => { openDetail(itemById(e.features[0].id)); });
+    ['unclustered', 'event-flags'].forEach((layerId) => {
+      map.on('mouseenter', layerId, (e) => { map.getCanvas().style.cursor = 'pointer'; onMarkerEnter(e.features[0].id); });
+      map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; onMarkerLeave(); });
+      map.on('click', layerId, (e) => { const hit = itemById(e.features[0].id); if (hit) openDrawerRef.current(hit); });
+    });
     map.on('mouseenter', 'clusters', () => { map.getCanvas().style.cursor = 'pointer'; });
     map.on('mouseleave', 'clusters', () => { map.getCanvas().style.cursor = ''; });
     map.on('click', 'clusters', (e) => {
@@ -954,7 +1035,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     const sig = geo.map((i) => i.id).join(',');
     if (sig !== lastSigRef.current) { lastSigRef.current = sig; pushMapData(geo); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.keyword, state.activeCats, state.yearSel, state.project, state.epsg, state.boundsFilter, state.mapBounds]);
+  }, [state.keyword, state.activeCats, state.yearSel, state.periodSel, state.siteSel, state.project, state.epsg, state.boundsFilter, state.mapBounds]);
 
   // While the 3D viewer is up the marker dots (clusters + 미리보기 points) would
   // float over the real-data render, so hide them and bring them back on exit.
@@ -962,20 +1043,20 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     const map = mapRef.current;
     if (!map || !layersReadyRef.current) return;
     const v = state.three3DActive ? 'none' : 'visible';
-    ['clusters', 'cluster-count', 'pt-halo', 'unclustered'].forEach((id) => {
+    ['clusters', 'cluster-count', 'pt-halo', 'unclustered', 'event-flags'].forEach((id) => {
       if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', v);
     });
     if (state.three3DActive && hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
   }, [state.three3DActive]);
 
-  // 어노테이션 오버레이 + 3D 모델 표면 피킹.
+  // 메모 오버레이 + 3D 모델 표면 피킹.
   // 클릭 한 번으로 모델 표면의 위치·고도를 함께 잡는다(lib/pick3d). 모델을 못 맞히면 지면(고도 0)으로 대체.
   const [annoMenu, setAnnoMenu] = useState(null);
-  // 지금 3D로 열린 모델이 속한 공간 — 어노테이션은 공간에 묶여 그 공간의 모든 시기에서 보인다.
+  // 지금 3D로 열린 모델이 속한 공간 — 메모는 공간에 묶여 그 공간의 모든 시기에서 보인다.
   const [annoSpace, setAnnoSpace] = useState(null);
   const annoSpaceRef = useRef(null);
   annoSpaceRef.current = annoSpace;
-  // 지금 3D 로 보고 있는 자료(= 어노테이션이 붙는 시기)
+  // 지금 3D 로 보고 있는 자료(= 메모가 붙는 시기)
   const [annoItemId, setAnnoItemId] = useState(null);
   const annoItemIdRef = useRef(null);
   annoItemIdRef.current = annoItemId;
@@ -1037,17 +1118,17 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     };
   }, []);
 
-  // 공간이 같은 어노테이션만(공간 정보가 없는 예전 기록은 어디서나) — 같은 공간의 어느 시기 모델을 열어도 따라온다.
+  // 공간이 같은 메모만(공간 정보가 없는 예전 기록은 어디서나) — 같은 공간의 어느 시기 모델을 열어도 따라온다.
   const annoUserList = annotations.filter((a) => (ANNOTATION_ADMIN || a.visibility === 'public') && ((!a.space && !a.itemId) || (annoItemOf(a) && annoItemOf(a).id === annoItemId)));
   useEffect(() => {
     const layer = annoLayerRef.current;
     if (!layer) return;
-    layer.setData(state.three3DActive ? annoUserList.filter((a) => annoVisible[annotationType(a)] && !(annoDraft && annoDraft.id === a.id)) : []);
+    layer.setData(state.three3DActive ? annoUserList.filter((a) => a.lng != null && annoVisible[annotationType(a)] && !(annoDraft && annoDraft.id === a.id)) : []);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [annotations, annoVisible, annoSpace, annoItemId, state.three3DActive, annoDraft && annoDraft.id]);
   useEffect(() => {
     const layer = annoLayerRef.current;
-    if (layer) layer.setDraft(state.three3DActive ? annoDraft : null);
+    if (layer) layer.setDraft(state.three3DActive && annoDraft && annoDraft.lng != null ? annoDraft : null);
   }, [annoDraft, state.three3DActive]);
   useEffect(() => {
     const map = mapRef.current;
@@ -1074,14 +1155,39 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     setAnnoAdd(true);
     showToast('3D 모델 표면을 눌러 위치를 정하세요 · 높이는 자동으로 입력됩니다');
   };
-  const cancelAnno = () => { setAnnoDraft(null); setAnnoAdd(false); };
+  // 상세 패널의 [메모]: 이 3D 자료를 열고 곧바로 위치 지정 모드로 들어간다.
+  const memoPendingRef = useRef(null);
+  const startMemoFor = (it) => {
+    if (!(it.tilesetUrl || it.meshUrl || it.pointCloudUrl)) {
+      // 3D 데이터가 없는 자료: 위치(좌표) 지정 없이 메모만 입력한다.
+      closeDrawer();
+      setAnnoSpace(it.space || null); setAnnoItemId(it.id);
+      setAnnoViewId(null); setAnnoAdd(false);
+      setAnnoDraft(blankAnnotation(null, null, null, it.space, it.id));
+      return;
+    }
+    closeDrawer();
+    drawerReturnRef.current = it.id;
+    memoPendingRef.current = it.id;
+    show3DOnMap(it);
+  };
+  useEffect(() => {
+    if (!state.three3DActive || !memoPendingRef.current || memoPendingRef.current !== annoItemId) return;
+    memoPendingRef.current = null;
+    setAnnoViewId(null); setAnnoDraft(null); setAnnoAdd(true);
+    showToast('3D 모델 표면을 눌러 메모 위치를 정하세요 · 높이는 자동으로 입력됩니다');
+  }, [state.three3DActive, annoItemId]);
+  // 위치 없는 메모를 입력·열람하던 중이면 닫을 때 그 자료의 상세 패널로 돌아간다.
+  const backToDrawer = (a) => { if (a && a.lng == null) { const o = annoItemOf(a); if (o) openDrawer(o); } };
+  const cancelAnno = () => { const d = annoDraft; setAnnoDraft(null); setAnnoAdd(false); backToDrawer(d); };
   const addAnnoAt = (p) => { setAnnoMenu(null); setAnnoViewId(null); setAnnoAdd(false); setAnnoDraft(blankAnnotation(p.lng, p.lat, p.alt, annoSpace, annoItemId)); };
   const saveAnno = (a) => {
     const { isNew, ...rec } = a;
     if (!rec.itemId) { const own = annoItemOf(rec); if (own) rec.itemId = own.id; }
     if (!saveAnnotation(rec)) { showToast('저장 공간이 부족합니다 · 사진 수를 줄여 주세요'); return; }
-    setAnnoDraft(null); setAnnoAdd(false); setAnnoViewId(rec.id);
-    showToast(isNew ? '어노테이션을 등록했습니다' : '어노테이션을 수정했습니다');
+    setAnnoDraft(null); setAnnoAdd(false);
+    if (rec.lng == null) backToDrawer(rec); else setAnnoViewId(rec.id);
+    showToast(isNew ? '메모를 등록했습니다' : '메모를 수정했습니다');
   };
   // 미리보기: 핀을 찍은 뒤 옆(수평에 가까운 시점)에서 고도를 확인한다. 줄기가 화면에 들어오도록 줌을 고도에 맞춘다.
   const previewAnno = () => {
@@ -1097,14 +1203,14 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     setAnnoAdd((v) => !v);
   };
   const editAnno = (a) => { setAnnoViewId(null); setAnnoAdd(false); setAnnoDraft({ ...a }); };
-  const removeAnno = (a) => ask(`"${a.title}" 어노테이션을 삭제할까요?`, () => { deleteAnnotation(a.id); setAnnoViewId(null); showToast('어노테이션을 삭제했습니다'); });
+  const removeAnno = (a) => ask(`"${a.title}" 메모를 삭제할까요?`, () => { deleteAnnotation(a.id); setAnnoViewId(null); backToDrawer(a); showToast('메모를 삭제했습니다'); });
   const annoCounts = annoUserList.reduce((m, a) => { const t = annotationType(a); m[t] = (m[t] || 0) + 1; return m; }, {});
   const annoViewing = annoViewId ? annotations.find((a) => a.id === annoViewId) : null;
 
-  // ── 2D 지도·목록·검색에서 어노테이션으로 들어가는 길 ───────────────────
-  // 어노테이션은 3D에서만 그린다. 2D에서는 "있다"는 신호(배지·칩·검색 결과)만 보여 주고, 누르면 그 공간의 3D로 연다.
+  // ── 2D 지도·목록·검색에서 메모으로 들어가는 길 ───────────────────
+  // 메모는 3D에서만 그린다. 2D에서는 "있다"는 신호(배지·칩·검색 결과)만 보여 주고, 누르면 그 공간의 3D로 연다.
   const openSpace3D = async (space) => {
-    // 그 공간에서 어노테이션이 가장 많이 붙은 시기의 3D 로 연다(없으면 대표 3D 자료).
+    // 그 공간에서 메모가 가장 많이 붙은 시기의 3D 로 연다(없으면 대표 3D 자료).
     const counts = {};
     annotations.filter((a) => (ANNOTATION_ADMIN || a.visibility === 'public') && a.space === space).forEach((a) => { const o = annoItemOf(a); if (o) counts[o.id] = (counts[o.id] || 0) + 1; });
     const bestId = Object.keys(counts).sort((x, y) => counts[y] - counts[x])[0];
@@ -1115,56 +1221,44 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
   const openAnnotationIn3D = async (a) => {
     const map = mapRef.current;
     if (!map) return;
+    if (a.lng == null) { // 위치 없는 메모: 3D 없이 메모 카드만 연다.
+      const o = annoItemOf(a);
+      closeDrawer(); if (o) { setAnnoSpace(o.space || null); setAnnoItemId(o.id); }
+      setAnnoDraft(null); setAnnoAdd(false); setAnnoViewId(a.id);
+      return;
+    }
     const target = annoItemOf(a);
-    if (!target) { showToast('이 어노테이션이 붙은 3D 자료를 찾을 수 없습니다'); return; }
-    if (!(stateRef.current.three3DActive && annoItemIdRef.current === target.id)) await show3DOnMap(target);
+    if (!target) { showToast('이 메모가 붙은 3D 자료를 찾을 수 없습니다'); return; }
+    if (!(stateRef.current.three3DActive && annoItemIdRef.current === target.id)) {
+      // 오른쪽 패널에서 메모를 눌러 3D 로 들어가면 패널은 닫고(3D 위에 겹치지 않게), '3D 렌더링 닫기'에서 그 자료의 패널로 돌아온다.
+      if (stateRef.current.drawerId) { const id = stateRef.current.drawerId; closeDrawer(); drawerReturnRef.current = id; }
+      await show3DOnMap(target);
+    }
     setAnnoDraft(null); setAnnoAdd(false); setAnnoMenu(null); setAnnoViewId(a.id);
     map.easeTo({ center: [a.lng, a.lat], zoom: Math.max(map.getZoom(), 18), duration: 700 });
   };
-  const badgeSyncRef = useRef(null);
   const openSpace3DRef = useRef(openSpace3D);
+  const openDrawerRef = useRef(openDrawer);
+  openDrawerRef.current = openDrawer;
   openSpace3DRef.current = openSpace3D;
 
-  const annoVisibleAll = annotations.filter((a) => ANNOTATION_ADMIN || a.visibility === 'public');
-  const annoBySpace = annoVisibleAll.reduce((m, a) => { const k = a.space || ''; (m[k] = m[k] || []).push(a); return m; }, {});
-  // 목록에 들어가는 어노테이션 행(필터 적용) + 유형별 건수(유형 선택 자체는 제외하고 센다)
-  const annoRows = computeAnnotationRows(state, annotations);
-  const annoTypeCounts = computeAnnotationRows({ ...state, activeCats: {} }, annotations).reduce((m, r) => { const t = annotationType(r.a); m[t] = (m[t] || 0) + 1; return m; }, {});
-  const annoBadgeSig = Object.entries(annoBySpace).map(([k, l]) => `${k}:${l.length}:${l.map((a) => a.lng + ',' + a.lat).join(';')}`).join('|');
-  // 줌인했을 때만 공간 위에 건수 배지를 띄운다(도시 규모에서는 기존 데이터 마커와 겹쳐 어지럽다).
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return undefined;
-    const BADGE_ZOOM = 16.5;
-    const marks = Object.entries(annoBySpace).filter(([k]) => k).map(([space, list]) => {
-      const lng = list.reduce((t, a) => t + a.lng, 0) / list.length;
-      const lat = list.reduce((t, a) => t + a.lat, 0) / list.length;
-      const el = document.createElement('button');
-      el.type = 'button';
-      el.title = `${space} · 어노테이션 ${list.length}건 (눌러서 3D로 보기)`;
-      el.style.cssText = 'display:flex;align-items:center;gap:4px;height:22px;padding:0 8px;border:2px solid #fff;border-radius:11px;background:#1677ff;color:#fff;font:700 11px/1 var(--ant-font-sans);box-shadow:0 2px 8px rgba(0,0,0,.35);cursor:pointer;white-space:nowrap;';
-      el.innerHTML = PIN_SVG + list.length;
-      el.addEventListener('click', (ev) => { ev.stopPropagation(); openSpace3DRef.current(space); });
-      const marker = new maplibregl.Marker({ element: el, anchor: 'bottom', offset: [0, -26] }).setLngLat([lng, lat]).addTo(map);
-      return { el, marker };
-    });
-    const sync = () => {
-      const on = !stateRef.current.three3DActive && map.getZoom() >= BADGE_ZOOM;
-      marks.forEach((m) => { m.el.style.display = on ? 'flex' : 'none'; });
-    };
-    badgeSyncRef.current = sync;
-    sync();
-    map.on('zoom', sync);
-    return () => { map.off('zoom', sync); marks.forEach((m) => m.marker.remove()); badgeSyncRef.current = null; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [annoBadgeSig]);
-  useEffect(() => { if (badgeSyncRef.current) badgeSyncRef.current(); }, [state.three3DActive]);
+  // 메모는 3D 모델(자료) 안에 속한다 — 목록(시기·공간)·지도 배지에는 올리지 않고, 해당 자료의 상세 패널과 3D 뷰어에서만 보인다.
 
   // ── Compare mode maps ──────────────────────────────────────────
-  function cmpNode(id, fallback) {
+  // 시점 비교는 같은 장소의 서로 다른 시기를 견주는 것이다. A 를 고르면 B 후보는 그 사이트의 다른 3D 자료로 좁힌다.
+  // 처음에는 3D 자료가 가장 많은 사이트(성수 클러스터)의 가장 이른/늦은 시기로 연다.
+  function resolveCompare(idA, idB) {
     const nodes = comparableNodes();
-    if (!nodes.length) return null;
-    return nodes.find((n) => n.id === id) || (fallback === 'last' ? nodes[nodes.length - 1] : nodes[0]);
+    if (!nodes.length) return { a: null, b: null, candidatesB: [] };
+    const bySite = {};
+    nodes.forEach((n) => { const k = n.item.space; (bySite[k] = bySite[k] || []).push(n); });
+    const richest = Object.values(bySite).sort((x, y) => y.length - x.length)[0];
+    const def = richest.length >= 2 ? [richest[0], richest[richest.length - 1]] : [nodes[0], nodes[nodes.length - 1]];
+    const a = nodes.find((n) => n.id === idA) || def[0];
+    const same = nodes.filter((n) => n.item.space === a.item.space);
+    const candidatesB = same.length >= 2 ? same : nodes;
+    const b = candidatesB.find((n) => n.id === idB && n.id !== a.id) || [...candidatesB].reverse().find((n) => n.id !== a.id) || candidatesB[0];
+    return { a, b, candidatesB };
   }
 
   function makeCmpMap(id, node, center) {
@@ -1178,7 +1272,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     map.on('load', async () => {
       try { map.setTerrain({ source: 'terrain', exaggeration: 1.15 }); } catch { /* noop */ }
       if (node.item && node.item.tilesetUrl) {
-        addTilesLayer(maplibregl, map, { url: node.item.tilesetUrl, lngLat: ll, cacheMB: 256 });
+        addTilesLayer(maplibregl, map, { url: node.item.tilesetUrl, lngLat: ll, probe: node.item.probe, cacheMB: 256 });
       } else if (node.item && node.item.meshUrl) {
         const { positions, colors, indices } = await loadMeshAsset(node.item.meshUrl, node.item.align);
         addRealMeshLayer(maplibregl, map, ll, positions, colors, indices, { followTerrain: !!(node.item.align && node.item.align.groundY != null) });
@@ -1211,8 +1305,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     if (!document.getElementById('cmp-map-a')) return;
     const ok = await ensureThree();
     if (!ok) { showToast('3D 엔진을 불러오지 못했습니다'); return; }
-    const nodeA = cmpNode(stateRef.current.compareA, 'first');
-    const nodeB = cmpNode(stateRef.current.compareB, 'last');
+    const { a: nodeA, b: nodeB } = resolveCompare(stateRef.current.compareA, stateRef.current.compareB);
     if (!nodeA || !nodeB) return;
     const centerA = cmpNodeLngLat(nodeA);
     cmpMapARef.current = makeCmpMap('cmp-map-a', nodeA, centerA);
@@ -1245,7 +1338,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     if (!id) return;
     const di = itemById(id);
     if (di) {
-      const gk = state.groupBy === 'space' ? `space:${di.space}` : `time:${di.date}|${di.title}`;
+      const gk = state.groupBy === 'space' ? `space:${di.space}` : `time:${di.period ? 'p|' + di.period : `d|${di.date}|${di.title}`}`;
       setCollapsed((prev) => { if (!prev.has(gk)) return prev; const n = new Set(prev); n.delete(gk); return n; });
     }
     const t = setTimeout(() => {
@@ -1254,6 +1347,38 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     }, 60);
     return () => clearTimeout(t);
   }, [state.drawerId]);
+
+  // 상세 패널 상단의 3D 미리보기: 3D 타일이 있는 자료는 천천히 도는 작은 3D 지도를 올리고, 패널을 닫거나 다른 자료로 바꾸면 정리한다.
+  // 컨테이너 안은 React 가 다시 그리지 않도록 비워 두고 여기서 채운다(스냅샷이 저장될 때 지도가 지워지지 않게).
+  useEffect(() => {
+    const it = state.drawerId ? itemById(state.drawerId) : null;
+    if (!it || !isTileItem(it)) return undefined;
+    let dispose = null;
+    const t = setTimeout(() => {
+      const box = document.querySelector('.sams-drawer-pv');
+      if (!box) return;
+      box.innerHTML = tilePreviewHtml(it, 180, true);
+      dispose = mountLivePreview(box, it);
+    }, 30);
+    return () => { clearTimeout(t); if (dispose) dispose(); };
+  }, [state.drawerId]);
+
+  // 선택한 항목은 지도에서도 눈에 띄게 표시한다: 그 항목의 위치에 큰 마커와 이름표를 올린다(클러스터 숫자에 묻히지 않게).
+  const selMarkerRef = useRef(null);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (selMarkerRef.current) { selMarkerRef.current.remove(); selMarkerRef.current = null; }
+    const it = state.drawerId && !state.compareOpen ? itemById(state.drawerId) : null;
+    if (!map || !it || it.lat == null) return undefined;
+    const color = CAT_MAP[it.cat].color;
+    const el = document.createElement('div');
+    el.style.cssText = 'position:relative;width:0;height:0;pointer-events:none;';
+    el.innerHTML = `<div style="position:absolute;left:-12px;top:-12px;width:24px;height:24px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 0 0 5px ${color}44,0 2px 8px rgba(0,0,0,0.45);"></div>`
+      + `<div style="position:absolute;left:0;bottom:20px;transform:translateX(-50%);padding:4px 10px;border-radius:4px;background:rgba(0,0,0,0.88);color:#fff;font:700 12px/16px var(--ant-font-sans, sans-serif);white-space:nowrap;">${itemName(it)}</div>`;
+    selMarkerRef.current = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(markerLngLat(it)).addTo(map);
+    return () => { if (selMarkerRef.current) { selMarkerRef.current.remove(); selMarkerRef.current = null; } };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.drawerId, state.compareOpen]);
 
   const focusAtRef = useRef(0);
   useEffect(() => {
@@ -1284,46 +1409,49 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
   // Group results either by acquisition month (newest first) — so simultaneous
   // multi-space campaigns read as one block — or by target space, so repeated
   // acquisitions of the same place stack together.
+  // 왼쪽 목록 행에 붙는 자료별 메모 건수
+  const memoCountById = {};
+  annotations.forEach((a) => { if (!ANNOTATION_ADMIN && a.visibility !== 'public') return; const o = annoItemOf(a); if (o) memoCountById[o.id] = (memoCountById[o.id] || 0) + 1; });
   const listGroups = (() => {
     if (s.groupBy === 'space') {
       const m = new Map();
-      for (const it of [...filtered, ...annoRows]) {
+      for (const it of filtered) {
         if (!m.has(it.space)) m.set(it.space, []);
         m.get(it.space).push(it);
       }
       return [...m.entries()]
         .map(([key, items]) => {
           const sorted = [...items].sort((a, b) => b.date.localeCompare(a.date));
-          const n = sorted.filter((x) => !x.isAnno).length;
-          return { key, icon: 'IconEnvironmentOutlined', label: key, meta: n ? `${n}개 시기` : '', items: sorted };
+          return { key, icon: 'IconEnvironmentOutlined', label: key, meta: `${sorted.length}건`, items: sorted };
         })
-        .sort((a, b) => b.items[0].date.localeCompare(a.items[0].date));
+        // Site 순서는 엑셀 사이트 표(성수 클러스터, HQ, C1 …)를 따른다.
+        .sort((a, b) => { const ia = SITES.findIndex((x) => x.name === a.key); const ib = SITES.findIndex((x) => x.name === b.key); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
     }
-    // 시기는 취득 회차다 — '성수클러스터 1차'처럼 한 회차가 여러 공간을 덮으므로
-    // 회차 이름으로 묶고, 날짜는 곁들여 보여준다. 어노테이션은 회차가 아니라서 날짜별로 따로 묶는다.
+    // 시기는 엑셀 '시기' 표의 성수 클러스터 1~4차다. 아이템 날짜가 속한 시기로 묶고(기간 밖이면 가장 가까운 시기),
+    // 시기에 속하지 않는 자료(날짜 없음 등)는 아이템 이름으로 따로 둔다.
     const m = new Map();
     for (const it of filtered) {
-      const key = `${it.date}|${it.title}`;
+      const key = it.period ? `p|${it.period}` : `d|${it.date}|${it.title}`;
       if (!m.has(key)) m.set(key, []);
       m.get(key).push(it);
     }
-    for (const r of annoRows) {
-      const key = `${r.date}|${r.epoch || '어노테이션'}`;
-      if (!m.has(key)) m.set(key, []);
-      m.get(key).push(r);
-    }
     return [...m.entries()]
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([key, items]) => ({
-        key,
-        icon: 'IconCalendarOutlined',
-        label: (items.find((x) => !x.isAnno) || {}).title || items[0].epoch || '어노테이션',
-        meta: items[0].date,
-        items,
-      }));
+      .map(([key, items]) => {
+        const sorted = [...items].sort((a, b) => b.date.localeCompare(a.date));
+        const per = items[0].period ? PERIODS.find((p) => p.name === items[0].period) : null;
+        return {
+          key,
+          icon: 'IconCalendarOutlined',
+          label: items[0].period || items[0].title,
+          meta: per ? `${per.start.slice(0, 7).replace('-', '.')} ~ ${per.end.slice(0, 7).replace('-', '.')}` : items[0].date,
+          sortKey: per ? per.start : items[0].date,
+          items: sorted,
+        };
+      })
+      .sort((a, b) => b.sortKey.localeCompare(a.sortKey));
   })();
   const activeCatKeys = Object.keys(s.activeCats).filter((k) => s.activeCats[k]);
-  const hasFilters = !!(s.keyword || activeCatKeys.length || Object.values(s.yearSel).some(Boolean) || s.project !== '전체 프로젝트' || s.epsg !== '좌표계 전체' || s.boundsFilter);
+  const hasFilters = !!(s.keyword || activeCatKeys.length || Object.values(s.yearSel).some(Boolean) || Object.values(s.periodSel).some(Boolean) || Object.values(s.siteSel).some(Boolean) || s.project !== '전체 프로젝트' || s.epsg !== '좌표계 전체' || s.boundsFilter);
   const catCounts = computeCatCounts(s);
 
   let boundsNotice = '';
@@ -1334,8 +1462,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
 
   const cmpNodesAll = comparableNodes();
   const hasCompare = cmpNodesAll.length >= 2;
-  const cmpNodeA = cmpNode(s.compareA, 'first');
-  const cmpNodeB = cmpNode(s.compareB, 'last');
+  const { a: cmpNodeA, b: cmpNodeB, candidatesB: cmpCandidatesB } = resolveCompare(s.compareA, s.compareB);
 
   let docHoverItem = null;
   if (s.docHover) docHoverItem = itemById(s.docHover.id);
@@ -1351,7 +1478,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
       {/* Header */}
       <header style={{ height: 56, flex: 'none', display: 'flex', alignItems: 'center', gap: 44, padding: '0 20px', background: 'var(--ant-bg)', borderBottom: '1px solid var(--ant-border-secondary)', zIndex: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', flex: 'none' }}>
-          <Logo />
+          <Logo onClick={() => onNavigate('explorer')} />
         </div>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 4, height: '100%', flex: 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, color: 'var(--ant-text-heading)', background: '#ECEEFC' }}>데이터 탐색</div>
@@ -1379,6 +1506,15 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
           <div style={{ padding: '16px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: 'linear-gradient(120deg, #F1F2F4 0%, #EBECEF 50%, #E4E5E8 100%)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)' }}>Project</span>
+                <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
+                  <select value={s.project} onChange={(e) => selectProject(e.target.value)} style={{ width: '100%', height: 32, border: '1px solid var(--ant-border)', borderRadius: 8, padding: '0 32px 0 12px', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'var(--ant-bg)', appearance: 'none', cursor: 'pointer', outline: 'none' }}>
+                    {PROJECTS.map((p) => <option key={p} value={p}>{p === '전체 프로젝트' ? '전체 Project' : p}</option>)}
+                  </select>
+                  <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--ant-text-tertiary)', display: 'flex' }}><Icon name="IconDownOutlined" size={11} /></span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
                   <span style={{ position: 'absolute', left: 8, display: 'flex', color: 'var(--ant-text-tertiary)', pointerEvents: 'none' }}>
                     <Icon name="IconSearchOutlined" size={14} />
@@ -1386,7 +1522,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                   <input
                     value={s.keyword}
                     onChange={(e) => patch({ keyword: e.target.value })}
-                    placeholder="이름 · 제목 · 어노테이션 검색"
+                    placeholder="이름 · 제목 검색"
                     style={{ width: '100%', height: 32, padding: '0 28px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--ant-text)' }}
                   />
                   {!!s.keyword && (
@@ -1397,7 +1533,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                 </div>
                 <button onClick={() => patch({ advOpen: !s.advOpen })} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, height: 32, padding: '0 8px', border: 'none', borderRadius: 8, background: 'transparent', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', color: 'var(--ant-text-secondary)' }}>
                   세부 검색
-                  {(s.project !== '전체 프로젝트' || Object.values(s.yearSel).some(Boolean)) && !s.advOpen && (
+                  {(Object.values(s.periodSel).some(Boolean) || Object.values(s.siteSel).some(Boolean)) && !s.advOpen && (
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--ant-primary)' }} />
                   )}
                   <span style={{ display: 'flex', transform: s.advOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>
@@ -1405,45 +1541,71 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                   </span>
                 </button>
               </div>
+              {!s.advOpen && (() => {
+                // 세부 검색을 접어 둔 동안 걸려 있는 필터를 칩으로 보여 주고, ×로 하나씩 풀 수 있다.
+                const applied = [
+                  ...Object.keys(s.siteSel).filter((k) => s.siteSel[k]).map((k) => ({ key: 's:' + k, label: k, off: () => toggleSiteSel(k) })),
+                  ...Object.keys(s.periodSel).filter((k) => s.periodSel[k]).map((k) => ({ key: 'p:' + k, label: k, off: () => togglePeriodSel(k) })),
+                  ...Object.keys(s.activeCats).filter((k) => s.activeCats[k]).map((k) => ({ key: 'c:' + k, label: (CAT_MAP[k] || {}).label || k, off: () => toggleCat(k) })),
+                ];
+                if (!applied.length) return null;
+                return (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: -4 }}>
+                    {applied.map((a) => (
+                      <span key={a.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 22, padding: '0 4px 0 8px', borderRadius: 11, fontSize: 11, fontWeight: 600, color: 'var(--ant-primary)', background: 'var(--ant-primary-bg)', border: '1px solid var(--ant-primary)' }}>
+                        {a.label}
+                        <span onClick={a.off} title="필터 해제" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: 2 }}><Icon name="IconCloseOutlined" size={9} /></span>
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
               {s.advOpen && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ flex: 'none', fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)' }}>컬렉션</span>
-                  <div style={{ position: 'relative', flex: 1, minWidth: 0 }}>
-                    <select value={s.project} onChange={(e) => selectProject(e.target.value)} style={{ width: '100%', height: 28, border: '1px solid var(--ant-border)', borderRadius: 20, padding: '0 32px 0 12px', fontSize: 12, fontWeight: 500, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'var(--ant-bg)', appearance: 'none', cursor: 'pointer', outline: 'none' }}>
-                      {PROJECTS.map((p) => <option key={p} value={p}>{p === '전체 프로젝트' ? '전체' : p}</option>)}
-                    </select>
-                    <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: 'var(--ant-text-tertiary)', display: 'flex' }}><Icon name="IconDownOutlined" size={11} /></span>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--ant-text-secondary)', marginBottom: 5, fontWeight: 700 }}>
+                    사이트 <span style={{ color: 'var(--ant-text-quaternary)', fontWeight: 500 }}>· 복수 선택</span>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    <button onClick={() => patch({ siteSel: {} })} style={mchip(!Object.values(s.siteSel).some(Boolean))}>전체</button>
+                    {SITES.map((st) => (
+                      <button key={st.name} onClick={() => toggleSiteSel(st.name)} style={mchip(!!s.siteSel[st.name])}>{st.name}</button>
+                    ))}
                   </div>
                 </div>
               )}
               {s.advOpen && (
                 <div>
                   <div style={{ fontSize: 11, color: 'var(--ant-text-secondary)', marginBottom: 5, fontWeight: 700 }}>
-                    기간 <span style={{ color: 'var(--ant-text-quaternary)', fontWeight: 500 }}>· 복수 선택</span>
+                    시기 <span style={{ color: 'var(--ant-text-quaternary)', fontWeight: 500 }}>· 복수 선택</span>
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    <button onClick={() => patch({ yearSel: {} })} style={mchip(!Object.values(s.yearSel).some(Boolean))}>전체</button>
-                    {YEARS.map((y) => (
-                      <button key={y} onClick={() => toggleYearSel(y)} style={mchip(!!s.yearSel[y])}>{y}</button>
+                    <button onClick={() => patch({ periodSel: {} })} style={mchip(!Object.values(s.periodSel).some(Boolean))}>전체</button>
+                    {PERIODS.map((p) => (
+                      <button key={p.name} onClick={() => togglePeriodSel(p.name)} style={mchip(!!s.periodSel[p.name])}>{p.name}</button>
                     ))}
                   </div>
                 </div>
               )}
-            </div>
-
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-              {FILTER_CHIPS.map((c) => {
-                const on = !!s.activeCats[c.key];
-                const count = c.key.startsWith('a:') ? (catCounts[c.key] || 0) + (annoTypeCounts[c.key.slice(2)] || 0) : catCounts[c.key];
-                return (
+              {s.advOpen && (
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--ant-text-secondary)', marginBottom: 5, fontWeight: 700 }}>데이터 유형</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {FILTER_CHIPS.map((c) => {
+                    const on = !!s.activeCats[c.key];
+                    const count = catCounts[c.key];
+                    return (
                   <button key={c.key} onClick={() => toggleCat(c.key)} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 26, padding: '0 9px', borderRadius: 20, fontSize: 11.5, fontFamily: 'inherit', cursor: 'pointer', fontWeight: 500, border: `1px solid ${on ? c.color : 'transparent'}`, background: on ? c.color + '14' : 'var(--ant-bg)', color: on ? c.color : 'var(--ant-text-secondary)' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flex: 'none' }} />
+                    {c.key === 'event' ? <FlagGlyph color={c.color} size={16} /> : <span style={{ width: 8, height: 8, borderRadius: '50%', background: c.color, flex: 'none' }} />}
                     {c.label}
                     <span style={{ fontSize: 10, fontWeight: 700, marginLeft: 1, color: on ? c.color : 'var(--ant-text-tertiary)', opacity: count === 0 ? 0.45 : 1 }}>{count}</span>
                   </button>
-                );
-              })}
+                    );
+                  })}
+                </div>
+                </div>
+              )}
             </div>
+
           </div>
 
           {s.project !== '전체 프로젝트' && (
@@ -1458,13 +1620,12 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
           )}
 
           <div style={{ padding: '9px 16px', borderBottom: '1px solid var(--ant-border-secondary)', display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
-            <span style={{ fontSize: 13, fontWeight: 700 }}>결과 {filtered.length + annoRows.length}건</span>
-            <div style={{ position: 'relative', display: 'inline-flex', height: 28, borderRadius: 14, background: 'var(--ant-fill-quaternary)', border: '1px solid var(--ant-border-secondary)', boxSizing: 'border-box' }}>
-              <div style={{ position: 'absolute', top: -1, left: s.groupBy === 'time' ? -1 : 49, width: 48, height: 28, borderRadius: 14, background: 'var(--ant-bg)', border: '1px solid var(--ant-border)', boxSizing: 'border-box', boxShadow: '0 1px 2px rgba(0,0,0,0.06)', transition: 'left .25s cubic-bezier(.4,0,.2,1)' }} />
-              {[['time', '시기'], ['space', '공간']].map(([key, label]) => {
+            <span style={{ fontSize: 13, fontWeight: 700 }}>결과 {filtered.length}건</span>
+            <div style={{ position: 'relative', display: 'inline-flex', height: 28, padding: 2, borderRadius: 14, background: 'var(--ant-fill-quaternary)', border: '1px solid var(--ant-border-secondary)', boxSizing: 'border-box' }}>
+              {[['space', '사이트별'], ['time', '시기별']].map(([key, label]) => {
                 const on = s.groupBy === key;
                 return (
-                  <button key={key} onClick={() => patch({ groupBy: key })} style={{ position: 'relative', zIndex: 1, width: 48, height: 26, padding: 0, fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', border: 'none', background: 'transparent', color: on ? 'var(--ant-text)' : 'var(--ant-text-tertiary)', transition: 'color .25s' }}>
+                  <button key={key} onClick={() => patch({ groupBy: key })} style={{ height: 22, margin: 0, padding: '0 12px', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', borderRadius: 11, boxSizing: 'border-box', border: 'none', background: on ? 'var(--ant-bg)' : 'transparent', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.14)' : 'none', color: on ? 'var(--ant-text)' : 'var(--ant-text-tertiary)', transition: 'color .2s, background .2s, box-shadow .2s' }}>
                     {label}
                   </button>
                 );
@@ -1494,39 +1655,12 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                   </span>
                   <span style={{ fontSize: 13, color: 'var(--ant-primary)' }}>{g.label}</span>
                   {g.meta && <span style={{ fontSize: 11, color: 'var(--ant-text-quaternary)' }}>{g.meta}</span>}
-                  {s.groupBy === 'space' && (annoBySpace[g.key] || []).length > 0 && (
-                    <span onClick={(ev) => { ev.stopPropagation(); openSpace3D(g.key); }} title="이 공간의 어노테이션을 3D에서 보기"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, height: 20, padding: '0 8px', borderRadius: 10, background: 'var(--ant-primary-bg)', border: '1px solid var(--ant-primary)', color: 'var(--ant-primary)', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                      <span dangerouslySetInnerHTML={{ __html: PIN_SVG }} style={{ display: 'flex' }} />{annoBySpace[g.key].length}
-                    </span>
-                  )}
                   <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', color: 'var(--ant-text-quaternary)', transform: isOpen ? 'none' : 'rotate(-90deg)', transition: 'transform .18s' }}>
                     <Icon name="IconDownOutlined" size={10} />
                   </span>
                 </div>
                 <div style={{ marginLeft: 12, paddingLeft: 8, borderLeft: '2px solid var(--ant-border-secondary)', display: isOpen ? 'block' : 'none' }}>
                   {g.items.map((it) => {
-                    if (it.isAnno) {
-                      const a = it.a; const t = ANNO_TYPES[annotationType(a)];
-                      return (
-                        <div key={it.id} onClick={() => openAnnotationIn3D(a)} title="3D에서 보기"
-                          style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 8px', borderRadius: 8, cursor: 'pointer', marginBottom: 4 }}
-                          onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--ant-fill-quaternary)'; }}
-                          onMouseLeave={(ev) => { ev.currentTarget.style.background = 'transparent'; }}>
-                          <img src={t.poi} alt={t.label} width={24} height={24} draggable={false} style={{ flex: 'none', display: 'block' }} />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</span>
-                              <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 600, padding: '0 6px', borderRadius: 20, lineHeight: '16px', color: '#fff', background: t.color }}>{t.label}</span>
-                            </div>
-                            <div style={{ fontSize: 11.5, color: 'var(--ant-text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {[s.groupBy === 'space' ? (it.epoch || it.date) : it.space, `고도 ${a.alt}m`, a.tags.join(' ')].filter(Boolean).join(' · ')}
-                            </div>
-                          </div>
-                          <span style={{ flex: 'none', display: 'flex', alignItems: 'center', color: t.color + '88' }}><Icon name="IconEnvironmentOutlined" size={13} /></span>
-                        </div>
-                      );
-                    }
                     const c = CAT_MAP[it.cat];
                     const isActive = s.activeId === it.id || s.drawerId === it.id;
                     const isHover = s.hoveredId === it.id;
@@ -1534,18 +1668,25 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                     if (isActive) { rowBg = '#ECEEFC'; }
                     else if (isHover) { rowBg = 'var(--ant-fill-quaternary)'; }
                     const noGeo = it.lat == null;
+                    const memoN = memoCountById[it.id] || 0;
                     return (
                       <div key={it.id} data-row-id={it.id} onMouseEnter={(e) => onItemEnter(it, e)} onMouseLeave={() => onItemLeave(it)} onClick={() => onItemClick(it)}
                         style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 8px', borderRadius: 8, cursor: 'pointer', background: rowBg, marginBottom: 4 }}>
+                        {it.cat === 'event' ? <div style={{ width: 28, height: 28, flex: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FlagGlyph color={c.color} size={26} /></div> : (
                         <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c.color, boxShadow: `0 1px 3px ${c.color}55` }}>
                           <Icon name={c.icon} size={15} />
-                        </div>
+                        </div>)}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.groupBy === 'space' ? it.title : it.space}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.groupBy === 'space' ? it.title : itemName(it)}</span>
+                            {memoN > 0 && (
+                              <span title={`메모 ${memoN}건`} style={{ flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, height: 20, padding: 0, fontSize: 11, fontWeight: 600, color: 'var(--ant-primary)' }}>
+                                <span style={{ display: 'flex' }} dangerouslySetInnerHTML={{ __html: MEMO_SVG.replace(/width="14" height="14"/, 'width="16" height="16"') }} />{memoN}
+                              </span>
+                            )}
                           </div>
                           <div style={{ fontSize: 11.5, color: 'var(--ant-text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {[s.groupBy === 'space' ? it.date : null, it.size, it.extra].filter(Boolean).join(' · ')}
+                            {[it.date, it.size, it.extra].filter((v) => v && v !== '—').join(' · ')}
                           </div>
                         </div>
                         <span style={{ flex: 'none', display: 'flex', alignItems: 'center', color: noGeo ? 'var(--ant-text-quaternary)' : c.color + '88' }}>
@@ -1567,12 +1708,12 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
 
           {/* Item detail drawer */}
           {(() => {
-            const dit = s.drawerId ? itemById(s.drawerId) : null;
+            const dit = s.drawerId && !s.compareOpen ? itemById(s.drawerId) : null; // 비교 모드에서는 오른쪽 패널을 숨긴다
             const dc = dit ? CAT_MAP[dit.cat] : null;
             // Same per-type naming/icon as the map preview popup buttons.
             const viewMeta = !dit ? null
               : dit.cat === 'event' && dit.compare ? { label: '전후 비교', svg: EXPAND_SVG }
-              : dit.meshUrl || dit.pointCloudUrl ? { label: '3D 렌더링', svg: CUBE_SVG }
+              : dit.meshUrl || dit.pointCloudUrl || dit.tilesetUrl ? { label: '3D 렌더링', svg: CUBE_SVG }
               : dit.videoUrl ? { label: '영상재생하기', svg: PLAY_SVG }
               : (dit.panoImages && dit.panoImages.length) || (dit.images && dit.images.length) ? { label: '크게 보기', svg: EXPAND_SVG }
               : null;
@@ -1599,11 +1740,12 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
               <div style={{ position: 'absolute', top: 12, right: 12, width: 360, maxHeight: 'calc(100% - 24px)', zIndex: 30, background: 'rgba(255,255,255,0.90)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', borderRadius: 16, border: '1px solid var(--ant-border-secondary)', boxShadow: '0 8px 28px rgba(0,0,0,0.16)', overflow: 'hidden', transform: dit ? 'translateX(0)' : 'translateX(calc(100% + 24px))', transition: 'transform .28s cubic-bezier(.4,0,.2,1)', display: 'flex', flexDirection: 'column', pointerEvents: dit ? 'auto' : 'none' }}>
                 {dit && (
                   <>
-                    <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: '#fff' }}>
+                                        <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: '#fff' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {dit.cat === 'event' ? <FlagGlyph color={dc.color} size={28} /> : (
                         <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: dc.color }}>
                           <Icon name={dc.icon} size={15} />
-                        </div>
+                        </div>)}
                         <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, lineHeight: 1.3, color: 'var(--ant-text)', wordBreak: 'keep-all' }}>{itemName(dit)}</span>
                         <button onClick={closeDrawer} aria-label="닫기" style={{ flex: 'none', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>
                           <Icon name="IconCloseOutlined" size={14} />
@@ -1612,11 +1754,24 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                       <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>
                         {dc.label} · {dit.date}
                       </div>
+                      {isTileItem(dit) && <div className="sams-drawer-pv" key={'pv-' + dit.id} style={{ height: 180, marginTop: 12, borderRadius: 12, overflow: 'hidden', background: '#0b1118' }} />}
                       <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 4 }}>
                         {viewMeta && (
                           <button onClick={() => viewRealData(dit)} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
                             <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: viewMeta.svg }} />
                             {viewMeta.label}
+                          </button>
+                        )}
+                        {isTileItem(dit) && (
+                          <button onClick={() => { closeDrawer(); patch({ compareA: dit.id, compareB: null, compareOpen: true }); }} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
+                            <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: COMPARE_SVG }} />
+                            시점 비교
+                          </button>
+                        )}
+                        {(
+                          <button onClick={() => startMemoFor(dit)} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
+                            <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: MEMO_SVG }} />
+                            메모 작성
                           </button>
                         )}
                         {dit.cat !== 'event' && (
@@ -1625,10 +1780,6 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                           다운로드
                         </button>
                         )}
-                        <button onClick={() => onNavigate('manage', { focusItem: dit.id })} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
-                          <span style={{ display: 'flex', transform: 'rotate(-90deg)' }}><Icon name="IconDownOutlined" size={13} /></span>
-                          데이터관리
-                        </button>
                       </div>
                     </div>
 
@@ -1663,7 +1814,35 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                         )}
                       </div>
 
-                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>담긴 컬렉션</div>
+                      {(() => {
+                        // 이 3D 자료 안에 속한 메모(자료 = 취득 시기마다 따로 붙는다)
+                        const mine = annotations.filter((x) => (ANNOTATION_ADMIN || x.visibility === 'public') && annoItemOf(x) && annoItemOf(x).id === dit.id);
+                        if (!mine.length) return null;
+                        return (
+                          <>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>메모 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {mine.length}건</span></div>
+                            <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--ant-border-secondary)', padding: 4 }}>
+                              {mine.map((x) => {
+                                const t = ANNO_TYPES[annotationType(x)];
+                                return (
+                                  <div key={x.id} onClick={() => openAnnotationIn3D(x)} title={x.lng == null ? '메모 보기' : '3D에서 보기'}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderRadius: 8, cursor: 'pointer' }}
+                                    onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--ant-fill-quaternary)'; }}
+                                    onMouseLeave={(ev) => { ev.currentTarget.style.background = 'transparent'; }}>
+                                    <img src={t.poi} alt={t.label} width={24} height={24} draggable={false} style={{ flex: 'none', display: 'block' }} />
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.title}</div>
+                                      <div style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[t.label, `고도 ${x.alt}m`, x.tags.join(' ')].filter(Boolean).join(' · ')}</div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        );
+                      })()}
+
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>담긴 Project</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                         {itemCollections(dit).map((cn) => {
                           const on = s.project === cn;
@@ -1675,36 +1854,6 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                           );
                         })}
                       </div>
-
-                      {related.length > 0 && (
-                        <>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>연관된 데이터 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {related.length}건</span></div>
-                          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--ant-border-secondary)', padding: 4 }}>
-                            {related.map((r) => {
-                              const rc = CAT_MAP[r.cat];
-                              const kind = relKind(r.id);
-                              return (
-                                <div key={r.id} onClick={() => previewRelated(r)} title="지도에서 미리보기" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 8px', borderRadius: 8, cursor: 'pointer', background: previewIdRef.current === r.id ? 'var(--ant-fill-quaternary)' : 'transparent' }}
-                                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ant-fill-quaternary)'; }}
-                                  onMouseLeave={(e) => { e.currentTarget.style.background = previewIdRef.current === r.id ? 'var(--ant-fill-quaternary)' : 'transparent'; }}>
-                                  <div style={{ width: 24, height: 24, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: rc.color }}>
-                                    <Icon name={rc.icon} size={12} />
-                                  </div>
-                                  <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.title}</div>
-                                    <div style={{ fontSize: 11, color: 'var(--ant-text-tertiary)' }}>{r.date} · {r.size}</div>
-                                  </div>
-                                  {kind && (
-                                    <span style={{ flex: 'none', fontSize: 10, fontWeight: 600, padding: '0 8px', lineHeight: '18px', borderRadius: 9, background: kind === 'origin' ? 'var(--ant-fill-quaternary)' : 'rgba(22,119,255,0.08)', color: kind === 'origin' ? 'var(--ant-text-secondary)' : 'var(--ant-primary)' }}>
-                                      {kind === 'origin' ? '원본' : '파생'}
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </>
-                      )}
 
                       {thread.length > 0 && (
                         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>코멘트 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {thread.length}건</span></div>
@@ -1745,11 +1894,16 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
           })()}
 
           <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 4, display: 'flex', background: 'var(--ant-bg)', borderRadius: 9, padding: 3, boxShadow: '0 2px 10px rgba(0,0,0,0.14)', border: '1px solid var(--ant-border-secondary)' }}>
-            {[['light', '일반지도', 'IconEnvironmentOutlined'], ['satellite', '위성', 'IconGlobalOutlined'], ['3d', '3D', 'IconBoxPlotOutlined']].map(([key, label, icon]) => {
+            {[['3d', '3D', 'IconBoxPlotOutlined'], ['light', '일반지도', 'IconEnvironmentOutlined'], ['satellite', '위성', null]].map(([key, label, icon]) => {
               const on = s.basemap === key;
               return (
                 <button key={key} onClick={() => setBasemap(key)} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 28, padding: '0 12px', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', background: on ? 'var(--ant-primary)' : 'transparent', color: on ? '#fff' : 'var(--ant-text-secondary)' }}>
-                  <Icon name={icon} size={14} />{label}
+                  {icon ? <Icon name={icon} size={14} /> : (
+                    // 위성: 14px 에서도 선이 뭉개지지 않도록 굵은 선(stroke)으로 그린 지구본
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ display: 'block', flexShrink: 0 }}>
+                      <circle cx="12" cy="12" r="9.5" /><path d="M2.5 12h19" /><path d="M12 2.5c3 2.6 4.4 5.8 4.4 9.5S15 18.9 12 21.5c-3-2.6-4.4-5.8-4.4-9.5S9 5.1 12 2.5z" />
+                    </svg>
+                  )}{label}
                 </button>
               );
             })}
@@ -1770,7 +1924,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
               </button>
               {ANNOTATION_ADMIN && (
                 <button onClick={startAnnoAdd} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 26, padding: '0 11px', border: 'none', borderRadius: 7, background: annoAdd || annoDraft ? '#1677ff' : 'rgba(255,255,255,0.16)', color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M6 1.5v9M1.5 6h9" /></svg>{annoAdd ? '위치 지정 중…' : annoDraft ? '입력 취소' : '어노테이션 추가'}
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M6 1.5v9M1.5 6h9" /></svg>{annoAdd ? '위치 지정 중…' : annoDraft ? '입력 취소' : '메모 추가'}
                 </button>
               )}
             </div>
@@ -1780,15 +1934,15 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
             <div onMouseDown={() => setAnnoMenu(null)} onContextMenu={(ev) => { ev.preventDefault(); setAnnoMenu(null); }} style={{ position: 'absolute', inset: 0, zIndex: 9 }}>
               <div onMouseDown={(ev) => ev.stopPropagation()} style={{ position: 'absolute', left: annoMenu.x, top: annoMenu.y, background: '#fff', borderRadius: 8, boxShadow: '0 6px 20px rgba(0,0,0,0.25)', padding: 4, minWidth: 190, fontFamily: 'var(--ant-font-sans)' }}>
                 <button onClick={() => addAnnoAt(annoMenu.p)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, width: '100%', padding: '8px 12px', border: 'none', borderRadius: 6, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }} onMouseEnter={(ev) => { ev.currentTarget.style.background = '#e6f4ff'; }} onMouseLeave={(ev) => { ev.currentTarget.style.background = 'transparent'; }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#383f43' }}>여기에 어노테이션 추가</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#383f43' }}>여기에 메모 추가</span>
                   <span style={{ fontSize: 11, color: '#8c8c8c' }}>고도 {Math.round(annoMenu.p.alt)}m{annoMenu.ground ? ' · 지면' : ' · 모델 표면'}</span>
                 </button>
               </div>
             </div>
           )}
           {s.three3DActive && <AnnotationLayerPanel counts={annoCounts} visible={annoVisible} onToggle={(k) => setAnnoVisible((v) => ({ ...v, [k]: !v[k] }))} />}
-          {s.three3DActive && annoDraft && <AnnotationEditor key={annoDraft.id} draft={annoDraft} onChange={(patchObj) => setAnnoDraft((d) => ({ ...d, ...patchObj }))} onSave={saveAnno} onCancel={cancelAnno} picking={annoAdd} onPickCoord={toggleAnnoPick} onPreview={previewAnno} />}
-          {s.three3DActive && !annoDraft && annoViewing && <AnnotationView key={annoViewing.id} a={annoViewing} admin={ANNOTATION_ADMIN} onClose={() => setAnnoViewId(null)} onEdit={() => editAnno(annoViewing)} onDelete={() => removeAnno(annoViewing)} onOpenImages={openPanoViewer} />}
+          {(s.three3DActive || (annoDraft && annoDraft.lng == null)) && annoDraft && <AnnotationEditor key={annoDraft.id} draft={annoDraft} onChange={(patchObj) => setAnnoDraft((d) => ({ ...d, ...patchObj }))} onSave={saveAnno} onCancel={cancelAnno} picking={annoAdd} onPickCoord={toggleAnnoPick} onPreview={previewAnno} />}
+          {(s.three3DActive || (annoViewing && annoViewing.lng == null)) && !annoDraft && annoViewing && <AnnotationView key={annoViewing.id} a={annoViewing} admin={ANNOTATION_ADMIN} onClose={() => { const v = annoViewing; setAnnoViewId(null); backToDrawer(v); }} onEdit={() => editAnno(annoViewing)} onDelete={() => removeAnno(annoViewing)} onOpenImages={openPanoViewer} />}
 
           {s.compareOpen && cmpNodeA && cmpNodeB && (
             <div style={{ position: 'absolute', inset: 0, zIndex: 6, background: '#0b0f16' }}>
@@ -1816,7 +1970,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                 <div style={{ position: 'absolute', top: 14, left: `calc(${s.swipeX}% + 14px)`, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: '#722ed1', width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>B</span>
                   <select value={cmpNodeB.id} onChange={(e) => patch({ compareB: e.target.value })} style={{ height: 32, maxWidth: 320, border: 'none', borderRadius: 8, padding: '0 10px', fontSize: 12, fontFamily: 'inherit', color: 'var(--ant-text)', background: 'rgba(255,255,255,0.96)', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
-                    {cmpNodesAll.map((n) => <option key={n.id} value={n.id}>{cmpNodeName(n)}</option>)}
+                    {cmpCandidatesB.map((n) => <option key={n.id} value={n.id}>{cmpNodeName(n)}</option>)}
                   </select>
                   <span style={{ fontSize: 11, fontWeight: 600, color: '#fff', background: 'rgba(0,0,0,0.6)', padding: '6px 10px', borderRadius: 20, whiteSpace: 'nowrap' }}>{cmpPtsLabel(cmpNodeB)}</span>
                 </div>
@@ -1830,7 +1984,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 16px' }}>
                 {CATS.map((c) => (
                   <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--ant-text-secondary)' }}>
-                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: c.color, flex: 'none', boxShadow: `0 0 0 2px ${c.color}22` }} />{c.label}
+                    {c.key === 'event' ? <FlagGlyph color={c.color} size={16} /> : <span style={{ width: 9, height: 9, borderRadius: '50%', background: c.color, flex: 'none', boxShadow: `0 0 0 2px ${c.color}22` }} />}{c.label}
                   </div>
                 ))}
               </div>

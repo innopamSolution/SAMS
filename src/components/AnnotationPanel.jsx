@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { ALT_MAX, DESC_MAX, ANNO_TYPES, annotationType, readImageFile } from '../lib/annotations';
 
-// Figma "어노테이션 입력" (2.2.2.1.1) popup + a read-only card for the POI detail.
+// Figma "메모 입력" (2.2.2.1.1) popup + a read-only card for the POI detail.
 const ACCENT = '#1677ff'; // app primary (--ant-primary)
 const shell = {
   position: 'absolute', right: 12, top: 60, zIndex: 8, width: 420, maxHeight: 'calc(100% - 72px)', overflowY: 'auto', boxSizing: 'border-box',
@@ -68,10 +68,11 @@ export function AnnotationEditor({ draft, onChange, onSave, onCancel, picking, o
   return (
     <div style={shell} onClick={(e) => e.stopPropagation()}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ fontSize: 20, fontWeight: 700, color: '#000', letterSpacing: '-0.4px', lineHeight: 1.4 }}>{draft.isNew ? '어노테이션 입력' : '어노테이션 수정'}</span>
+        <span style={{ fontSize: 20, fontWeight: 700, color: '#000', letterSpacing: '-0.4px', lineHeight: 1.4 }}>{draft.isNew ? '메모 입력' : '메모 수정'}</span>
         <Close onClick={onCancel} />
       </div>
 
+      {draft.lng != null && (
       <div style={{ display: 'flex', gap: 40, height: 131 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <span style={label}>고도</span>
@@ -94,6 +95,7 @@ export function AnnotationEditor({ draft, onChange, onSave, onCancel, picking, o
           <input type="range" min={0} max={ALT_MAX} step={1} value={draft.alt} onChange={(e) => setAlt(e.target.value)} aria-label="고도 슬라이더" style={{ writingMode: 'vertical-lr', direction: 'rtl', height: 131, width: 42, accentColor: ACCENT, cursor: 'pointer', margin: 0 }} />
         </div>
       </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
         <span style={label}>제목</span>
@@ -244,7 +246,7 @@ export function AnnotationView({ a, admin, onClose, onEdit, onDelete, onOpenImag
         ))}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <span style={{ fontSize: 11, color: '#8c8c8c' }}>고도 {a.alt} m · {a.visibility === 'public' ? '공개' : '비공개'}</span>
+        <span style={{ fontSize: 11, color: '#8c8c8c' }}>{[a.alt != null ? `고도 ${a.alt} m` : '', a.visibility === 'public' ? '' : '비공개'].filter(Boolean).join(' · ')}</span>
         {admin && (
           <div style={{ display: 'flex', gap: 4 }}>
             <button onClick={onDelete} style={outlineBtn}>
