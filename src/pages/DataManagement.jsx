@@ -629,10 +629,6 @@ export default function DataManagement({ onNavigate, focus = null }) {
                   <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</span><MemoThumb a={a} size={28} />
                   {ANNOTATION_ADMIN && !ed && (
                     <>
-                      <button onClick={() => setAnnotationVisibility(a.id, a.visibility === 'public' ? 'private' : 'public')} title="누르면 공개 여부가 바뀝니다"
-                        style={{ ...act, border: `1px solid ${a.visibility === 'public' ? '#1677ff' : 'var(--ant-border)'}`, background: a.visibility === 'public' ? '#e6f4ff' : 'var(--ant-bg)', color: a.visibility === 'public' ? '#1677ff' : 'var(--ant-text-secondary)' }}>
-                        {a.visibility === 'public' ? '공개' : '비공개'}
-                      </button>
                       <button onClick={() => setAnnoEdit({ id: a.id, title: a.title, desc: a.desc || '', tagText: (a.tags || []).join(' '), urls: a.urls && a.urls.length ? [...a.urls] : [''], photos: [...(a.photos || [])], panos: [...(a.panos || [])] })}
                         style={{ ...act, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)' }}>수정</button>
                       <button onClick={() => ask(`"${a.title}" 메모를 삭제할까요?`, () => { deleteAnnotation(a.id); setAnnoSel(null); showToast('메모를 삭제했습니다'); })}
@@ -646,6 +642,26 @@ export default function DataManagement({ onNavigate, focus = null }) {
                     </>
                   )}
                 </div>
+
+                {ANNOTATION_ADMIN && (
+                  <div style={{ marginTop: 20 }}>
+                    <div style={label}>메모 공개 여부</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ display: 'inline-flex', height: 32, padding: 2, borderRadius: 16, boxSizing: 'border-box', background: 'var(--ant-fill-quaternary)', border: '1px solid var(--ant-border-secondary)' }}>
+                        {[['public', '공개'], ['private', '비공개']].map(([val, lbl]) => {
+                          const on = (a.visibility === 'public') === (val === 'public');
+                          return (
+                            <button key={val} onClick={() => { if (!on) { setAnnotationVisibility(a.id, val); showToast(val === 'public' ? '공개로 바꿨습니다' : '비공개로 바꿨습니다'); } }}
+                              style={{ height: 26, padding: '0 16px', border: on ? '1px solid var(--ant-border)' : '1px solid transparent', borderRadius: 13, boxSizing: 'border-box', background: on ? 'var(--ant-bg)' : 'transparent', boxShadow: on ? '0 1px 2px rgba(0,0,0,0.06)' : 'none', color: on ? (val === 'public' ? 'var(--ant-primary)' : 'var(--ant-text)') : 'var(--ant-text-tertiary)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>
+                              {lbl}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <span style={{ fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>비공개 메모는 관리자에게만 보입니다.</span>
+                    </div>
+                  </div>
+                )}
 
                 <div style={{ ...label, marginTop: 20 }}>들어간 데이터</div>
                 <div style={{ fontSize: 13 }}>{it ? `${it.title} · ${[it.space, CAT_MAP[it.cat].label, it.date].filter(Boolean).join(' · ')}` : a.scope === 'period' ? `시기 · ${a.period}` : a.scope === 'site' ? `사이트 · ${a.space}` : '연결된 데이터 없음'}</div>
