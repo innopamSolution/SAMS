@@ -1394,6 +1394,27 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     return () => clearTimeout(t);
   }, [state.drawerId]);
 
+  // 시점 비교 중에는 셀렉박스에 표출된 두 자료를 왼쪽 목록에서도 찾을 수 있게 한다:
+  // 접힌 묶음이면 펼치고, 방금 바뀐 쪽(처음 열 때는 A)으로 스크롤한다.
+  const cmpSeenRef = useRef({ a: null, b: null });
+  useEffect(() => {
+    if (!state.compareOpen) { cmpSeenRef.current = { a: null, b: null }; return; }
+    const { a, b } = resolveCompare(state.compareA, state.compareB);
+    const ids = [a?.item?.id, b?.item?.id];
+    const groupKeyOf = (di) => (state.groupBy === 'space' ? `space:${di.space}` : `time:${di.period ? 'p|' + di.period : `d|${di.date}|${di.title}`}`);
+    const gks = ids.map((id) => (id ? itemById(id) : null)).filter(Boolean).map(groupKeyOf);
+    setCollapsed((prev) => { if (!gks.some((k) => prev.has(k))) return prev; const n = new Set(prev); gks.forEach((k) => n.delete(k)); return n; });
+    const seen = cmpSeenRef.current;
+    const target = ids[1] && ids[1] !== seen.b && ids[0] === seen.a ? ids[1] : ids[0];
+    cmpSeenRef.current = { a: ids[0], b: ids[1] };
+    if (!target) return;
+    const t = setTimeout(() => {
+      const el = document.querySelector(`[data-row-id="${target}"]`);
+      if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [state.compareOpen, state.compareA, state.compareB, state.groupBy]);
+
   // 상세 패널 상단의 3D 미리보기: 3D 타일이 있는 자료는 천천히 도는 작은 3D 지도를 올리고, 패널을 닫거나 다른 자료로 바꾸면 정리한다.
   // 컨테이너 안은 React 가 다시 그리지 않도록 비워 두고 여기서 채운다(스냅샷이 저장될 때 지도가 지워지지 않게).
   useEffect(() => {
@@ -1714,7 +1735,8 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                 <div style={{ marginLeft: 12, paddingLeft: 8, borderLeft: '2px solid var(--ant-border-secondary)', display: isOpen ? 'block' : 'none' }}>
                   {g.items.map((it) => {
                     const c = CAT_MAP[it.cat];
-                    const isActive = s.activeId === it.id || s.drawerId === it.id;
+                    // 시점 비교 중이면 비교 대상 두 자료도 활성 상태(배경색)로 보여준다.
+                    const isActive = s.activeId === it.id || s.drawerId === it.id || (s.compareOpen && (cmpNodeA?.item?.id === it.id || cmpNodeB?.item?.id === it.id));
                     const isHover = s.hoveredId === it.id;
                     let rowBg = 'transparent';
                     if (isActive) { rowBg = '#ECEEFC'; }
@@ -2068,8 +2090,8 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                     <Icon name="IconSwapRightOutlined" size={19} />
                   </div>
                 </div>
-                <button onClick={closeCompare} style={{ position: 'absolute', top: 14, right: 14, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8, height: 32, padding: '0 13px', border: 'none', borderRadius: 8, background: 'rgba(15,20,28,0.85)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.3)' }}>
-                  <Icon name="IconCloseOutlined" size={13} />비교 닫기
+                <button onClick={closeCompare} style={{ position: 'absolute', top: 60, right: 14, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8, height: 36, padding: '0 16px', border: 'none', borderRadius: 8, background: '#fff', color: 'var(--ant-text)', fontSize: 13, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 2px 12px rgba(0,0,0,0.45)', transition: 'background .15s, color .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ant-primary)'; e.currentTarget.style.color = '#fff'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = 'var(--ant-text)'; }}>
+                  <Icon name="IconCloseOutlined" size={14} />비교 닫기
                 </button>
                 <div style={{ position: 'absolute', top: 14, left: 14, zIndex: 5, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: '#fff', background: 'var(--ant-primary)', width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>A</span>
