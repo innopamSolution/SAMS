@@ -64,9 +64,26 @@ function spatialLogStore() {
   }
 }
 
+// 정적 배포(GitHub Pages)에는 개발 서버가 없으므로, 빌드할 때 sams/data/*.json 을 store/ 로 내보내
+// 방문자가 올려 둔 메모·공개 여부·아이템 수정을 읽기 전용으로 볼 수 있게 한다. (쓰기는 개발 서버에서만 저장된다.)
+function spatialLogStoreSnapshot() {
+  const dir = path.resolve(import.meta.dirname, 'data')
+  return {
+    name: 'spatiallog-store-snapshot',
+    apply: 'build',
+    generateBundle() {
+      if (!fs.existsSync(dir)) return
+      for (const f of fs.readdirSync(dir)) {
+        if (!f.endsWith('.json')) continue
+        this.emitFile({ type: 'asset', fileName: `store/${f}`, source: fs.readFileSync(path.join(dir, f)) })
+      }
+    },
+  }
+}
+
 export default defineConfig({
   base: '/SAMS/',
-  plugins: [react(), spatialLogTiles(), spatialLogStore()],
+  plugins: [react(), spatialLogTiles(), spatialLogStore(), spatialLogStoreSnapshot()],
   server: {
     port: Number(process.env.PORT) || 5184,
   },

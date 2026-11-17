@@ -15,7 +15,11 @@ let serverOn = false;
 // 화면을 그리기 전에 한 번 부른다: 서버 파일이 있으면 그것을, 비어 있으면 이 브라우저의 저장값으로 서버를 채운다.
 export async function loadItemStatus() {
   const r = await readStore('itemStatus');
-  if (!r.ok) return;
+  if (!r.ok) { // 개발 서버가 없는 정적 배포: 저장소에 올려 둔 값을 바탕으로, 이 브라우저에서 바꾼 값을 위에 얹는다
+    const snap = r.snapshot;
+    if (snap && typeof snap === 'object' && !Array.isArray(snap)) map = { ...snap, ...map };
+    return;
+  }
   serverOn = true;
   if (r.data === undefined) { if (Object.keys(map).length) writeStore('itemStatus', map); return; }
   if (r.data && typeof r.data === 'object' && !Array.isArray(r.data)) {

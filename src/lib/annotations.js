@@ -61,6 +61,7 @@ const emit = () => subs.forEach((f) => f());
 
 // 개발 서버 파일 저장소가 있으면 거기에도 저장해 다른 브라우저와 같은 메모를 본다. 없으면 브라우저 저장소만 쓴다.
 let serverOn = false;
+let snapshotMerged = false;
 function persist() {
   let ok = true;
   try { localStorage.setItem(KEY, JSON.stringify(list)); } catch { ok = false; }
@@ -69,7 +70,15 @@ function persist() {
 }
 async function syncFromServer() {
   const r = await readStore('annotations');
-  if (!r.ok) return;
+  if (!r.ok) { // 개발 서버가 없는 정적 배포: 저장소에 올려 둔 메모를 읽기 전용으로 합친다(처음 한 번)
+    if (!snapshotMerged && Array.isArray(r.snapshot)) {
+      snapshotMerged = true;
+      const mine = new Set(list.map((a) => a.id));
+      const add = r.snapshot.filter((a) => !mine.has(a.id));
+      if (add.length) { list = [...list, ...add]; emit(); }
+    }
+    return;
+  }
   serverOn = true;
   if (r.data === undefined) { if (list.length) writeStore('annotations', list); return; } // 서버가 비어 있으면 이 브라우저의 메모로 채운다
   if (!Array.isArray(r.data)) return;

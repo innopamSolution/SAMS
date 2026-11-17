@@ -14,7 +14,11 @@ let serverOn = false;
 
 export async function loadItemEdits() {
   const r = await readStore('itemEdits');
-  if (!r.ok) return;
+  if (!r.ok) { // 개발 서버가 없는 정적 배포: 저장소에 올려 둔 값을 바탕으로, 이 브라우저에서 바꾼 값을 위에 얹는다
+    const snap = r.snapshot;
+    if (snap && typeof snap === 'object' && !Array.isArray(snap)) map = { ...snap, ...map };
+    return;
+  }
   serverOn = true;
   if (r.data === undefined) { if (Object.keys(map).length) writeStore('itemEdits', map); return; }
   if (r.data && typeof r.data === 'object' && !Array.isArray(r.data)) {
