@@ -7,6 +7,7 @@
 //   시기 1~4차                        → 아이템 날짜가 속한 기간(없으면 가장 가까운 시기)
 //   이벤트                            → 이벤트 아이템
 import { applyStoredStatus, loadItemStatus } from '../lib/itemStatus';
+import { applyStoredEdits, loadItemEdits } from '../lib/itemEdits';
 import { ITEMS, PROJECTS, COLLECTIONS, MEMBERSHIP, DERIVATIONS, SITES, PERIODS } from './explorerData';
 
 const asset = (path) => import.meta.env.BASE_URL + path.replace(/^\//, '');
@@ -107,8 +108,10 @@ export async function loadSpatialLogData() {
   });
 
   const all = [...items, ...events].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
-  await loadItemStatus();
+  all.forEach((i) => { i._key = `${i.space}|${i.title}|${i.date}`; }); // 원래 값으로 만든 저장 키
+  await Promise.all([loadItemStatus(), loadItemEdits()]);
   applyStoredStatus(all); // 관리 화면에서 바꾼 공개 여부
+  applyStoredEdits(all); // 관리 화면에서 고친 제목·설명·위치
   ITEMS.splice(0, ITEMS.length, ...all);
 
   PROJECTS.splice(0, PROJECTS.length, '전체 프로젝트', projectName);

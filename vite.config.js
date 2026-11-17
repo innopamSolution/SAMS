@@ -29,7 +29,7 @@ function spatialLogTiles() {
 // (개발 서버에서만 동작한다. 정적 배포에서는 요청이 실패하므로 앱은 브라우저 저장소만 쓴다.)
 function spatialLogStore() {
   const dir = path.resolve(import.meta.dirname, 'data')
-  const NAMES = new Set(['annotations', 'itemStatus'])
+  const NAMES = new Set(['annotations', 'itemStatus', 'itemEdits'])
   return {
     name: 'spatiallog-store',
     configureServer(server) {

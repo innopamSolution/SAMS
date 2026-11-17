@@ -4,6 +4,7 @@ import Icon from '../components/Icon';
 import Logo from '../components/Logo';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { saveItemStatus } from '../lib/itemStatus';
+import { saveItemEdits } from '../lib/itemEdits';
 import { MemoThumb } from '../components/AnnotationPanel';
 import { useAnnotations, saveAnnotation, setAnnotationVisibility, deleteAnnotation, annotationType, ANNO_TYPES, ANNOTATION_ADMIN, DESC_MAX } from '../lib/annotations';
 import { CATS, CAT_MAP, ITEMS, PERIODS, PROJECTS, COLLECTIONS, MEMBERSHIP, PROJECT_LOC, itemCollections, DERIVATIONS, originIdsOf, derivedIdsOf, footprintRing } from '../data/explorerData';
@@ -301,6 +302,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
       it.desc = itemDraft.desc;
       it.lng = itemDraft.lng;
       it.lat = itemDraft.lat;
+      saveItemEdits(it);
       setItemDraft(makeItemDraft(it.id));
       setItemEditMode(true);
       showToast('저장되었습니다');

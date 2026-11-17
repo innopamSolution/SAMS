@@ -3,7 +3,7 @@
 import { readStore, writeStore } from './serverStore';
 
 const KEY = 'sams.itemStatus.v1';
-const keyOf = (it) => `${it.space}|${it.title}|${it.date}`;
+const keyOf = (it) => it._key || `${it.space}|${it.title}|${it.date}`; // 제목을 고쳐도 키가 변하지 않게 원래 값(_key)을 쓴다
 
 function readLocal() {
   try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch { return {}; }
