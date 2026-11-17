@@ -3,7 +3,7 @@ import maplibregl from 'maplibre-gl';
 import Icon from '../components/Icon';
 import Logo from '../components/Logo';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { AnnotationEditor, AnnotationView, AnnotationLayerPanel } from '../components/AnnotationPanel';
+import { AnnotationEditor, AnnotationView, AnnotationLayerPanel, MemoThumb } from '../components/AnnotationPanel';
 import { createAnnotationOverlay } from '../lib/annotationOverlay';
 import { pickSurface, pickGround } from '../lib/pick3d';
 import { useAnnotations, saveAnnotation, deleteAnnotation, blankAnnotation, annotationType, ANNOTATION_ADMIN, ALT_MAX, ANNO_TYPES, ANNO_TYPE_KEYS } from '../lib/annotations';
@@ -114,6 +114,8 @@ const initialState = {
   groupBy: 'space', // 목록은 사이트별로 묶는다(엑셀 사이트 표 순서)
   advOpen: false,
   drawerId: null,
+  siteDrawer: null, // 사이트 패널(사이트에 붙는 메모)을 보이는 사이트 이름
+  periodDrawer: null, // 시기 패널(시기에 붙는 메모)을 보이는 시기 이름(성수 클러스터 1~4차)
   yearSel: {},
   periodSel: {}, // 시기(성수 클러스터 1~4차) 다중 선택
   siteSel: {}, // 사이트 다중 선택
@@ -139,6 +141,10 @@ const itemName = (it) => (it.space && !it.title.includes(it.space) ? `${it.space
 // 이벤트(공간 데이터가 없는 항목)는 원형 아이콘 대신 깃발만 쓴다.
 // 지도의 깃발과 같은 모양·색(흰 테두리 + 단색). size 는 높이(px).
 const MEMO_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H9l-5 4z"/><path d="M8 9h8M8 12.5h5"/></svg>';
+// 3D 렌더링 화면 안의 '메모 추가' 버튼·우클릭 메뉴. 일단 가린다(위치 지정 중일 때만 취소용으로 버튼이 나온다). 메모는 오른쪽 패널의 [메모 작성]으로 쓴다.
+const SHOW_3D_MEMO_ADD = false;
+// 오른쪽 패널의 코멘트(목록·입력). 일단 가린다 — 메모와 역할이 겹쳐 정리 전이다.
+const SHOW_COMMENTS = false;
 const COMPARE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="16" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/></svg>';
 
 const FlagGlyph = ({ color, size = 28 }) => (
@@ -166,7 +172,8 @@ function threeDItemForSpace(space) {
   d3.sort((a, b) => rank(b) - rank(a) || b.date.localeCompare(a.date));
   return d3[0] || list[0] || null;
 }
-const annoItemOf = (a) => (a.itemId && itemById(a.itemId)) || (a.space ? threeDItemForSpace(a.space) : null);
+// 사이트에 붙는 메모(scope 'site')는 자료가 아니라 사이트에 속하므로 아이템으로 풀지 않는다.
+const annoItemOf = (a) => (a.scope === 'site' || a.scope === 'period' ? null : (a.itemId && itemById(a.itemId)) || (a.space ? threeDItemForSpace(a.space) : null));
 
 function computeFiltered(s) {
   const kw = s.keyword.trim().toLowerCase();
@@ -581,7 +588,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     const prev = stateRef.current.activeId;
     if (prev && prev !== it.id) setFS(prev, 'active', false);
     if (it.lat != null) setFS(it.id, 'active', true);
-    patch({ drawerId: it.id, activeId: it.id });
+    patch({ drawerId: it.id, activeId: it.id, siteDrawer: null, periodDrawer: null });
     const map = mapRef.current;
     if (!map) return;
     const ll = it.lat != null ? markerLngLat(it) : it.projectLat != null ? [it.projectLng, it.projectLat] : null;
@@ -1100,6 +1107,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     const onDown = (ev) => { if (ev.button === 2) downAt = [ev.clientX, ev.clientY]; };
     const onCtx = (ev) => {
       ev.preventDefault();
+      if (!SHOW_3D_MEMO_ADD) return; // 3D 렌더링 안에서 직접 메모를 추가하는 메뉴는 일단 가린다
       const moved = downAt && Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 4;
       downAt = null;
       if (moved || !ANNOTATION_ADMIN || !stateRef.current.three3DActive) return;
@@ -1178,7 +1186,42 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     showToast('3D 모델 표면을 눌러 메모 위치를 정하세요 · 높이는 자동으로 입력됩니다');
   }, [state.three3DActive, annoItemId]);
   // 위치 없는 메모를 입력·열람하던 중이면 닫을 때 그 자료의 상세 패널로 돌아간다.
-  const backToDrawer = (a) => { if (a && a.lng == null) { const o = annoItemOf(a); if (o) openDrawer(o); } };
+  const backToDrawer = (a) => { if (!a || a.lng != null) return; if (a.scope === 'site') { openSitePanel(a.space); return; } if (a.scope === 'period') { openPeriodPanel(a.period); return; } const o = annoItemOf(a); if (o) openDrawer(o); };
+  // ── 사이트 패널(사이트에 붙는 메모) ──
+  const siteMemos = (name) => annotations.filter((a) => a.scope === 'site' && a.space === name && (ANNOTATION_ADMIN || a.visibility === 'public'));
+  const periodMemos = (name) => annotations.filter((a) => a.scope === 'period' && a.period === name && (ANNOTATION_ADMIN || a.visibility === 'public'));
+  const openPeriodPanel = (name) => {
+    closeDrawer();
+    patch({ periodDrawer: name, siteDrawer: null });
+    const map = mapRef.current;
+    if (map) map.setPadding({ top: 0, bottom: 0, left: 0, right: 384 });
+  };
+  const startPeriodMemo = (name) => {
+    patch({ siteDrawer: null, periodDrawer: null });
+    setAnnoSpace(null); setAnnoItemId(null);
+    setAnnoViewId(null); setAnnoAdd(false);
+    setAnnoDraft({ ...blankAnnotation(null, null, null, undefined, undefined), scope: 'period', period: name });
+  };
+  const openSitePanel = (name) => {
+    closeDrawer();
+    patch({ siteDrawer: name, periodDrawer: null });
+    const map = mapRef.current;
+    if (!map) return;
+    map.setPadding({ top: 0, bottom: 0, left: 0, right: 384 });
+    const sb = siteBoundsOf({ space: name });
+    if (sb) map.fitBounds(sb, { padding: 56, maxZoom: 18, pitch: map.getPitch(), bearing: map.getBearing(), duration: 900 });
+  };
+  const closeSitePanel = () => {
+    patch({ siteDrawer: null, periodDrawer: null });
+    const map = mapRef.current;
+    if (map) map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+  };
+  const startSiteMemo = (name) => {
+    patch({ siteDrawer: null, periodDrawer: null });
+    setAnnoSpace(name); setAnnoItemId(null);
+    setAnnoViewId(null); setAnnoAdd(false);
+    setAnnoDraft({ ...blankAnnotation(null, null, null, name, undefined), scope: 'site' });
+  };
   const cancelAnno = () => { const d = annoDraft; setAnnoDraft(null); setAnnoAdd(false); backToDrawer(d); };
   const addAnnoAt = (p) => { setAnnoMenu(null); setAnnoViewId(null); setAnnoAdd(false); setAnnoDraft(blankAnnotation(p.lng, p.lat, p.alt, annoSpace, annoItemId)); };
   const saveAnno = (a) => {
@@ -1223,6 +1266,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
     if (!map) return;
     if (a.lng == null) { // 위치 없는 메모: 3D 없이 메모 카드만 연다.
       const o = annoItemOf(a);
+      if (a.scope === 'site' || a.scope === 'period') patch({ siteDrawer: null, periodDrawer: null });
       closeDrawer(); if (o) { setAnnoSpace(o.space || null); setAnnoItemId(o.id); }
       setAnnoDraft(null); setAnnoAdd(false); setAnnoViewId(a.id);
       return;
@@ -1427,29 +1471,22 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
         // Site 순서는 엑셀 사이트 표(성수 클러스터, HQ, C1 …)를 따른다.
         .sort((a, b) => { const ia = SITES.findIndex((x) => x.name === a.key); const ib = SITES.findIndex((x) => x.name === b.key); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
     }
-    // 시기는 엑셀 '시기' 표의 성수 클러스터 1~4차다. 아이템 날짜가 속한 시기로 묶고(기간 밖이면 가장 가까운 시기),
-    // 시기에 속하지 않는 자료(날짜 없음 등)는 아이템 이름으로 따로 둔다.
-    const m = new Map();
-    for (const it of filtered) {
-      const key = it.period ? `p|${it.period}` : `d|${it.date}|${it.title}`;
-      if (!m.has(key)) m.set(key, []);
-      m.get(key).push(it);
-    }
-    return [...m.entries()]
-      .map(([key, items]) => {
-        const sorted = [...items].sort((a, b) => b.date.localeCompare(a.date));
-        const per = items[0].period ? PERIODS.find((p) => p.name === items[0].period) : null;
+    // 시기는 엑셀 '시기' 표의 성수 클러스터 1~4차뿐이다 — 헤더는 이 네 개만, 자료가 없어도 항상 모두 보여 준다.
+    // 아이템 날짜가 속한 시기로 묶고(기간 밖이면 가장 가까운 시기), 날짜가 없어 시기를 정할 수 없는 자료는 시기별 보기에서 뺀다(사이트별 보기에 있다).
+    return [...PERIODS]
+      .sort((x, y) => y.start.localeCompare(x.start))
+      .map((per) => {
+        const items = filtered.filter((it) => it.period === per.name).sort((x, y) => y.date.localeCompare(x.date));
         return {
-          key,
+          key: `p|${per.name}`,
           icon: 'IconCalendarOutlined',
-          label: items[0].period || items[0].title,
-          meta: per ? `${per.start.slice(0, 7).replace('-', '.')} ~ ${per.end.slice(0, 7).replace('-', '.')}` : items[0].date,
-          sortKey: per ? per.start : items[0].date,
-          items: sorted,
+          label: per.name,
+          meta: `${per.start.slice(0, 7).replace('-', '.')} ~ ${per.end.slice(0, 7).replace('-', '.')}`,
+          items,
         };
-      })
-      .sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+      });
   })();
+  const listedCount = listGroups.reduce((n, g) => n + g.items.length, 0); // 목록에 실제로 나오는 건수
   const activeCatKeys = Object.keys(s.activeCats).filter((k) => s.activeCats[k]);
   const hasFilters = !!(s.keyword || activeCatKeys.length || Object.values(s.yearSel).some(Boolean) || Object.values(s.periodSel).some(Boolean) || Object.values(s.siteSel).some(Boolean) || s.project !== '전체 프로젝트' || s.epsg !== '좌표계 전체' || s.boundsFilter);
   const catCounts = computeCatCounts(s);
@@ -1620,7 +1657,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
           )}
 
           <div style={{ padding: '9px 16px', borderBottom: '1px solid var(--ant-border-secondary)', display: 'flex', alignItems: 'center', gap: 8, flex: 'none' }}>
-            <span style={{ fontSize: 13, fontWeight: 700 }}>결과 {filtered.length}건</span>
+            <span style={{ fontSize: 13, fontWeight: 700 }}>결과 {listedCount}건</span>
             <div style={{ position: 'relative', display: 'inline-flex', height: 28, padding: 2, borderRadius: 14, background: 'var(--ant-fill-quaternary)', border: '1px solid var(--ant-border-secondary)', boxSizing: 'border-box' }}>
               {[['space', '사이트별'], ['time', '시기별']].map(([key, label]) => {
                 const on = s.groupBy === key;
@@ -1644,6 +1681,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
             {listGroups.map((g) => {
               const groupKey = `${s.groupBy}:${g.key}`;
               const isOpen = !collapsed.has(groupKey);
+              const hasMemoTarget = s.groupBy === 'space' ? SITES.some((x) => x.name === g.key) : PERIODS.some((x) => x.name === g.label);
               return (
               <div key={g.key} style={{ marginBottom: 12 }}>
                 <div onClick={() => toggleGroup(groupKey)} title={isOpen ? '접기' : '펼치기'}
@@ -1655,7 +1693,19 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                   </span>
                   <span style={{ fontSize: 13, color: 'var(--ant-primary)' }}>{g.label}</span>
                   {g.meta && <span style={{ fontSize: 11, color: 'var(--ant-text-quaternary)' }}>{g.meta}</span>}
-                  <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', color: 'var(--ant-text-quaternary)', transform: isOpen ? 'none' : 'rotate(-90deg)', transition: 'transform .18s' }}>
+                  {hasMemoTarget && (() => {
+                    // 사이트(사이트별 보기)·시기(시기별 보기)에 붙는 메모: 건수가 있으면 건수, 없으면 아이콘만. 누르면 해당 패널이 열린다.
+                    const isPer = s.groupBy === 'time';
+                    const n = (isPer ? periodMemos(g.label) : siteMemos(g.key)).length;
+                    const kind = isPer ? '시기' : '사이트';
+                    return (
+                      <button onClick={(e) => { e.stopPropagation(); if (isPer) openPeriodPanel(g.label); else openSitePanel(g.key); }} title={n ? `${kind} 메모 ${n}건` : `${kind} 메모 작성`}
+                        style={{ marginLeft: 'auto', flex: 'none', display: 'inline-flex', alignItems: 'center', gap: 4, height: 24, padding: '0 4px', border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', fontSize: 11, fontWeight: 600, color: n ? 'var(--ant-primary)' : 'var(--ant-text-quaternary)' }}>
+                        <span style={{ display: 'flex' }} dangerouslySetInnerHTML={{ __html: MEMO_SVG.replace(/width="14" height="14"/, 'width="16" height="16"') }} />{n || ''}
+                      </button>
+                    );
+                  })()}
+                  <span style={{ marginLeft: hasMemoTarget ? 0 : 'auto', display: 'flex', alignItems: 'center', color: 'var(--ant-text-quaternary)', transform: isOpen ? 'none' : 'rotate(-90deg)', transition: 'transform .18s' }}>
                     <Icon name="IconDownOutlined" size={10} />
                   </span>
                 </div>
@@ -1757,25 +1807,25 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                       {isTileItem(dit) && <div className="sams-drawer-pv" key={'pv-' + dit.id} style={{ height: 180, marginTop: 12, borderRadius: 12, overflow: 'hidden', background: '#0b1118' }} />}
                       <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 4 }}>
                         {viewMeta && (
-                          <button onClick={() => viewRealData(dit)} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
+                          <button onClick={() => viewRealData(dit)} style={{ flex: 'none', width: 74, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
                             <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: viewMeta.svg }} />
                             {viewMeta.label}
                           </button>
                         )}
                         {isTileItem(dit) && (
-                          <button onClick={() => { closeDrawer(); patch({ compareA: dit.id, compareB: null, compareOpen: true }); }} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
+                          <button onClick={() => { closeDrawer(); patch({ compareA: dit.id, compareB: null, compareOpen: true }); }} style={{ flex: 'none', width: 74, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
                             <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: COMPARE_SVG }} />
                             시점 비교
                           </button>
                         )}
                         {(
-                          <button onClick={() => startMemoFor(dit)} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
+                          <button onClick={() => startMemoFor(dit)} style={{ flex: 'none', width: 74, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
                             <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: MEMO_SVG }} />
                             메모 작성
                           </button>
                         )}
                         {dit.cat !== 'event' && (
-                        <button onClick={() => showToast(`다운로드 시작: ${dit.title} (${dit.size})`)} style={{ flex: 1, minWidth: 0, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
+                        <button onClick={() => showToast(`다운로드 시작: ${dit.title} (${dit.size})`)} style={{ flex: 'none', width: 74, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
                           <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: DL_SVG }} />
                           다운로드
                         </button>
@@ -1831,8 +1881,8 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                                     onMouseLeave={(ev) => { ev.currentTarget.style.background = 'transparent'; }}>
                                     <img src={t.poi} alt={t.label} width={24} height={24} draggable={false} style={{ flex: 'none', display: 'block' }} />
                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.title}</div>
-                                      <div style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[t.label, `고도 ${x.alt}m`, x.tags.join(' ')].filter(Boolean).join(' · ')}</div>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}><span style={{ minWidth: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.title}</span><MemoThumb a={x} /></div>
+                                      <div style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[x.alt != null ? `고도 ${x.alt}m` : '', x.tags.join(' ')].filter(Boolean).join(' · ')}</div>
                                     </div>
                                   </div>
                                 );
@@ -1855,10 +1905,10 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                         })}
                       </div>
 
-                      {thread.length > 0 && (
+                      {SHOW_COMMENTS && thread.length > 0 && (
                         <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', margin: '20px 0 8px' }}>코멘트 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {thread.length}건</span></div>
                       )}
-                      {thread.map((cm, i) => (
+                      {SHOW_COMMENTS && thread.map((cm, i) => (
                         <div key={i} style={{ padding: '8px 12px', borderRadius: 12, background: '#fff', border: '1px solid var(--ant-border-secondary)', marginBottom: 8 }}
                           onMouseEnter={(e) => { const x = e.currentTarget.querySelector('[data-cm-del]'); if (x) x.style.opacity = '1'; }}
                           onMouseLeave={(e) => { const x = e.currentTarget.querySelector('[data-cm-del]'); if (x) x.style.opacity = '0'; }}>
@@ -1875,6 +1925,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                       ))}
                     </div>
 
+                    {SHOW_COMMENTS && (
                     <div style={{ padding: '12px 20px 16px', borderTop: '1px solid var(--ant-border-secondary)', flex: 'none', display: 'flex', gap: 8 }}>
                       <input
                         value={commentDraft}
@@ -1886,6 +1937,65 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
                         style={{ flex: 1, minWidth: 0, height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', fontSize: 12, fontFamily: 'inherit', outline: 'none', color: 'var(--ant-text)' }}
                       />
                       <button onClick={addComment} style={{ flex: 'none', height: 32, padding: '0 16px', borderRadius: 8, border: 'none', background: 'var(--ant-primary)', color: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' }}>등록</button>
+                    </div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })()}
+
+          {(() => {
+            // 사이트 패널: 사이트(성수 클러스터, HQ …)에 붙는 메모를 쓰고 본다. 좌표는 따로 지정하지 않고 사이트 중심에 붙는 것으로 본다.
+            const sn = s.siteDrawer && !s.drawerId && !s.compareOpen && !s.three3DActive ? s.siteDrawer : null;
+            const pn = !sn && s.periodDrawer && !s.drawerId && !s.compareOpen && !s.three3DActive ? s.periodDrawer : null; // 시기 패널
+            const tn = sn || pn;
+            const isPer = !!pn;
+            const per = isPer ? PERIODS.find((x) => x.name === pn) : null;
+            const list = tn ? (isPer ? periodMemos(tn) : siteMemos(tn)) : [];
+            const t = ANNO_TYPES.memo;
+            return (
+              <div style={{ position: 'absolute', top: 12, right: 12, width: 360, maxHeight: 'calc(100% - 24px)', zIndex: 30, background: 'rgba(255,255,255,0.90)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', borderRadius: 16, border: '1px solid var(--ant-border-secondary)', boxShadow: '0 8px 28px rgba(0,0,0,0.16)', overflow: 'hidden', transform: tn ? 'translateX(0)' : 'translateX(calc(100% + 24px))', transition: 'transform .28s cubic-bezier(.4,0,.2,1)', display: 'flex', flexDirection: 'column', pointerEvents: tn ? 'auto' : 'none' }}>
+                {tn && (
+                  <>
+                    <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--ant-border-secondary)', flex: 'none', background: '#fff' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: '#2f6bff' }}>
+                          <Icon name={isPer ? 'IconCalendarOutlined' : 'IconEnvironmentOutlined'} size={15} />
+                        </div>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 15, fontWeight: 700, lineHeight: 1.3, color: 'var(--ant-text)' }}>{tn}</span>
+                        <button onClick={closeSitePanel} aria-label="닫기" style={{ flex: 'none', width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', borderRadius: 8, background: 'transparent', color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>
+                          <Icon name="IconCloseOutlined" size={14} />
+                        </button>
+                      </div>
+                      <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>{isPer ? `시기 · ${per ? per.start.slice(0, 7).replace('-', '.') + ' ~ ' + per.end.slice(0, 7).replace('-', '.') + ' · ' : ''}데이터 ${ITEMS.filter((i) => i.period === tn).length}건` : `사이트 · 데이터 ${ITEMS.filter((i) => i.space === sn).length}건`}</div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 4 }}>
+                        <button onClick={() => (isPer ? startPeriodMemo(tn) : startSiteMemo(tn))} style={{ flex: 'none', width: 74, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
+                          <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: MEMO_SVG }} />
+                          메모 작성
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '16px 20px', background: 'linear-gradient(120deg, #F1F2F4 0%, #EBECEF 50%, #E4E5E8 100%)' }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ant-text-secondary)', marginBottom: 8 }}>메모 <span style={{ fontWeight: 500, color: 'var(--ant-text-quaternary)' }}>· {list.length}건</span></div>
+                      {list.length === 0 ? (
+                        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--ant-border-secondary)', padding: 16, fontSize: 12.5, color: 'var(--ant-text-tertiary)' }}>{isPer ? '이 시기에 붙은 메모가 없습니다.' : '이 사이트에 붙은 메모가 없습니다.'}</div>
+                      ) : (
+                        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid var(--ant-border-secondary)', padding: 4 }}>
+                          {list.map((x) => (
+                            <div key={x.id} onClick={() => openAnnotationIn3D(x)} title="메모 보기"
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px', borderRadius: 8, cursor: 'pointer' }}
+                              onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--ant-fill-quaternary)'; }}
+                              onMouseLeave={(ev) => { ev.currentTarget.style.background = 'transparent'; }}>
+                              <img src={t.poi} alt={t.label} width={24} height={24} draggable={false} style={{ flex: 'none', display: 'block' }} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}><span style={{ minWidth: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--ant-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.title}</span><MemoThumb a={x} /></div>
+                                {(x.tags || []).length > 0 && <div style={{ fontSize: 11, color: 'var(--ant-text-tertiary)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{x.tags.join(' ')}</div>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}
@@ -1922,7 +2032,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
               <button onClick={hide3D} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 26, padding: '0 11px', border: 'none', borderRadius: 7, background: 'rgba(255,255,255,0.16)', color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                 <Icon name="IconCloseOutlined" size={11} />3D 렌더링 닫기
               </button>
-              {ANNOTATION_ADMIN && (
+              {ANNOTATION_ADMIN && (SHOW_3D_MEMO_ADD || annoAdd || annoDraft) && (
                 <button onClick={startAnnoAdd} style={{ display: 'flex', alignItems: 'center', gap: 4, height: 26, padding: '0 11px', border: 'none', borderRadius: 7, background: annoAdd || annoDraft ? '#1677ff' : 'rgba(255,255,255,0.16)', color: '#fff', fontSize: 11, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><path d="M6 1.5v9M1.5 6h9" /></svg>{annoAdd ? '위치 지정 중…' : annoDraft ? '입력 취소' : '메모 추가'}
                 </button>
@@ -1940,7 +2050,6 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
               </div>
             </div>
           )}
-          {s.three3DActive && <AnnotationLayerPanel counts={annoCounts} visible={annoVisible} onToggle={(k) => setAnnoVisible((v) => ({ ...v, [k]: !v[k] }))} />}
           {(s.three3DActive || (annoDraft && annoDraft.lng == null)) && annoDraft && <AnnotationEditor key={annoDraft.id} draft={annoDraft} onChange={(patchObj) => setAnnoDraft((d) => ({ ...d, ...patchObj }))} onSave={saveAnno} onCancel={cancelAnno} picking={annoAdd} onPickCoord={toggleAnnoPick} onPreview={previewAnno} />}
           {(s.three3DActive || (annoViewing && annoViewing.lng == null)) && !annoDraft && annoViewing && <AnnotationView key={annoViewing.id} a={annoViewing} admin={ANNOTATION_ADMIN} onClose={() => { const v = annoViewing; setAnnoViewId(null); backToDrawer(v); }} onEdit={() => editAnno(annoViewing)} onDelete={() => removeAnno(annoViewing)} onOpenImages={openPanoViewer} />}
 

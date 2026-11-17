@@ -5,6 +5,7 @@
 // user once auth exists. Private annotations are hidden from non-admins.
 import { useSyncExternalStore } from 'react';
 import { ITEMS } from '../data/explorerData';
+import { readStore, writeStore } from './serverStore';
 import layerMemo from '../assets/annotation/layer-memo.svg';
 import layerPhoto from '../assets/annotation/layer-photo.svg';
 import layerPano from '../assets/annotation/layer-panorama.svg';
@@ -17,14 +18,15 @@ export const ALT_MAX = 300;
 export const DESC_MAX = 100;
 
 export const ANNO_TYPES = {
-  memo: { label: '텍스트', layerIcon: layerMemo, poi: poiMemo, color: '#079CF8' },
+  memo: { label: '메모', layerIcon: layerMemo, poi: poiMemo, color: '#079CF8' },
   photo: { label: '사진', layerIcon: layerPhoto, poi: poiPhoto, color: '#7B61FF' },
   pano: { label: '파노라마', layerIcon: layerPano, poi: poiPano, color: '#F87307' },
 };
 export const ANNO_TYPE_KEYS = ['memo', 'photo', 'pano'];
 
 // 유형은 첨부에 따라 자동으로 정해진다: 파노라마가 있으면 파노라마, 사진이 있으면 사진, 아니면 텍스트(유형 키는 memo — 화면에서 '메모'는 기능 이름이라 유형은 '텍스트'로 부른다).
-export const annotationType = (a) => (a.panos && a.panos.length ? 'pano' : a.photos && a.photos.length ? 'photo' : 'memo');
+// 메모는 첨부(사진·파노라마)가 있어도 유형을 나누지 않고 모두 '메모'로만 표시한다.
+export const annotationType = () => 'memo';
 
 const KEY = 'sams.annotations.v6';
 // 엑셀·외장하드 데이터로 바꾸면서 예전 메모(옛 3D 자료에 붙어 있던 샘플과 테스트 기록)은 모두 버린다.
@@ -57,8 +59,31 @@ let list = load();
 const subs = new Set();
 const emit = () => subs.forEach((f) => f());
 
+// 개발 서버 파일 저장소가 있으면 거기에도 저장해 다른 브라우저와 같은 메모를 본다. 없으면 브라우저 저장소만 쓴다.
+let serverOn = false;
 function persist() {
-  try { localStorage.setItem(KEY, JSON.stringify(list)); return true; } catch { return false; }
+  let ok = true;
+  try { localStorage.setItem(KEY, JSON.stringify(list)); } catch { ok = false; }
+  if (serverOn) { writeStore('annotations', list); return true; } // 서버가 원본이라 브라우저 저장소 용량이 차도 저장은 된다
+  return ok;
+}
+async function syncFromServer() {
+  const r = await readStore('annotations');
+  if (!r.ok) return;
+  serverOn = true;
+  if (r.data === undefined) { if (list.length) writeStore('annotations', list); return; } // 서버가 비어 있으면 이 브라우저의 메모로 채운다
+  if (!Array.isArray(r.data)) return;
+  if (JSON.stringify(r.data) !== JSON.stringify(list)) {
+    list = r.data;
+    try { localStorage.setItem(KEY, JSON.stringify(list)); } catch { /* 캐시일 뿐 */ }
+    emit();
+  }
+}
+syncFromServer();
+if (typeof document !== 'undefined') {
+  // 다른 브라우저에서 바꾼 메모가 이 창으로 돌아올 때 따라오게 한다.
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncFromServer(); });
+  window.addEventListener('focus', syncFromServer);
 }
 
 export const getAnnotations = () => list;

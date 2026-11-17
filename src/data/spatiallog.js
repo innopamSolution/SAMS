@@ -6,7 +6,7 @@
 //   공간 데이터 아이템               → 아이템(데이터) 한 건. 자산(드론 사진·포인트클라우드·타일드 메시 …)을 품는다
 //   시기 1~4차                        → 아이템 날짜가 속한 기간(없으면 가장 가까운 시기)
 //   이벤트                            → 이벤트 아이템
-import { applyStoredStatus } from '../lib/itemStatus';
+import { applyStoredStatus, loadItemStatus } from '../lib/itemStatus';
 import { ITEMS, PROJECTS, COLLECTIONS, MEMBERSHIP, DERIVATIONS, SITES, PERIODS } from './explorerData';
 
 const asset = (path) => import.meta.env.BASE_URL + path.replace(/^\//, '');
@@ -107,6 +107,7 @@ export async function loadSpatialLogData() {
   });
 
   const all = [...items, ...events].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  await loadItemStatus();
   applyStoredStatus(all); // 관리 화면에서 바꾼 공개 여부
   ITEMS.splice(0, ITEMS.length, ...all);
 

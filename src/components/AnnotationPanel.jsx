@@ -138,10 +138,7 @@ export function AnnotationEditor({ draft, onChange, onSave, onCancel, picking, o
       )}
       {draft.panos.map((p, i) => <Thumb key={i} src={p} style={{ width: '100%', height: 120 }} onDelete={() => onChange({ panos: draft.panos.filter((_, j) => j !== i) })} />)}
       {busy && <span style={{ fontSize: 12, color: '#8c8c8c' }}>이미지 불러오는 중…</span>}
-      <span style={{ fontSize: 12, color: '#8c8c8c' }}>
-        유형: <b style={{ color: type.color }}>{type.label}</b> · 사진을 넣으면 사진, 파노라마를 넣으면 파노라마로 표시됩니다.
-      </span>
-      {draft.space && <span style={{ fontSize: 12, color: '#8c8c8c' }}>공간: <b style={{ color: ACCENT }}>{draft.space}</b> · 이 공간의 모든 시기 모델에서 보입니다.</span>}
+      {draft.scope === 'period' ? <span style={{ fontSize: 12, color: '#8c8c8c' }}>붙는 곳: 시기 <b style={{ color: ACCENT }}>{draft.period}</b></span> : draft.scope === 'site' ? <span style={{ fontSize: 12, color: '#8c8c8c' }}>붙는 곳: 사이트 <b style={{ color: ACCENT }}>{draft.space}</b> · 위치는 사이트 중심입니다.</span> : draft.space && <span style={{ fontSize: 12, color: '#8c8c8c' }}>공간: <b style={{ color: ACCENT }}>{draft.space}</b></span>}
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <button onClick={onCancel} style={{ height: 38, padding: '0 12px', borderRadius: 4, border: '1px solid #d9d9d9', background: '#fff', color: '#595959', fontSize: 14, fontFamily: 'inherit', cursor: 'pointer' }}>취소</button>
@@ -264,9 +261,12 @@ export function AnnotationView({ a, admin, onClose, onEdit, onDelete, onOpenImag
 
 // Layer filter (Figma "annotation_layer") — styled like the 3D status bar so it reads as part of the same UI.
 export function AnnotationLayerPanel({ counts, visible, onToggle }) {
+  // 메모가 있는 유형만 보여 주고, 하나도 없으면 패널 자체를 그리지 않는다. (끈 유형도 개수는 그대로라 목록에서 사라지지 않는다.)
+  const types = Object.entries(ANNO_TYPES).filter(([k]) => (counts[k] || 0) > 0);
+  if (!types.length) return null;
   return (
     <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 5, background: 'rgba(15,20,28,0.82)', backdropFilter: 'blur(6px)', borderRadius: 10, boxShadow: '0 6px 22px rgba(0,0,0,0.35)', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8, fontFamily: 'var(--ant-font-sans)' }}>
-      {Object.entries(ANNO_TYPES).map(([k, t]) => (
+      {types.map(([k, t]) => (
         <label key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
           <input type="checkbox" checked={visible[k]} onChange={() => onToggle(k)} style={{ width: 14, height: 14, margin: 0, accentColor: 'var(--ant-primary)', cursor: 'pointer' }} />
           <span style={{ position: 'relative', width: 22, height: 20, flex: 'none' }}>
@@ -278,5 +278,17 @@ export function AnnotationLayerPanel({ counts, visible, onToggle }) {
         </label>
       ))}
     </div>
+  );
+}
+
+// 메모에 이미지가 들어 있으면 제목 옆에 첫 이미지를 작게 보여 준다(여러 장이면 장수 표시).
+export function MemoThumb({ a, size = 20 }) {
+  const imgs = [...(a.photos || []), ...(a.panos || [])];
+  if (!imgs.length) return null;
+  return (
+    <span title={`이미지 ${imgs.length}장`} style={{ position: 'relative', flex: 'none', display: 'inline-flex', width: size, height: size }}>
+      <img src={imgs[0]} alt="" draggable={false} style={{ width: size, height: size, objectFit: 'cover', borderRadius: 4, border: '1px solid rgba(0,0,0,0.12)', display: 'block' }} />
+      {imgs.length > 1 && <span style={{ position: 'absolute', right: -4, bottom: -4, minWidth: 12, height: 12, padding: '0 2px', boxSizing: 'border-box', borderRadius: 6, background: 'rgba(38,38,38,0.85)', color: '#fff', fontSize: 9, fontWeight: 600, lineHeight: '12px', textAlign: 'center' }}>{imgs.length}</span>}
+    </span>
   );
 }

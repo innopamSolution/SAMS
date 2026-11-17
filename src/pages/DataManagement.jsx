@@ -4,8 +4,9 @@ import Icon from '../components/Icon';
 import Logo from '../components/Logo';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { saveItemStatus } from '../lib/itemStatus';
+import { MemoThumb } from '../components/AnnotationPanel';
 import { useAnnotations, saveAnnotation, setAnnotationVisibility, deleteAnnotation, annotationType, ANNO_TYPES, ANNOTATION_ADMIN, DESC_MAX } from '../lib/annotations';
-import { CATS, CAT_MAP, ITEMS, PROJECTS, COLLECTIONS, MEMBERSHIP, PROJECT_LOC, itemCollections, DERIVATIONS, originIdsOf, derivedIdsOf, footprintRing } from '../data/explorerData';
+import { CATS, CAT_MAP, ITEMS, PERIODS, PROJECTS, COLLECTIONS, MEMBERSHIP, PROJECT_LOC, itemCollections, DERIVATIONS, originIdsOf, derivedIdsOf, footprintRing } from '../data/explorerData';
 import { buildMiniStyle } from '../lib/mapStyles';
 import { thumbHtml, startTurntablesIn, wireGallery } from '../lib/popupHelpers';
 
@@ -423,6 +424,18 @@ export default function DataManagement({ onNavigate, focus = null }) {
   const ghostBtn = { height: 36, padding: '0 24px', borderRadius: 8, border: '1px solid var(--ant-border)', background: 'var(--ant-bg)', color: 'var(--ant-text)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' };
   const dangerBtn = { height: 36, padding: '0 24px', borderRadius: 8, border: '1px solid var(--ant-error, #ff4d4f)', background: 'var(--ant-bg)', color: 'var(--ant-error, #ff4d4f)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer' };
 
+  // 아이템 목록을 시기(성수 클러스터 1~4차)별로 묶는다. 날짜가 없어 시기를 정할 수 없는 자료는 '시기 미정'에 모아 둔다(관리 대상이라 숨기지 않는다).
+  const itemGroups = () => {
+    const mine = ITEMS.filter((it) => itemMatches(it, sideQuery));
+    const searching = !!sideQuery.trim();
+    const groups = [...PERIODS].sort((x, y) => y.start.localeCompare(x.start)).map((per) => ({
+      key: per.name, label: per.name, meta: `${per.start.slice(0, 7).replace('-', '.')} ~ ${per.end.slice(0, 7).replace('-', '.')}`,
+      items: mine.filter((it) => it.period === per.name).sort((a, b) => (b.date || '').localeCompare(a.date || '')),
+    }));
+    const none = mine.filter((it) => !it.period);
+    if (none.length) groups.push({ key: '__none', label: '시기 미정', meta: '', items: none });
+    return searching ? groups.filter((g) => g.items.length) : groups;
+  };
   const statusChip = (st) => (
     <span style={{ flex: 'none', fontSize: 9.5, fontWeight: 600, padding: '0 6px', borderRadius: 20, lineHeight: '16px', color: st === 'published' ? 'var(--ant-success)' : 'var(--ant-warning)', background: st === 'published' ? 'var(--ant-success-bg)' : 'var(--ant-warning-bg)', border: `1px solid ${st === 'published' ? 'var(--ant-success-border)' : 'var(--ant-warning-border)'}` }}>
       {st === 'published' ? 'Pub' : 'Draft'}
@@ -478,22 +491,22 @@ export default function DataManagement({ onNavigate, focus = null }) {
           {tab === 'annotations' && (() => {
             // 메모가 어느 데이터에 들어 있는지: 데이터(아이템)별로 묶어 보여 준다.
             const byItem = new Map();
-            annotations.forEach((a) => { const k = ITEMS.some((x) => x.id === a.itemId) ? a.itemId : '__none'; if (!byItem.has(k)) byItem.set(k, []); byItem.get(k).push(a); });
-            const groups = [...byItem.entries()].map(([k, list]) => ({ k, it: ITEMS.find((x) => x.id === k) || null, list }));
+            annotations.forEach((a) => { const k = a.scope === 'period' ? `period:${a.period}` : a.scope === 'site' ? `site:${a.space}` : ITEMS.some((x) => x.id === a.itemId) ? a.itemId : '__none'; if (!byItem.has(k)) byItem.set(k, []); byItem.get(k).push(a); });
+            const groups = [...byItem.entries()].map(([k, list]) => ({ k, it: ITEMS.find((x) => x.id === k) || null, site: k.startsWith('site:') ? k.slice(5) : null, period: k.startsWith('period:') ? k.slice(7) : null, list }));
             return (
               <div style={{ flex: 1, overflowY: 'auto', padding: '8px 8px 12px' }}>
                 {groups.length === 0 && <div style={{ padding: '24px 12px', fontSize: 12.5, color: 'var(--ant-text-tertiary)' }}>등록된 메모가 없습니다.</div>}
-                {groups.map(({ k, it, list }) => {
+                {groups.map(({ k, it, site, period, list }) => {
                   const c = it ? CAT_MAP[it.cat] : null;
                   return (
                     <div key={k} style={{ marginBottom: 12 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px' }}>
-                        <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c ? c.color : '#bfbfbf' }}>
-                          {c && <Icon name={c.icon} size={14} />}
+                        <div style={{ width: 28, height: 28, flex: 'none', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', background: c ? c.color : site || period ? '#2f6bff' : '#bfbfbf' }}>
+                          {c ? <Icon name={c.icon} size={14} /> : site ? <Icon name="IconEnvironmentOutlined" size={14} /> : period ? <Icon name="IconCalendarOutlined" size={14} /> : null}
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it ? it.title : '자료 미지정'}</div>
-                          <div style={{ marginTop: 2, fontSize: 11, color: 'var(--ant-text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it ? [it.space, c.label, it.date].filter(Boolean).join(' · ') : '연결된 데이터가 없는 메모'}</div>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it ? it.title : site || period || '자료 미지정'}</div>
+                          <div style={{ marginTop: 2, fontSize: 11, color: 'var(--ant-text-tertiary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{it ? [it.space, c.label, it.date].filter(Boolean).join(' · ') : site ? '사이트 메모' : period ? '시기 메모' : '연결된 데이터가 없는 메모'}</div>
                         </div>
                         <span style={{ flex: 'none', fontSize: 11, fontWeight: 600, color: 'var(--ant-primary)' }}>{list.length}건</span>
                       </div>
@@ -502,7 +515,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
                         return (
                           <div key={a.id} onClick={() => { setAnnoSel(a.id); setAnnoEdit(null); }} style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 12px 0 48px', padding: '6px 8px', borderRadius: 8, cursor: 'pointer', background: annoSel === a.id ? '#ECEEFC' : 'var(--ant-fill-quaternary)', marginBottom: 4 }}>
                             <span style={{ flex: 'none', width: 8, height: 8, borderRadius: '50%', background: t.color }} />
-                            <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</span>
+                            <span style={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</span><MemoThumb a={a} />
                             <span style={{ flex: 'none', fontSize: 11, color: 'var(--ant-text-tertiary)' }}>{a.visibility === 'public' ? '공개' : '비공개'}</span>
                           </div>
                         );
@@ -547,7 +560,14 @@ export default function DataManagement({ onNavigate, focus = null }) {
             <>
               {/* 업로드는 SAMS(관리 제품)에서 한다 — 여기서는 올리는 입구를 두지 않는다. */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 8px' }}>
-                {ITEMS.filter((it) => itemMatches(it, sideQuery)).map((it) => {
+                {itemGroups().map((g) => (
+                  <div key={g.key} style={{ marginBottom: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '12px 12px 4px' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--ant-primary)' }}>{g.label}</span>
+                      {g.meta && <span style={{ fontSize: 11, color: 'var(--ant-text-quaternary)' }}>{g.meta}</span>}
+                      <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--ant-text-tertiary)' }}>{g.items.length}건</span>
+                    </div>
+                    {g.items.map((it) => {
                   const c = CAT_MAP[it.cat];
                   const on = itemSel === it.id && itemDraft.orig != null;
                   return (
@@ -572,6 +592,8 @@ export default function DataManagement({ onNavigate, focus = null }) {
                     </div>
                   );
                 })}
+                  </div>
+                ))}
                 {itemDraft.orig == null && (
                   <div style={{ padding: '12px', borderRadius: 8, background: '#ECEEFC' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ant-primary)' }}>{itemDraft.title.trim() || '새 아이템 등록'}</div>
@@ -602,7 +624,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
               <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 24px 40px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 16, borderBottom: '1px solid var(--ant-border-secondary)' }}>
                   <span style={{ flex: 'none', fontSize: 12, fontWeight: 700, color: '#fff', background: t.color, borderRadius: 999, padding: '3px 12px' }}>{t.label}</span>
-                  <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 16, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</span><MemoThumb a={a} size={28} />
                   {ANNOTATION_ADMIN && !ed && (
                     <>
                       <button onClick={() => setAnnotationVisibility(a.id, a.visibility === 'public' ? 'private' : 'public')} title="누르면 공개 여부가 바뀝니다"
@@ -624,7 +646,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
                 </div>
 
                 <div style={{ ...label, marginTop: 20 }}>들어간 데이터</div>
-                <div style={{ fontSize: 13 }}>{it ? `${it.title} · ${[it.space, CAT_MAP[it.cat].label, it.date].filter(Boolean).join(' · ')}` : '연결된 데이터 없음'}</div>
+                <div style={{ fontSize: 13 }}>{it ? `${it.title} · ${[it.space, CAT_MAP[it.cat].label, it.date].filter(Boolean).join(' · ')}` : a.scope === 'period' ? `시기 · ${a.period}` : a.scope === 'site' ? `사이트 · ${a.space}` : '연결된 데이터 없음'}</div>
 
                 <div style={{ ...label, marginTop: 20 }}>제목</div>
                 {ed ? <input value={ed.title} maxLength={40} onChange={(e) => setE({ title: e.target.value })} style={{ ...field, height: 36, padding: '0 12px' }} /> : <div style={{ fontSize: 13 }}>{a.title}</div>}
@@ -669,7 +691,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
                 <div style={{ ...label, marginTop: 20 }}>등록 정보</div>
                 <div style={{ fontSize: 12.5, color: 'var(--ant-text-secondary)', lineHeight: 1.7 }}>
                   {a.createdAt ? `등록 ${new Date(a.createdAt).toLocaleDateString('ko-KR')}` : ''}
-                  {a.lat != null ? ` · 고도 ${a.alt} m · ${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}` : ' · 위치 없음(3D 위치 지정 없이 작성)'}
+                  {a.lat != null ? ` · 고도 ${a.alt} m · ${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}` : a.scope === 'site' ? ' · 위치: 사이트 중심' : a.scope === 'period' ? ' · 위치 없음(시기에 붙는 메모)' : ' · 위치 없음(3D 위치 지정 없이 작성)'}
                 </div>
               </div>
             );
@@ -688,9 +710,9 @@ export default function DataManagement({ onNavigate, focus = null }) {
                       <div key={a.id} onClick={() => { setAnnoSel(a.id); setAnnoEdit(null); }} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', cursor: 'pointer', borderTop: i ? '1px solid var(--ant-border-secondary)' : 'none' }}>
                         <span style={{ flex: 'none', width: 64, textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#fff', background: t.color, borderRadius: 999, padding: '3px 0' }}>{t.label}</span>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}><span style={{ minWidth: 0, fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.title}</span><MemoThumb a={a} size={24} /></div>
                           <div style={{ marginTop: 2, fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>
-                            {a.space ? `${a.space} · ` : ''}{(() => { const it = ITEMS.find((x) => x.id === a.itemId); return it ? `${it.title} · ` : ''; })()}{a.lat != null ? `고도 ${a.alt} m · ${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}` : '위치 없음'}{a.photos.length ? ` · 사진 ${a.photos.length}` : ''}{a.panos.length ? ` · 파노라마 ${a.panos.length}` : ''}
+                            {a.space ? `${a.space} · ` : ''}{a.scope === 'site' ? '사이트 메모 · ' : a.scope === 'period' ? '시기 메모 · ' : ''}{(() => { const it = ITEMS.find((x) => x.id === a.itemId); return it ? `${it.title} · ` : ''; })()}{a.lat != null ? `고도 ${a.alt} m · ${a.lat.toFixed(5)}, ${a.lng.toFixed(5)}` : '위치 없음'}{a.photos.length ? ` · 사진 ${a.photos.length}` : ''}{a.panos.length ? ` · 파노라마 ${a.panos.length}` : ''}
                           </div>
                         </div>
                         {ANNOTATION_ADMIN && (
