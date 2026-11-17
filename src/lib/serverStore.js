@@ -16,7 +16,7 @@ async function readSnapshot(name) {
 export async function readStore(name) {
   try {
     const r = await fetch(base + name, { cache: 'no-store' });
-    if (r.status === 404) return { ok: true, data: undefined }; // 서버는 있는데 아직 저장된 것이 없다
+    if (r.status === 404 && r.headers.get('X-Sams-Store')) return { ok: true, data: undefined }; // 개발 서버는 있는데 아직 저장된 것이 없다 (표식이 없는 404 는 정적 호스트)
     if (!r.ok) return { ok: false, snapshot: await readSnapshot(name) };
     return { ok: true, data: JSON.parse(await r.text()) }; // 정적 호스트가 index.html 을 돌려주면 여기서 실패한다
   } catch {

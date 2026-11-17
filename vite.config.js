@@ -38,6 +38,7 @@ function spatialLogStore() {
         if (!m || !NAMES.has(m[1])) return next()
         const file = path.join(dir, m[1] + '.json')
         res.setHeader('Cache-Control', 'no-store')
+        res.setHeader('X-Sams-Store', '1') // 클라이언트가 '개발 서버의 저장소'와 정적 호스트의 404 를 구분하는 표식
         if (req.method === 'GET') {
           if (!fs.existsSync(file)) { res.statusCode = 404; return res.end('none') }
           res.setHeader('Content-Type', 'application/json')
