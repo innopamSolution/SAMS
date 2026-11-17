@@ -1685,7 +1685,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
               {[['space', '사이트별'], ['time', '시기별']].map(([key, label]) => {
                 const on = s.groupBy === key;
                 return (
-                  <button key={key} onClick={() => patch({ groupBy: key })} style={{ height: 22, margin: 0, padding: '0 12px', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', borderRadius: 11, boxSizing: 'border-box', border: 'none', background: on ? 'var(--ant-bg)' : 'transparent', boxShadow: on ? '0 1px 3px rgba(0,0,0,0.14)' : 'none', color: on ? 'var(--ant-text)' : 'var(--ant-text-tertiary)', transition: 'color .2s, background .2s, box-shadow .2s' }}>
+                  <button key={key} onClick={() => patch({ groupBy: key })} style={{ height: 22, margin: 0, padding: '0 12px', fontSize: 11.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', borderRadius: 11, boxSizing: 'border-box', border: 'none', background: on ? 'var(--ant-primary)' : 'transparent', boxShadow: 'none', color: on ? '#fff' : 'var(--ant-text-secondary)', transition: 'color .2s, background .2s' }}>
                     {label}
                   </button>
                 );
