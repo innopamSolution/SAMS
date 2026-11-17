@@ -24,10 +24,11 @@ function spatialLogTiles() {
   }
 }
 
-// 메모·아이템 공개 여부를 개발 서버의 파일(.data-cache/store/*.json)에 저장한다 — 어느 브라우저에서 열어도 같은 내용이 보인다.
-// (이 PC의 개발 서버에서만 동작한다. 정적 배포에서는 요청이 실패하므로 앱은 브라우저 저장소만 쓴다.)
+// 메모·아이템 공개 여부를 개발 서버의 파일(sams/data/*.json)에 저장한다 — 어느 브라우저에서 열어도 같은 내용이 보이고,
+// 이 파일은 저장소에 올라가(.gitignore 대상 아님) 받아서 실행한 쪽에서도 같은 메모가 보인다.
+// (개발 서버에서만 동작한다. 정적 배포에서는 요청이 실패하므로 앱은 브라우저 저장소만 쓴다.)
 function spatialLogStore() {
-  const dir = path.resolve(import.meta.dirname, '.data-cache/store')
+  const dir = path.resolve(import.meta.dirname, 'data')
   const NAMES = new Set(['annotations', 'itemStatus'])
   return {
     name: 'spatiallog-store',

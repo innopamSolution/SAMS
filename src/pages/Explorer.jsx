@@ -143,6 +143,8 @@ const itemName = (it) => (it.space && !it.title.includes(it.space) ? `${it.space
 const MEMO_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v12H9l-5 4z"/><path d="M8 9h8M8 12.5h5"/></svg>';
 // 3D 렌더링 화면 안의 '메모 추가' 버튼·우클릭 메뉴. 일단 가린다(위치 지정 중일 때만 취소용으로 버튼이 나온다). 메모는 오른쪽 패널의 [메모 작성]으로 쓴다.
 const SHOW_3D_MEMO_ADD = false;
+// 3D 자료에서도 3D 위에 위치를 찍어 메모를 등록할지. 일단 하지 않는다(메모는 위치 없이 자료·사이트·시기에 붙인다).
+const ENABLE_3D_MEMO = false;
 // 오른쪽 패널의 코멘트(목록·입력). 일단 가린다 — 메모와 역할이 겹쳐 정리 전이다.
 const SHOW_COMMENTS = false;
 const COMPARE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="16" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/></svg>';
@@ -1166,8 +1168,8 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
   // 상세 패널의 [메모]: 이 3D 자료를 열고 곧바로 위치 지정 모드로 들어간다.
   const memoPendingRef = useRef(null);
   const startMemoFor = (it) => {
-    if (!(it.tilesetUrl || it.meshUrl || it.pointCloudUrl)) {
-      // 3D 데이터가 없는 자료: 위치(좌표) 지정 없이 메모만 입력한다.
+    if (!ENABLE_3D_MEMO || !(it.tilesetUrl || it.meshUrl || it.pointCloudUrl)) {
+      // 위치(좌표) 지정 없이 메모만 입력한다. (3D 자료도 일단 같은 방식 — 3D 위에 위치를 찍어 메모를 등록하는 것은 하지 않기로 했다.)
       closeDrawer();
       setAnnoSpace(it.space || null); setAnnoItemId(it.id);
       setAnnoViewId(null); setAnnoAdd(false);
