@@ -975,7 +975,8 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
     const imagery = v === 'satellite' || v === '3d';
     map.setLayoutProperty('light-tiles', 'visibility', imagery ? 'none' : 'visible');
     map.setLayoutProperty('sat-tiles', 'visibility', imagery ? 'visible' : 'none');
-    map.setLayoutProperty('satref-tiles', 'visibility', imagery ? 'visible' : 'none');
+    // 지명(래스터 그림)은 기울인 3D 시점에서 찌그러져 보이므로 위에서 내려다보는 위성 모드에서만 켠다.
+    map.setLayoutProperty('satref-tiles', 'visibility', v === 'satellite' ? 'visible' : 'none');
     if (map.getLayer('sams-3d')) {
       map.setLayoutProperty('sams-3d', 'visibility', v === 'light' ? 'none' : 'visible');
     }
