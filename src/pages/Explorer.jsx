@@ -283,9 +283,9 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
   // seeded with the sample threads from explorerData.
   const [comments, setComments] = useState(() => ({ ...SEED_COMMENTS }));
   const [commentDraft, setCommentDraft] = useState('');
-  // 왼쪽 목록에서 접어 둔 묶음. 시기·공간 보기가 키를 섞지 않도록 보기 이름을 앞에 둔다.
-  const [collapsed, setCollapsed] = useState(() => new Set());
-  const toggleGroup = (key) => setCollapsed((prev) => {
+  // 왼쪽 목록에서 펼쳐 둔 묶음(기본은 모두 접힘). 시기·공간 보기가 키를 섞지 않도록 보기 이름을 앞에 둔다.
+  const [expanded, setExpanded] = useState(() => new Set());
+  const toggleGroup = (key) => setExpanded((prev) => {
     const next = new Set(prev);
     if (next.has(key)) next.delete(key); else next.add(key);
     return next;
@@ -897,7 +897,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
     if (map && map.getLayer('sams-3d')) map.removeLayer('sams-3d'); // 3D 렌더링 중이었으면 닫는다
     setAnnoAdd(false); setAnnoDraft(null); setAnnoViewId(null); setAnnoMenu(null);
     setPanoViewer(null); setVideoViewer(null);
-    setCollapsed(new Set());
+    setExpanded(new Set());
     patch({
       keyword: '', activeCats: {}, compareOpen: false, groupBy: 'space', advOpen: false,
       drawerId: null, siteDrawer: null, periodDrawer: null, yearSel: {}, periodSel: {}, siteSel: {},
@@ -1465,7 +1465,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
     const di = itemById(id);
     if (di) {
       const gk = state.groupBy === 'space' ? `space:${di.space}` : `time:${di.period ? 'p|' + di.period : `d|${di.date}|${di.title}`}`;
-      setCollapsed((prev) => { if (!prev.has(gk)) return prev; const n = new Set(prev); n.delete(gk); return n; });
+      setExpanded((prev) => { if (prev.has(gk)) return prev; const n = new Set(prev); n.add(gk); return n; });
     }
     const t = setTimeout(() => {
       const el = document.querySelector(`[data-row-id="${id}"]`);
@@ -1483,7 +1483,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
     const ids = [a?.item?.id, b?.item?.id];
     const groupKeyOf = (di) => (state.groupBy === 'space' ? `space:${di.space}` : `time:${di.period ? 'p|' + di.period : `d|${di.date}|${di.title}`}`);
     const gks = ids.map((id) => (id ? itemById(id) : null)).filter(Boolean).map(groupKeyOf);
-    setCollapsed((prev) => { if (!gks.some((k) => prev.has(k))) return prev; const n = new Set(prev); gks.forEach((k) => n.delete(k)); return n; });
+    setExpanded((prev) => { if (gks.every((k) => prev.has(k))) return prev; const n = new Set(prev); gks.forEach((k) => n.add(k)); return n; });
     const seen = cmpSeenRef.current;
     const target = ids[1] && ids[1] !== seen.b && ids[0] === seen.a ? ids[1] : ids[0];
     cmpSeenRef.current = { a: ids[0], b: ids[1] };
@@ -1783,7 +1783,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
             {!!boundsNotice && <div style={{ fontSize: 11, color: 'var(--ant-warning)', background: 'var(--ant-warning-bg)', border: '1px solid var(--ant-warning-border)', borderRadius: 6, padding: '6px 9px', margin: '4px 4px 8px' }}>{boundsNotice}</div>}
             {listGroups.map((g) => {
               const groupKey = `${s.groupBy}:${g.key}`;
-              const isOpen = !collapsed.has(groupKey);
+              const isOpen = expanded.has(groupKey);
               const hasMemoTarget = s.groupBy === 'space' ? SITES.some((x) => x.name === g.key) : PERIODS.some((x) => x.name === g.label);
               return (
               <div key={g.key} style={{ marginBottom: 12 }}>
@@ -1808,8 +1808,8 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
                       </button>
                     );
                   })()}
-                  <span style={{ marginLeft: hasMemoTarget ? 0 : 'auto', display: 'flex', alignItems: 'center', color: 'var(--ant-text-quaternary)', transform: isOpen ? 'none' : 'rotate(-90deg)', transition: 'transform .18s' }}>
-                    <Icon name="IconDownOutlined" size={10} />
+                  <span style={{ marginLeft: hasMemoTarget ? 0 : 'auto', flex: 'none', display: 'flex', alignItems: 'center', color: 'var(--ant-primary)', transform: isOpen ? 'none' : 'rotate(-90deg)', transition: 'transform .18s' }}>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5 L8 10.5 L13 5.5" /></svg>
                   </span>
                 </div>
                 <div style={{ marginLeft: 12, paddingLeft: 8, borderLeft: '2px solid var(--ant-border-secondary)', display: isOpen ? 'block' : 'none' }}>
