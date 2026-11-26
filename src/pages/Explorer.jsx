@@ -1809,7 +1809,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
                     );
                   })()}
                   <span style={{ marginLeft: hasMemoTarget ? 0 : 'auto', flex: 'none', display: 'flex', alignItems: 'center', color: 'var(--ant-primary)', transform: isOpen ? 'none' : 'rotate(-90deg)', transition: 'transform .18s' }}>
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5 L8 10.5 L13 5.5" /></svg>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M3 5.5 L8 10.5 L13 5.5" /></svg>
                   </span>
                 </div>
                 <div style={{ marginLeft: 12, paddingLeft: 8, borderLeft: '2px solid var(--ant-border-secondary)', display: isOpen ? 'block' : 'none' }}>
