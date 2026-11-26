@@ -449,7 +449,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
       {/* Header */}
       <header style={{ height: 56, flex: 'none', display: 'flex', alignItems: 'center', gap: 44, padding: '0 20px', background: 'var(--ant-bg)', borderBottom: '1px solid var(--ant-border-secondary)', zIndex: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', flex: 'none' }}>
-          <Logo onClick={() => onNavigate('explorer')} />
+          <Logo onClick={() => onNavigate('explorer', { reset: true })} />
         </div>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 4, height: '100%', flex: 'none' }}>
           <div onClick={() => onNavigate('explorer')} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>데이터 탐색</div>

@@ -72,12 +72,15 @@ function flatten(scene) {
 /**
  * @param {object} maplibregl
  * @param {object} map
- * @param {{ url: string, lngLat: [number, number], groundH?: number, onError?: (e: any) => void, onReady?: () => void }} opts
+ * @param {{ url: string, lngLat: [number, number], groundH?: number, onError?: (e: any) => void, onReady?: () => void, layerId?: string, beforeId?: string }} opts
  *   groundH: 타일셋 좌표계(타원체 높이)에서 지면(길)의 높이(m). 이 높이가 로컬 y=0 — 곧 지형 위 지면이 된다.
  *   probe:   [lng, lat] 목록(보통 사이트 폴리곤). 타일이 다 들어오면 이 둘레의 표면 높이(하위 25%)를 지면으로 삼아 groundH 를 맞춘다.
  */
-export function addTilesLayer(maplibregl, map, { url, lngLat, groundH = 37, probe = null, cacheMB = 384, onError, onReady }) {
-  if (map.getLayer('sams-3d')) map.removeLayer('sams-3d');
+export function addTilesLayer(maplibregl, map, { url, lngLat, groundH = 37, probe = null, cacheMB = 384, onError, onReady, layerId = 'sams-3d', beforeId }) {
+  // layerId 가 기본값(sams-3d)이면 "3D 렌더링" 본 화면용이다(map.__sams3d 를 잡고 피킹·메모가 이것을 쓴다).
+  // 다른 id(예: 배경 드론 레이어)는 지도에 얹기만 하고 map.__sams3d 는 건드리지 않는다.
+  const primary = layerId === 'sams-3d';
+  if (map.getLayer(layerId)) map.removeLayer(layerId);
 
   const merc = maplibregl.MercatorCoordinate.fromLngLat(lngLat, 0);
   const transform = { x: merc.x, y: merc.y, z: 0, scale: merc.meterInMercatorCoordinateUnits() };
@@ -155,11 +158,11 @@ export function addTilesLayer(maplibregl, map, { url, lngLat, groundH = 37, prob
       return best;
     },
   };
-  map.__sams3d = model;
+  if (primary) map.__sams3d = model;
 
   const rotX = new THREE.Matrix4().makeRotationAxis(new THREE.Vector3(1, 0, 0), Math.PI / 2);
   const layer = {
-    id: 'sams-3d',
+    id: layerId,
     type: 'custom',
     renderingMode: '3d',
     onAdd(m, gl) {
@@ -209,6 +212,6 @@ export function addTilesLayer(maplibregl, map, { url, lngLat, groundH = 37, prob
       if (tiles.loadProgress < 1) map.triggerRepaint();
     },
   };
-  map.addLayer(layer);
+  map.addLayer(layer, beforeId && map.getLayer(beforeId) ? beforeId : undefined);
   return { tiles };
 }

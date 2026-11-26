@@ -242,6 +242,14 @@ function itemToTimelineNode(it) {
   return { id: it.id, date: it.date.replace(/-/g, '.'), label: it.title, cat: 'actual', struct: null, item: it };
 }
 
+// 배경 드론 레이어: 성수 클러스터의 시기(1~4차)마다 드론 3D 자료가 하나씩 있다. 선택한 아이템의 시기에 맞는 것을 지도에 얹는다.
+const DRONE_SPACE = '성수 클러스터';
+const DRONE_LAYER = 'sams-drone';
+const droneItems = () => ITEMS.filter((i) => i.space === DRONE_SPACE && i.cat === 'model3d');
+const droneForPeriod = (period) => droneItems().find((i) => i.period === period) || null;
+// 기본 상태: 3D 타일이 실제로 있는 드론 중 가장 최신
+const latestDrone = () => droneItems().filter((i) => i.tilesetUrl).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))[0] || null;
+
 // 시점 비교는 3D 데이터(포인트클라우드·3D 모델)만 대상으로 한다. 사진·영상·문서·이벤트 등은 제외.
 function comparableNodes() {
   return ITEMS
@@ -262,7 +270,7 @@ function cmpPtsLabel(node) {
   return node.pc ? node.pc.pts : node.item.extra;
 }
 
-export default function Explorer({ onNavigate = () => {}, focus = null }) {
+export default function Explorer({ onNavigate = () => {}, focus = null, resetTick = 0 }) {
   const [state, setState] = useState(initialState);
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -863,6 +871,85 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
   }
   useEffect(() => { syncSpaceSites(); }, [state.basemap, state.three3DActive, state.compareOpen, state.drawerId, state.activeId]);
 
+  // 처음 화면: 프로젝트 영역(모든 사이트의 폴리곤)이 한눈에 들어오게 맞춘다. (로고를 눌러 처음 상태로 돌아갈 때도 쓴다)
+  // 멀리 떨어진 사이트(역삼·판교 등)까지 넣으면 성수가 점으로 보이므로, 첫 사이트(성수 클러스터)에서 5km 안의 사이트로 맞춘다.
+  function fitHome(map, duration) {
+    const base = SITES.find((x) => x.center);
+    const near = (x) => !!x.center && !!base && Math.hypot((x.center[0] - base.center[0]) * 88.7, (x.center[1] - base.center[1]) * 111) < 5;
+    const pts = SITES.filter((x) => x.polygon && near(x)).flatMap((x) => x.polygon);
+    if (pts.length) {
+      const b = pts.reduce((bb, q) => bb.extend(q), new maplibregl.LngLatBounds(pts[0], pts[0]));
+      map.fitBounds(b, { padding: 48, pitch: 55, bearing: 0, maxZoom: 16, duration });
+    }
+  }
+
+  // 로고: 처음 상태(선택·필터·패널·3D·비교를 모두 닫고 기본 지도, 처음 화면 위치)로 돌린다.
+  function resetToDefault() {
+    const map = mapRef.current;
+    if (map) map.resize(); // 관리 화면에서 넘어올 때는 지도가 숨겨져 있었으므로 크기를 먼저 맞춘다
+    clearRelatedPreview();
+    if (hoverPopupRef.current) { hoverPopupRef.current.remove(); hoverPopupRef.current = null; }
+    if (detailPopupRef.current) { detailPopupRef.current.remove(); detailPopupRef.current = null; }
+    popupReopenRef.current = null;
+    drawerReturnRef.current = null;
+    const prevActive = stateRef.current.activeId;
+    if (prevActive) setFS(prevActive, 'active', false);
+    if (map && map.getLayer('sams-3d')) map.removeLayer('sams-3d'); // 3D 렌더링 중이었으면 닫는다
+    setAnnoAdd(false); setAnnoDraft(null); setAnnoViewId(null); setAnnoMenu(null);
+    setPanoViewer(null); setVideoViewer(null);
+    setCollapsed(new Set());
+    patch({
+      keyword: '', activeCats: {}, compareOpen: false, groupBy: 'space', advOpen: false,
+      drawerId: null, siteDrawer: null, periodDrawer: null, yearSel: {}, periodSel: {}, siteSel: {},
+      project: '전체 프로젝트', epsg: '좌표계 전체', boundsFilter: false,
+      hoveredId: null, docHover: null, activeId: null, three3DActive: false, three3DTitle: '',
+    });
+    setBasemap('3d');
+    if (map) { map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 }); fitHome(map, 900); }
+    // 왼쪽 목록은 맨 위로
+    const row = document.querySelector('[data-row-id]');
+    for (let el = row && row.parentElement; el; el = el.parentElement) {
+      if (el.scrollHeight > el.clientHeight && /auto|scroll/.test(getComputedStyle(el).overflowY)) { el.scrollTo({ top: 0, behavior: 'smooth' }); break; }
+    }
+  }
+  const resetTickRef = useRef(resetTick);
+  useEffect(() => {
+    if (resetTick === resetTickRef.current) return;
+    resetTickRef.current = resetTick;
+    resetToDefault();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetTick]);
+
+  // 배경 드론 데이터: 선택한 아이템(또는 시기 패널)의 시기에 맞는 드론 3D 타일을 지도에 얹는다.
+  //  · 아무것도 선택하지 않았으면(기본) 가장 최신 드론, 날짜가 없는 아이템이면 지금 보이는 것을 그대로 둔다.
+  //  · 그 시기의 드론 타일이 없으면 보여주지 않는다. 일반지도·위성이거나 3D 렌더링·시점 비교 중이어도 숨긴다.
+  const droneRef = useRef({ id: null });
+  function syncDrone() {
+    const map = mapRef.current;
+    if (!map || !layersReadyRef.current) return;
+    const st = stateRef.current;
+    const sel = st.drawerId ? itemById(st.drawerId) : null;
+    let target;
+    if (sel && sel.period == null) target = droneItems().find((i) => i.id === droneRef.current.id) || null; // 시기를 알 수 없으면 지금 것을 유지
+    else if (sel || st.periodDrawer) { const d = droneForPeriod(sel ? sel.period : st.periodDrawer); target = d && d.tilesetUrl ? d : null; }
+    else target = latestDrone();
+    const cur = droneRef.current.id;
+    const exists = !!map.getLayer(DRONE_LAYER);
+    if (exists && (!target || cur !== target.id)) { map.removeLayer(DRONE_LAYER); droneRef.current.id = null; }
+    if (!target) return;
+    const visible = st.basemap === '3d' && !st.three3DActive && !st.compareOpen;
+    if (!map.getLayer(DRONE_LAYER)) {
+      if (!visible) return; // 안 보일 때는 만들지 않는다(타일을 받지 않게)
+      addTilesLayer(maplibregl, map, {
+        layerId: DRONE_LAYER, beforeId: 'space-sites-fill', url: target.tilesetUrl, lngLat: [target.lng, target.lat], probe: target.probe, cacheMB: 256,
+        onError: (err) => console.warn('[drone] 불러오기 실패', err),
+      });
+      droneRef.current.id = target.id;
+    }
+    map.setLayoutProperty(DRONE_LAYER, 'visibility', visible ? 'visible' : 'none');
+  }
+  useEffect(() => { syncDrone(); }, [state.basemap, state.three3DActive, state.compareOpen, state.drawerId, state.periodDrawer]);
+
   function updateMapControls(v) {
     const map = mapRef.current;
     if (!map || !nav3DRef.current) return;
@@ -996,15 +1083,8 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
       // 첫 화면부터 3D 지도(위성+지형, 기울인 시점)로 연다.
       if (stateRef.current.basemap === '3d') setBasemap('3d');
       initSpaceSites(map);
-      // 처음 화면은 프로젝트 영역(모든 사이트의 폴리곤)이 한눈에 들어오게 맞춘다.
-      // 멀리 떨어진 사이트(역삼·판교 등)까지 넣으면 성수가 점으로 보이므로, 첫 사이트(성수 클러스터)에서 5km 안의 사이트로 맞춘다.
-      const base = SITES.find((x) => x.center);
-      const near = (x) => !!x.center && !!base && Math.hypot((x.center[0] - base.center[0]) * 88.7, (x.center[1] - base.center[1]) * 111) < 5;
-      const pts = SITES.filter((x) => x.polygon && near(x)).flatMap((x) => x.polygon);
-      if (pts.length) {
-        const b = pts.reduce((bb, q) => bb.extend(q), new maplibregl.LngLatBounds(pts[0], pts[0]));
-        map.fitBounds(b, { padding: 48, pitch: 55, maxZoom: 16, duration: 0 });
-      }
+      syncDrone(); // 첫 화면부터 가장 최신 드론 데이터를 올린다
+      fitHome(map, 0);
     });
 
     ['unclustered', 'event-flags'].forEach((layerId) => {
@@ -1538,7 +1618,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null }) {
       {/* Header */}
       <header style={{ height: 56, flex: 'none', display: 'flex', alignItems: 'center', gap: 44, padding: '0 20px', background: 'var(--ant-bg)', borderBottom: '1px solid var(--ant-border-secondary)', zIndex: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', flex: 'none' }}>
-          <Logo onClick={() => onNavigate('explorer')} />
+          <Logo onClick={() => { resetToDefault(); onNavigate('explorer'); }} />
         </div>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 4, height: '100%', flex: 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, color: 'var(--ant-text-heading)', background: '#ECEEFC' }}>데이터 탐색</div>
