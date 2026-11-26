@@ -30,6 +30,9 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # 브이월드 인증키(저장소 Settings > Secrets and variables > Actions 의 VWORLD_KEY). 없으면 OSM/Esri 지도로 대신한다.
+          VITE_VWORLD_KEY: ${{ secrets.VWORLD_KEY }}
 
       - name: SPA fallback (404.html)
         run: cp dist/index.html dist/404.html

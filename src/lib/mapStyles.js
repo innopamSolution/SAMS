@@ -1,27 +1,26 @@
+import { hasVWorld, vworldTiles } from './vworld';
+
+// 인증키가 있으면 브이월드, 없으면 OSM(일반) · Esri(위성)로 대신한다.
+const OSM = ['a', 'b', 'c'].map((x) => `https://${x}.tile.openstreetmap.org/{z}/{x}/{y}.png`);
+const ESRI_SAT = ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'];
+const baseSrc = () => (hasVWorld
+  ? { type: 'raster', tileSize: 256, maxzoom: 19, attribution: '© 브이월드(국토교통부)', tiles: vworldTiles('Base') }
+  : { type: 'raster', tileSize: 256, maxzoom: 19, attribution: '© OpenStreetMap contributors', tiles: OSM });
+const satSrc = () => (hasVWorld
+  ? { type: 'raster', tileSize: 256, maxzoom: 19, attribution: '© 브이월드(국토교통부)', tiles: vworldTiles('Satellite') }
+  : { type: 'raster', tileSize: 256, maxzoom: 18, attribution: '© Esri, Maxar, Earthstar Geographics', tiles: ESRI_SAT });
+const satRefSrc = () => (hasVWorld
+  ? { type: 'raster', tileSize: 256, maxzoom: 19, tiles: vworldTiles('Hybrid') }
+  : { type: 'raster', tileSize: 256, tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'] });
+
 export function buildMainStyle() {
   return {
     version: 8,
     glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
     sources: {
-      light: {
-        type: 'raster',
-        tileSize: 256,
-        maxzoom: 19,
-        attribution: '© OpenStreetMap contributors',
-        tiles: ['a', 'b', 'c'].map((s) => `https://${s}.tile.openstreetmap.org/{z}/{x}/{y}.png`),
-      },
-      sat: {
-        type: 'raster',
-        tileSize: 256,
-        maxzoom: 18,
-        attribution: '© Esri, Maxar, Earthstar Geographics',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-      },
-      satref: {
-        type: 'raster',
-        tileSize: 256,
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
-      },
+      light: baseSrc(),
+      sat: satSrc(),
+      satref: satRefSrc(),
       terrain: {
         type: 'raster-dem',
         tileSize: 256,
@@ -44,13 +43,7 @@ export function buildMiniStyle() {
   return {
     version: 8,
     sources: {
-      light: {
-        type: 'raster',
-        tileSize: 256,
-        maxzoom: 19,
-        attribution: '© OpenStreetMap contributors',
-        tiles: ['a', 'b', 'c'].map((s) => `https://${s}.tile.openstreetmap.org/{z}/{x}/{y}.png`),
-      },
+      light: baseSrc(),
     },
     layers: [{ id: 'light-tiles', type: 'raster', source: 'light' }],
   };
@@ -60,13 +53,7 @@ export function buildCompareStyle() {
   return {
     version: 8,
     sources: {
-      sat: {
-        type: 'raster',
-        tileSize: 256,
-        maxzoom: 18,
-        attribution: '© Esri, Maxar',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-      },
+      sat: satSrc(),
       terrain: {
         type: 'raster-dem',
         tileSize: 256,

@@ -13,7 +13,8 @@ import {
 import { buildMainStyle, buildCompareStyle, addAssetLayers } from '../lib/mapStyles';
 import { add3DLayer, addRealPointCloudLayer, addRealMeshLayer } from '../lib/three3d';
 import { addTilesLayer } from '../lib/tiles3d';
-import { isTileItem, tilePreviewHtml, mountLivePreview } from '../lib/tilePreview';
+import PlaceSearch from '../components/PlaceSearch';
+import { isTileItem, tilePreviewHtml, mountStillPreview } from '../lib/tilePreview';
 import { buildSpaceSites } from '../lib/spaceSites';
 import { loadPointCloud } from '../lib/pointCloudAsset';
 import { loadMeshAsset } from '../lib/meshAsset';
@@ -462,31 +463,11 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
     const map = mapRef.current;
     if (!map) return;
     if (hoverPopupRef.current) hoverPopupRef.current.remove();
-    // Deliberately minimal — thumbnail + title only — so hover previews read
-    // as a quick glance, clearly smaller/lighter than the click-through detail popup.
-    // 미리보기 화면이 있는 자료(3D·사진·영상 등)는 썸네일 카드, 없는 것(이벤트·문서 등)은 글자 크기에 맞춘 툴팁으로 보여준다.
-    const thumb = isTileItem(it) ? tilePreviewHtml(it, 124, true) : thumbHtml(it, CAT_MAP, false, 124);
-    const html = thumb
-      ? `<div style="width:200px;font-family:var(--ant-font-sans);">
-      ${thumb}
-      <div style="padding:8px 12px;">
-        <div style="font-size:12px;font-weight:700;color:var(--ant-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${itemName(it)}</div>
-      </div></div>`
-      : `<div style="display:inline-block;padding:6px 10px;font-family:var(--ant-font-sans);font-size:13px;font-weight:700;line-height:20px;color:var(--ant-text);white-space:nowrap;">${itemName(it)}</div>`;
-    const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: thumb ? 16 : 20, maxWidth: thumb ? '220px' : 'none', anchor: 'bottom', className: thumb ? '' : 'sams-tip' })
+    // 호버에서는 자료 종류와 상관없이 미리보기 없이 이름만 글자 크기에 맞춘 툴팁으로 보여준다(상세는 클릭 팝업).
+    const html = `<div style="display:inline-block;padding:6px 10px;font-family:var(--ant-font-sans);font-size:13px;font-weight:700;line-height:20px;color:var(--ant-text);white-space:nowrap;">${itemName(it)}</div>`;
+    const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, offset: 20, maxWidth: 'none', anchor: 'bottom', className: 'sams-tip' })
       .setLngLat(markerLngLat(it)).setHTML(html).addTo(map);
     hoverPopupRef.current = popup;
-    startTurntables(popup);
-    // 3D 타일 항목은 호버 카드에서도 천천히 도는 작은 3D 로 보여준다. 마우스가 스치고 지나갈 때는 만들지 않도록
-    // 잠깐(0.35초) 머문 뒤에 시작하고, 카드가 닫히면 바로 정리한다. 이전에 저장한 정지 이미지가 있으면 로드되는 동안 먼저 보인다.
-    if (isTileItem(it)) {
-      let dispose = null;
-      const hoverTimer = setTimeout(() => {
-        if (hoverPopupRef.current !== popup) return;
-        dispose = mountLivePreview(popup.getElement(), it, { compact: true });
-      }, 350);
-      popup.on('close', () => { clearTimeout(hoverTimer); if (dispose) dispose(); });
-    }
   };
 
 
@@ -742,9 +723,9 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
       patch({ activeId: null });
     });
     startTurntables(popup);
-    // 3D 타일 항목: 팝업 안의 작은 3D 지도(팝업을 닫으면 정리)
+    // 3D 타일 항목: 팝업 안은 정지 이미지만(라이브 3D 는 띄우지 않는다. 3D 로 보려면 '지도에서 3D 렌더링')
     if (isTileItem(it)) {
-      const disposePv = mountLivePreview(rootEl, it);
+      const disposePv = mountStillPreview(rootEl, it);
       popup.on('close', disposePv);
     }
     wireGallery(rootEl, it);
@@ -883,8 +864,29 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
     }
   }
 
+  // 장소찾기(브이월드): 고른 위치로 지도를 옮기고 표시를 하나 세운다. 지우거나 처음 상태로 돌아가면 걷는다.
+  const placeMarkerRef = useRef(null);
+  const [placedTitle, setPlacedTitle] = useState('');
+  const [searchKey, setSearchKey] = useState(0);
+  const clearPlace = () => {
+    if (placeMarkerRef.current) { placeMarkerRef.current.remove(); placeMarkerRef.current = null; }
+    setPlacedTitle('');
+  };
+  const pickPlace = ({ lng, lat, title }) => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (placeMarkerRef.current) placeMarkerRef.current.remove();
+    const popup = new maplibregl.Popup({ closeButton: false, closeOnClick: false, closeOnMove: false, offset: 34, maxWidth: 'none', className: 'sams-tip' })
+      .setHTML(`<div style="display:inline-block;padding:6px 10px;font-family:var(--ant-font-sans);font-size:13px;font-weight:700;line-height:20px;color:var(--ant-text);white-space:nowrap;">${title.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))}</div>`);
+    placeMarkerRef.current = new maplibregl.Marker({ color: '#cf1322' }).setLngLat([lng, lat]).setPopup(popup).addTo(map);
+    placeMarkerRef.current.togglePopup();
+    setPlacedTitle(title);
+    map.flyTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 17), duration: 1200 });
+  };
+
   // 로고: 처음 상태(선택·필터·패널·3D·비교를 모두 닫고 기본 지도, 처음 화면 위치)로 돌린다.
   function resetToDefault() {
+    clearPlace(); setSearchKey((k) => k + 1);
     const map = mapRef.current;
     if (map) map.resize(); // 관리 화면에서 넘어올 때는 지도가 숨겨져 있었으므로 크기를 먼저 맞춘다
     clearRelatedPreview();
@@ -1495,7 +1497,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
     return () => clearTimeout(t);
   }, [state.compareOpen, state.compareA, state.compareB, state.groupBy]);
 
-  // 상세 패널 상단의 3D 미리보기: 3D 타일이 있는 자료는 천천히 도는 작은 3D 지도를 올리고, 패널을 닫거나 다른 자료로 바꾸면 정리한다.
+  // 상세 패널 상단의 3D 미리보기: 3D 타일이 있는 자료는 정지 이미지를 올린다(없으면 뒤에서 만들어 채운다). 패널을 닫거나 다른 자료로 바꾸면 정리한다.
   // 컨테이너 안은 React 가 다시 그리지 않도록 비워 두고 여기서 채운다(스냅샷이 저장될 때 지도가 지워지지 않게).
   useEffect(() => {
     const it = state.drawerId ? itemById(state.drawerId) : null;
@@ -1505,7 +1507,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
       const box = document.querySelector('.sams-drawer-pv');
       if (!box) return;
       box.innerHTML = tilePreviewHtml(it, 180, true);
-      dispose = mountLivePreview(box, it);
+      dispose = mountStillPreview(box, it);
     }, 30);
     return () => { clearTimeout(t); if (dispose) dispose(); };
   }, [state.drawerId]);
@@ -2123,11 +2125,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
             })}
           </div>
 
-          {!s.three3DActive && (
-            <button onClick={() => patch({ boundsFilter: !s.boundsFilter })} style={{ position: 'absolute', top: 12, left: 12, zIndex: 4, display: 'flex', alignItems: 'center', gap: 8, height: 34, padding: '0 12px', borderRadius: 9, fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.14)', border: `1px solid ${s.boundsFilter ? 'var(--ant-primary)' : 'var(--ant-border-secondary)'}`, background: s.boundsFilter ? 'var(--ant-primary)' : 'var(--ant-bg)', color: s.boundsFilter ? '#fff' : 'var(--ant-text-secondary)' }}>
-              <Icon name="IconBorderOuterOutlined" size={14} />이 지역으로 검색
-            </button>
-          )}
+          {!s.three3DActive && <PlaceSearch key={searchKey} onPick={pickPlace} onClear={clearPlace} picked={placedTitle} />}
 
           {s.three3DActive && (
             <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 6, display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(15,20,28,0.82)', backdropFilter: 'blur(6px)', color: '#fff', padding: '7px 8px 7px 14px', borderRadius: 10, boxShadow: '0 6px 22px rgba(0,0,0,0.35)' }}>

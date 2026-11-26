@@ -1,6 +1,6 @@
 // 3D 타일 항목의 팝업 미리보기.
-//  - 클릭 팝업: 작은 3D 지도에 타일을 비스듬히 천천히 돌려 보여준다(팝업을 닫으면 정리).
-//  - 호버 카드: 정지 이미지. 한 번 그려 본 항목은 스냅샷을 저장해 두고, 없으면 뒤에서 한 장 만들어 채운다.
+//  - 클릭 팝업·상세 패널: 정지 이미지만 보여준다(PC 부하를 줄이려고 라이브 3D 는 띄우지 않는다. 3D 로 보려면 '지도에서 3D 렌더링').
+//    한 번 만든 항목은 스냅샷을 저장해 두고, 없으면 뒤에서 한 장(한 번에 하나씩) 만들어 채운다.
 import maplibregl from 'maplibre-gl';
 import { buildCompareStyle } from './mapStyles';
 import { addTilesLayer } from './tiles3d';
@@ -8,9 +8,9 @@ import { addTilesLayer } from './tiles3d';
 export const isTileItem = (it) => !!(it && it.tilesetUrl && it.lat != null && (it.cat === 'model3d' || it.cat === 'pointcloud'));
 
 // ── 스냅샷 저장(메모리 + localStorage) ───────────────────────
-const KEY = 'sams.tilepreview.v7';
+const KEY = 'sams.tilepreview.v8'; // 바탕 위성 지도가 브이월드로 바뀌며 올림(이전 스냅샷 폐기)
 // 예전 자료(옛 3D 자료)의 스냅샷이 브라우저에 남지 않게, 이전 버전 키는 모두 지운다.
-(() => { try { ['v1', 'v2', 'v3', 'v4', 'v5', 'v6'].forEach((v) => localStorage.removeItem('sams.tilepreview.' + v)); } catch { /* noop */ } })(); // 시점 중심이 바뀌면 올린다(이전 스냅샷 폐기)
+(() => { try { ['v1', 'v2', 'v3', 'v4', 'v5', 'v6', 'v7'].forEach((v) => localStorage.removeItem('sams.tilepreview.' + v)); } catch { /* noop */ } })(); // 시점 중심이 바뀌면 올린다(이전 스냅샷 폐기)
 const MAX_ENTRIES = 40;
 let stills = null;
 const load = () => {
@@ -30,11 +30,11 @@ function putStill(id, dataUrl) {
 
 const HTML_NOTE = 'position:absolute;left:9px;bottom:8px;display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,0.85);background:rgba(0,0,0,0.4);padding:3px 7px;border-radius:20px;pointer-events:none;';
 
-// 팝업에 넣는 미리보기 자리. live=true 면 이어서 mountLivePreview 로 작은 3D 지도를 얹는다.
+// 팝업에 넣는 미리보기 자리. live=true 면 스냅샷이 없을 때 '만드는 중' 표시를 넣고, 이어서 mountStillPreview 로 채운다.
 export function tilePreviewHtml(it, height, live) {
   const still = getStill(it.id);
   const img = still ? `<img class="sams-tilepv-still" src="${still}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">` : '';
-  const note = live ? `<div class="sams-tilepv-note" style="${HTML_NOTE}">3D 미리보기 불러오는 중…</div>` : '';
+  const note = live && !still ? `<div class="sams-tilepv-note" style="${HTML_NOTE}">미리보기 만드는 중…</div>` : '';
   return `<div class="sams-tilepv" data-id="${it.id}" style="position:relative;height:${height}px;overflow:hidden;background:radial-gradient(circle at 50% 40%, #14202e, #060a10);">${img}<div class="sams-tilepv-map" style="position:absolute;inset:0;"></div>${note}</div>`;
 }
 
@@ -75,38 +75,29 @@ function snapshot(map) {
   try { return map.getCanvas().toDataURL('image/jpeg', 0.72); } catch { return null; }
 }
 
-// 클릭 팝업: 천천히 돌아가는 작은 3D 지도. 돌려받는 함수로 정리한다.
-export function mountLivePreview(popupEl, it, { compact = false } = {}) {
-  const box = popupEl && popupEl.querySelector(`.sams-tilepv[data-id="${it.id}"]`);
-  if (!box) return () => {};
-  const host = box.querySelector('.sams-tilepv-map');
-  const note = box.querySelector('.sams-tilepv-note');
-  const handle = makePreviewMap(host, it, compact ? { zoom: 15.7, pitch: 45 } : undefined); // 호버 카드는 한 단계 더 멀리
-  const { map } = handle;
+// 정지 이미지만 채운다: 저장된 스냅샷이 있으면 그대로 두고, 없으면 뒤에서 만들어 채운다. 돌려받는 함수로 정리한다.
+export function mountStillPreview(rootEl, it) {
+  const box = rootEl && rootEl.querySelector(`.sams-tilepv[data-id="${it.id}"]`);
+  if (!box || getStill(it.id)) return () => {};
   let alive = true;
-  let raf = 0;
-  let last = performance.now();
-  const spin = () => {
+  requestStill(it, (s) => {
     if (!alive) return;
-    const now = performance.now();
-    map.jumpTo({ bearing: (map.getBearing() + ((now - last) / 1000) * 7) % 360 });
-    last = now;
-    raf = requestAnimationFrame(spin);
-  };
-  map.once('load', () => { raf = requestAnimationFrame(spin); });
-  whenLoaded(handle, 20000, () => alive).then((done) => {
-    if (!alive) return;
+    const note = box.querySelector('.sams-tilepv-note');
+    if (!s) { if (note) note.textContent = '미리보기를 만들 수 없습니다'; return; }
     if (note) note.remove();
-    const still = box.querySelector('.sams-tilepv-still');
-    if (still) still.remove();
-    if (done) { map.once('render', () => { const s = snapshot(map); if (s) putStill(it.id, s); }); map.triggerRepaint(); }
-  });
-  return () => { alive = false; cancelAnimationFrame(raf); try { map.remove(); } catch { /* noop */ } };
+    const img = document.createElement('img');
+    img.className = 'sams-tilepv-still';
+    img.alt = '';
+    img.src = s;
+    img.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;';
+    box.insertBefore(img, box.firstChild);
+  }, () => alive);
+  return () => { alive = false; };
 }
 
-// ── 호버용 정지 이미지: 뒤에서 한 장씩 만든다 ─────────────────
+// ── 정지 이미지: 뒤에서 한 장씩 만든다 ─────────────────
 const queue = [];
-const pending = new Set();
+const waiters = new Map(); // id → [{ cb, wanted }]  같은 항목을 여러 곳(팝업·패널)에서 기다릴 수 있다
 let busy = false;
 
 async function generate(it) {
@@ -131,21 +122,22 @@ async function pump() {
   if (busy) return;
   busy = true;
   while (queue.length) {
-    const { it, cb, wanted } = queue.shift();
-    if (getStill(it.id)) { pending.delete(it.id); if (wanted()) cb(getStill(it.id)); continue; }
-    if (!wanted()) { pending.delete(it.id); continue; } // 기다리는 사이 호버가 끝났으면 만들지 않는다
+    const it = queue.shift();
+    const notify = (s) => { (waiters.get(it.id) || []).forEach((w) => { if (w.wanted()) w.cb(s); }); waiters.delete(it.id); };
+    if (getStill(it.id)) { notify(getStill(it.id)); continue; }
+    if (!(waiters.get(it.id) || []).some((w) => w.wanted())) { waiters.delete(it.id); continue; } // 기다리는 사이 닫혔으면 만들지 않는다
     let s = null;
     try { s = await generate(it); } catch (e) { console.warn('[tilePreview]', e); }
-    pending.delete(it.id);
-    if (s && wanted()) cb(s);
+    notify(s);
   }
   busy = false;
 }
 
-// 호버 카드에 넣을 정지 이미지를 요청한다. wanted() 가 false 가 되면(호버 종료) 아직 시작 전인 작업은 건너뛴다.
+// 정지 이미지를 요청한다. wanted() 가 false 가 되면(팝업·패널을 닫음) 아직 시작 전인 작업은 건너뛴다. 실패하면 cb(null).
 export function requestStill(it, cb, wanted) {
-  if (pending.has(it.id)) return;
-  pending.add(it.id);
-  queue.push({ it, cb, wanted });
+  const list = waiters.get(it.id);
+  if (list) { list.push({ cb, wanted }); return; }
+  waiters.set(it.id, [{ cb, wanted }]);
+  queue.push(it);
   pump();
 }
