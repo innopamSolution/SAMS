@@ -16,6 +16,7 @@ import { addTilesLayer } from '../lib/tiles3d';
 import PlaceSearch from '../components/PlaceSearch';
 import AdminButton from '../components/AdminButton';
 import { AUTH_REQUIRED } from '../lib/auth';
+import { onStoreError } from '../lib/serverStore';
 import { isTileItem, tilePreviewHtml, mountStillPreview } from '../lib/tilePreview';
 import { buildSpaceSites } from '../lib/spaceSites';
 import { loadPointCloud } from '../lib/pointCloudAsset';
@@ -390,6 +391,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
     clearTimeout(toastTimerRef.current);
     toastTimerRef.current = setTimeout(() => patch({ toast: null }), 2600);
   };
+  useEffect(() => onStoreError((name, reason) => showToast(reason === 413 ? '저장 용량이 너무 커서 서버에 저장하지 못했습니다 · 사진 수를 줄여 주세요' : reason === 'offline' ? '서버에 연결하지 못했습니다 · 연결되면 자동으로 다시 저장합니다' : '서버에 저장하지 못했습니다')), []); // 서버에 저장하지 못했을 때 알린다
 
   const setFS = (id, key, val) => {
     if (!mapRef.current || !layersReadyRef.current) return;
@@ -1924,7 +1926,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
                             시점 비교
                           </button>
                         )}
-                        {(
+                        {ANNOTATION_ADMIN && (
                           <button onClick={() => startMemoFor(dit)} style={{ flex: 'none', width: 74, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
                             <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: MEMO_SVG }} />
                             메모 작성
@@ -2076,10 +2078,12 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
                       </div>
                       <div style={{ marginTop: 4, fontSize: 11.5, color: 'var(--ant-text-tertiary)' }}>{isPer ? `시기 · ${per ? per.start.slice(0, 7).replace('-', '.') + ' ~ ' + per.end.slice(0, 7).replace('-', '.') + ' · ' : ''}데이터 ${ITEMS.filter((i) => i.period === tn).length}건` : `사이트 · 데이터 ${ITEMS.filter((i) => i.space === sn).length}건`}</div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 16, marginBottom: 4 }}>
+                        {ANNOTATION_ADMIN && (
                         <button onClick={() => (isPer ? startPeriodMemo(tn) : startSiteMemo(tn))} style={{ flex: 'none', width: 74, display: 'inline-flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, height: 64, padding: '0 8px', borderRadius: 12, border: 'none', background: '#F3F4FD', color: 'var(--ant-primary)', fontSize: 11.5, fontWeight: 400, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#E2E6FA'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#F3F4FD'; }}>
                           <span style={{ display: 'flex', flex: 'none' }} dangerouslySetInnerHTML={{ __html: MEMO_SVG }} />
                           메모 작성
                         </button>
+                        )}
                       </div>
                     </div>
                     <div style={{ flex: '0 1 auto', minHeight: 0, overflowY: 'auto', padding: '16px 20px', background: 'linear-gradient(120deg, #F1F2F4 0%, #EBECEF 50%, #E4E5E8 100%)' }}>
@@ -2201,11 +2205,6 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
               </div>
             </div>
           )}
-
-          <div style={{ position: 'absolute', bottom: 22, right: 12, zIndex: 4, background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 11, padding: '5px 10px', borderRadius: 7, display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
-            <span style={{ display: 'flex', opacity: 0.85 }}><Icon name="IconAimOutlined" size={12} /></span>
-            마커에 올려 미리보기 · 클릭해 상세
-          </div>
         </div>
       </div>
 
