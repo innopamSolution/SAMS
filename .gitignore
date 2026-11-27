@@ -6,3 +6,6 @@ dist-ssr
 
 # Spatial Log 외장하드 데이터 캐시(압축 해제한 3D 타일)와 그걸 가리키는 링크
 .data-cache
+
+# 저장소 서버(server/store-server.mjs)의 DB 파일
+server/data

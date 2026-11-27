@@ -3,10 +3,11 @@ import maplibregl from 'maplibre-gl';
 import Icon from '../components/Icon';
 import Logo from '../components/Logo';
 import ConfirmDialog from '../components/ConfirmDialog';
+import AdminButton from '../components/AdminButton';
 import { saveItemStatus } from '../lib/itemStatus';
 import { saveItemEdits } from '../lib/itemEdits';
 import { MemoThumb } from '../components/AnnotationPanel';
-import { useAnnotations, saveAnnotation, setAnnotationVisibility, deleteAnnotation, annotationType, ANNO_TYPES, ANNOTATION_ADMIN, DESC_MAX } from '../lib/annotations';
+import { useAnnotations, saveAnnotation, setAnnotationVisibility, deleteAnnotation, annotationType, ANNO_TYPES, useAdmin, DESC_MAX } from '../lib/annotations';
 import { CATS, CAT_MAP, ITEMS, PERIODS, PROJECTS, COLLECTIONS, MEMBERSHIP, PROJECT_LOC, itemCollections, DERIVATIONS, originIdsOf, derivedIdsOf, footprintRing } from '../data/explorerData';
 import { buildMiniStyle } from '../lib/mapStyles';
 import { thumbHtml, startTurntablesIn, wireGallery } from '../lib/popupHelpers';
@@ -164,6 +165,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
   const [confirmState, setConfirmState] = useState(null);
   const ask = (message, onOk, extra = {}) => setConfirmState({ message, onOk, ...extra });
   const annotations = useAnnotations();
+  const ANNOTATION_ADMIN = useAdmin();
   const [annoSel, setAnnoSel] = useState(null); // 메모 탭에서 오른쪽에 상세를 보이는 메모
   const [annoEdit, setAnnoEdit] = useState(null); // 수정 중인 메모 초안
   const pickItem = (id) => {
@@ -456,9 +458,7 @@ export default function DataManagement({ onNavigate, focus = null }) {
           <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, color: 'var(--ant-text-heading)', background: '#ECEEFC' }}>데이터 관리</div>
         </nav>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <button title="로그아웃" style={{ display: 'flex', alignItems: 'center', gap: 8, height: 34, padding: '0 12px', border: 'none', background: 'transparent', color: 'var(--ant-text-secondary)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', letterSpacing: 0.3, cursor: 'pointer', borderRadius: 8 }}>
-            <Icon name="IconLogoutOutlined" size={16} />LOGOUT
-          </button>
+          <AdminButton />
         </div>
       </header>
 

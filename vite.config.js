@@ -69,11 +69,14 @@ function spatialLogStore() {
 // 방문자가 올려 둔 메모·공개 여부·아이템 수정을 읽기 전용으로 볼 수 있게 한다. (쓰기는 개발 서버에서만 저장된다.)
 function spatialLogStoreSnapshot() {
   const dir = path.resolve(import.meta.dirname, 'data')
+  let external = false
   return {
     name: 'spatiallog-store-snapshot',
     apply: 'build',
+    configResolved(c) { external = !!String(c.env.VITE_STORE_API_URL || '').trim() },
     generateBundle() {
-      if (!fs.existsSync(dir)) return
+      // 저장소 서버(VITE_STORE_API_URL)를 쓰는 빌드는 사본을 넣지 않는다 — 사본에는 비공개 메모도 들어 있어 누구나 읽을 수 있기 때문이다.
+      if (external || !fs.existsSync(dir)) return
       for (const f of fs.readdirSync(dir)) {
         if (!f.endsWith('.json')) continue
         this.emitFile({ type: 'asset', fileName: `store/${f}`, source: fs.readFileSync(path.join(dir, f)) })

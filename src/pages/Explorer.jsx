@@ -6,7 +6,7 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { AnnotationEditor, AnnotationView, AnnotationLayerPanel, MemoThumb } from '../components/AnnotationPanel';
 import { createAnnotationOverlay } from '../lib/annotationOverlay';
 import { pickSurface, pickGround } from '../lib/pick3d';
-import { useAnnotations, saveAnnotation, deleteAnnotation, blankAnnotation, annotationType, ANNOTATION_ADMIN, ALT_MAX, ANNO_TYPES, ANNO_TYPE_KEYS } from '../lib/annotations';
+import { useAnnotations, saveAnnotation, deleteAnnotation, blankAnnotation, annotationType, useAdmin, ALT_MAX, ANNO_TYPES, ANNO_TYPE_KEYS } from '../lib/annotations';
 import {
   CATS, CAT_MAP, ITEMS, PERIODS, SITES, PROJECTS, EPSGS, PROJECT_LOC, structLngLat, footprintRing, COLLECTIONS, SEED_COMMENTS, itemCollections, originIdsOf, derivedIdsOf,
 } from '../data/explorerData';
@@ -14,6 +14,8 @@ import { buildMainStyle, buildCompareStyle, addAssetLayers } from '../lib/mapSty
 import { add3DLayer, addRealPointCloudLayer, addRealMeshLayer } from '../lib/three3d';
 import { addTilesLayer } from '../lib/tiles3d';
 import PlaceSearch from '../components/PlaceSearch';
+import AdminButton from '../components/AdminButton';
+import { AUTH_REQUIRED } from '../lib/auth';
 import { isTileItem, tilePreviewHtml, mountStillPreview } from '../lib/tilePreview';
 import { buildSpaceSites } from '../lib/spaceSites';
 import { loadPointCloud } from '../lib/pointCloudAsset';
@@ -299,6 +301,8 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
   // 등록은 3D 모델이 떠 있는 이 화면에서만 한다 — 지도에서 점을 찍고 고도를 넣어 위치를 정하기 때문.
   // (목록·공개 설정·삭제는 데이터 관리 > 메모 탭에서도 다룬다.)
   const annotations = useAnnotations();
+  const ANNOTATION_ADMIN = useAdmin(); // 저장소 서버가 있으면 비밀번호로 로그인한 관리자만 true
+  const adminRef = useRef(ANNOTATION_ADMIN); adminRef.current = ANNOTATION_ADMIN;
   const [annoAdd, setAnnoAdd] = useState(false);
   const [annoDraft, setAnnoDraft] = useState(null);
   const [annoViewId, setAnnoViewId] = useState(null);
@@ -1195,7 +1199,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
       if (!SHOW_3D_MEMO_ADD) return; // 3D 렌더링 안에서 직접 메모를 추가하는 메뉴는 일단 가린다
       const moved = downAt && Math.hypot(ev.clientX - downAt[0], ev.clientY - downAt[1]) > 4;
       downAt = null;
-      if (moved || !ANNOTATION_ADMIN || !stateRef.current.three3DActive) return;
+      if (moved || !adminRef.current || !stateRef.current.three3DActive) return;
       const b = map.getCanvas().getBoundingClientRect();
       const px = ev.clientX - b.left; const py = ev.clientY - b.top;
       const p = surface(px, py, map.unproject([px, py]));
@@ -1625,7 +1629,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
         </div>
         <nav style={{ display: 'flex', alignItems: 'center', gap: 4, height: '100%', flex: 'none' }}>
           <div style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, color: 'var(--ant-text-heading)', background: '#ECEEFC' }}>데이터 탐색</div>
-          <div onClick={() => onNavigate('manage')} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>데이터 관리</div>
+          {(!AUTH_REQUIRED || ANNOTATION_ADMIN) && <div onClick={() => onNavigate('manage')} style={{ display: 'flex', alignItems: 'center', padding: '8px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, color: 'var(--ant-text-secondary)', cursor: 'pointer' }}>데이터 관리</div>}
           {!!focus && (
             <button onClick={() => onNavigate('manage')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, padding: '0 12px', marginLeft: 4, borderRadius: 15, border: '1px solid var(--ant-primary)', background: 'rgba(22,119,255,0.07)', color: 'var(--ant-primary)', fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }}>
               <span style={{ display: 'flex', transform: 'rotate(90deg)' }}><Icon name="IconDownOutlined" size={10} /></span>
@@ -1634,12 +1638,7 @@ export default function Explorer({ onNavigate = () => {}, focus = null, resetTic
           )}
         </nav>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 16 }}>
-          <button
-            title="로그아웃"
-            style={{ display: 'flex', alignItems: 'center', gap: 8, height: 34, padding: '0 12px', border: 'none', background: 'transparent', color: 'var(--ant-text-secondary)', fontSize: 13, fontWeight: 600, fontFamily: 'inherit', letterSpacing: 0.3, cursor: 'pointer', borderRadius: 8 }}
-          >
-            <Icon name="IconLogoutOutlined" size={16} />LOGOUT
-          </button>
+          <AdminButton />
         </div>
       </header>
 

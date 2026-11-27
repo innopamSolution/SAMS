@@ -6,6 +6,7 @@
 import { useSyncExternalStore } from 'react';
 import { ITEMS } from '../data/explorerData';
 import { readStore, writeStore } from './serverStore';
+import { isAdmin, onAdminChange } from './auth';
 import layerMemo from '../assets/annotation/layer-memo.svg';
 import layerPhoto from '../assets/annotation/layer-photo.svg';
 import layerPano from '../assets/annotation/layer-panorama.svg';
@@ -13,7 +14,7 @@ import poiMemo from '../assets/annotation/poi-memo.svg';
 import poiPhoto from '../assets/annotation/poi-photo.svg';
 import poiPano from '../assets/annotation/poi-panorama.svg';
 
-export const ANNOTATION_ADMIN = true;
+export { useAdmin } from './auth'; // 관리자 여부(저장소 서버가 있으면 비밀번호 로그인, 없으면 모두 관리자)
 export const ALT_MAX = 300;
 export const DESC_MAX = 100;
 
@@ -89,6 +90,14 @@ async function syncFromServer() {
   }
 }
 syncFromServer();
+// 로그인하면 비공개 메모까지 다시 받고, 로그아웃하면 이 브라우저에 남은 비공개 메모를 치운다.
+onAdminChange(() => {
+  if (!isAdmin()) {
+    const pub = list.filter((a) => a.visibility === 'public');
+    if (pub.length !== list.length) { list = pub; try { localStorage.setItem(KEY, JSON.stringify(list)); } catch { /* 캐시일 뿐 */ } emit(); }
+  }
+  syncFromServer();
+});
 if (typeof document !== 'undefined') {
   // 다른 브라우저에서 바꾼 메모가 이 창으로 돌아올 때 따라오게 한다.
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncFromServer(); });

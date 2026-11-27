@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Explorer from './pages/Explorer';
 import DataManagement from './pages/DataManagement';
 import { loadSpatialLogData } from './data/spatiallog';
+import { useAdmin } from './lib/auth';
 
 export default function App() {
   // 두 화면 모두 mount를 유지한다. 관리에서 지도로 건너갔다 돌아와도 편집 중이던
@@ -13,6 +14,7 @@ export default function App() {
   // 요청이 새로 도착한 것으로 구분하기 위한 것.
   const [focus, setFocus] = useState(null);
   const [manageFocus, setManageFocus] = useState(null);
+  const admin = useAdmin();
   const [resetTick, setResetTick] = useState(0); // 로고를 눌러 탐색 화면을 처음 상태로 돌릴 때마다 올린다
 
   // 데이터는 Spatial Log API 에서 받아온다. 받아오기 전에 화면을 그리면
@@ -27,7 +29,11 @@ export default function App() {
     return () => { alive = false; };
   }, []);
 
+  // 로그아웃하면(또는 로그인하지 않았으면) 관리 화면을 벗어난다.
+  useEffect(() => { if (!admin && page === 'manage') setPage('explorer'); }, [admin, page]);
+
   const navigate = (name, payload = null) => {
+    if (name === 'manage' && !admin) return;
     if (name === 'manage') setManagedOnce(true);
     if (name === 'explorer' && payload && payload.reset) setResetTick((n) => n + 1);
     const req = payload && payload.focusItem ? { ...payload, at: Date.now() } : null;

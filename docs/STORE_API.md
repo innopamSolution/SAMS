@@ -26,6 +26,12 @@ DB 를 붙일 때는 **같은 규약의 API 만 만들면** 화면 코드는 바
 - `itemStatus`: `{ "<공간>|<제목>|<날짜>": "published" | "draft" }`
 - `itemEdits`: `{ "<공간>|<제목>|<날짜>": { title, desc, lng, lat } }` (키는 엑셀에서 가져온 원래 값)
 
+## 로그인(아이디·비밀번호) — 구현됨
+`server/store-server.mjs` 가 이 규약에 더해 아래 두 가지를 제공합니다. 배포 방법은 `DEPLOY_DB.md`.
+- `POST {BASE}login` — 본문 `{ "id": "…", "password": "…" }`, 맞으면 `200 { token, id }`, 틀리면 `401`(같은 접속지·아이디에서 5회 연속 실패 시 `429`).
+- `GET {BASE}me` — `{ admin: true, id }` 또는 `{ admin: false }`.
+- 토큰은 `Authorization: Bearer …` 로 보냅니다. `PUT` 은 관리자만 허용(`401`), 비공개 메모는 관리자가 아닌 사람의 `annotations` `GET` 에서 빠집니다.
+
 ## DB 를 붙일 때 정해야 할 것
 - **누가 쓸 수 있나**: 지금 코드는 모두를 관리자로 취급합니다(`ANNOTATION_ADMIN = true`). `PUT` 은 로그인한 관리자만 허용하고, 화면의 관리자 여부는 그 로그인 결과로 정해야 합니다.
 - **비공개 메모**: 비공개 메모는 관리자가 아닌 사람의 `GET` 응답에서 서버가 빼야 합니다. 화면에서만 숨기면 주소로 그대로 읽힙니다.
